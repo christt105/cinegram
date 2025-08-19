@@ -1,9 +1,11 @@
 import asyncio
-import logging
+from logger import logger
 import os
 from telethon import TelegramClient, events, __version__ as telethon_version
-from uploader import Uploader
-from worker import FileWorker
+from tasks.file_meta import FileMeta
+from backend_client import BackendClient
+from tasks.upload_file_task import UploadFileTask
+from worker import Worker
 import commands
 from config import API_ID, API_HASH, BOT_TOKEN, AUTH_USER_ID
 
@@ -14,11 +16,13 @@ class TelegramBot:
         self.client = TelegramClient('bot_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
         self.client.add_event_handler(self.handle_new_message, events.NewMessage)
 
+        logger.info("Starting Telegram Bot...")
+
         os.makedirs(INCOMING_DIR, exist_ok=True)
 
         self.queue = asyncio.Queue()
-        self.uploader = Uploader()
-        self.worker = FileWorker(self.queue, self.uploader)
+        self.backend = BackendClient()
+        self.worker = Worker(self.queue)
 
     async def start(self):
         await self.send_startup_message(AUTH_USER_ID)
@@ -47,18 +51,33 @@ class TelegramBot:
             file_name = event.message.file.name
             file_mime_type = event.message.file.mime_type
             file_size = event.message.file.size
+            date = event.message.date
             
-            await self.queue.put({"message_id": message_id})
-            await event.reply(f"✅ File reference saved")
+            message = (
+                f"📥 New file received:\n"
+                f"ID: {message_id}\n"
+                f"Name: {file_name}\n"
+                f"Size: {file_size} bytes\n"
+                f"Extension: {extension}\n"
+                f"Type: {file_mime_type}\n"
+                f"Date: {date.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            )
+            
+            logger.info(message)
+            
+            await self.queue.put(UploadFileTask(
+                FileMeta(message_id, file_name, file_size, file_mime_type, date),
+                self.backend
+                ))
 
-        if event.message.text and event.message.text.startswith("/"):
+        elif event.message.text and event.message.text.startswith("/"):
             parts = event.message.text.strip().split()
             command = parts[0].lower()
             args = parts[1:]
 
             handler = commands.COMMANDS.get(command)
             if handler:
-                await handler(self, event, args)
+                await handler(self, event, args, self.backend)
             else:
-                await event.reply("❓ Unknown command. Use /help to see available commands.")
+                await event.reply("Unknown command. Use /help to see available commands.")
 

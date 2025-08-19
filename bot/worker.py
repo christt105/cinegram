@@ -1,16 +1,17 @@
-import asyncio
+from logger import logger
 
-class FileWorker:
-    def __init__(self, queue, uploader):
+class Worker:
+    def __init__(self, queue):
         self.queue = queue
-        self.uploader = uploader
 
     async def run(self):
-        while True:
-            file_path, file_name = await self.queue.get()
+        self.running = True
+        while self.running:
+            task = await self.queue.get()
+            logger.info(f"Running task: {task}")
             try:
-                await self.uploader.send(file_path, file_name)
+                await task.run()
             except Exception as e:
-                print(f"❌ Error sending {file_name}: {e}")
+                logger.error(f"Error running task {task}: {e}")
             finally:
                 self.queue.task_done()

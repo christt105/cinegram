@@ -1,9 +1,10 @@
 from telethon.tl.custom.message import Message
+from backend_client import BackendClient
 
-async def cmd_start(bot, event: Message, args: list[str]):
-    await event.reply("👋 Hello! I’m your bot. Send me a file or use /help for commands.")
+async def cmd_start(bot, event: Message, args: list[str], backend: BackendClient):
+    await event.reply("👋 Hello! I'm your Media Library bot. Send me a file or use /help for commands.")
 
-async def cmd_help(bot, event: Message, args: list[str]):
+async def cmd_help(bot, event: Message, args: list[str], backend: BackendClient):
     await event.reply(
         "Available commands:\n"
         "/start - Welcome message\n"
@@ -12,10 +13,11 @@ async def cmd_help(bot, event: Message, args: list[str]):
         "/download <id> - Download a saved file\n"
     )
 
-async def cmd_ping(bot, event: Message, args: list[str]):
-    await event.reply("🏓 Pong!")
+async def cmd_health(bot, event: Message, args: list[str], backend: BackendClient):
+    health = await backend.health()
+    await event.reply(f"{health['status']}")
 
-async def cmd_download(bot, event: Message, args: list[str]):
+async def cmd_download(bot, event: Message, args: list[str], backend: BackendClient):
     if not args:
         await event.reply("⚠️ Usage: /download <message_id>")
         return
@@ -36,6 +38,6 @@ async def cmd_download(bot, event: Message, args: list[str]):
 COMMANDS = {
     "/start": cmd_start,
     "/help": cmd_help,
-    "/ping": cmd_ping,
+    "/health": cmd_health,
     "/download": cmd_download,
 }
