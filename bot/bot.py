@@ -12,6 +12,9 @@ from config import API_ID, API_HASH, BOT_TOKEN, AUTH_USER_ID
 INCOMING_DIR = "/data/incoming"
 SESSION_FILE = "/data/bot_session.session"
 
+PREFIX_MOVIE = "🎬" # emoji movie 
+PREFIX_TV = "📺"    # emoji tv 
+
 class TelegramBot:
     def __init__(self):
         os.makedirs(INCOMING_DIR, exist_ok=True)
@@ -50,13 +53,31 @@ class TelegramBot:
             await self.client.send_file(
                 event.chat_id,
                 poster_url,
-                caption=caption,
-                parse_mode="html",
-                buttons=buttons
+                caption=PREFIX_MOVIE + movie['title'],
             )
+            await event.respond(caption, parse_mode="html", buttons=buttons)
         else:
             await event.edit(caption, parse_mode="html", buttons=buttons)
+    
+    def get_movie_caption(self, movie):
+        caption = (
+                f"<b>{movie['title']}</b>\n\n"
+                f"Local ID: {movie['id']}\n"
+                f"TMDB ID: " + (
+                    f"<a href='https://www.themoviedb.org/movie/{movie['tmdb_id']}'>{movie['tmdb_id']}</a>\n"
+                    if movie.get("tmdb_id") else "N/A\n"
+                ) + 
+                f"Collections: {len(movie.get('collections', []))}"
+            )
 
+        buttons = [
+                [Button.inline("📂 Collections", data=f"movie_collections:{movie['id']}")],
+                [Button.inline("⬇️ Download", data=f"download_movie:{movie['id']}")],
+                [Button.inline("✏️ Edit Movie", data=f"edit_movie:{movie['id']}")]
+            ]
+        
+        return caption,buttons
+    
     # TODO: Reestructurar toda esta mierda, que asco de python
     def human_readable_size(self, size: int) -> str:
         """Convert bytes to human-readable format"""
@@ -94,7 +115,6 @@ class TelegramBot:
             obj_id = int(parts[1])
             page = int(parts[2]) if len(parts) > 2 else 0
 
-            movie = await self.backend.get_movie(obj_id)
             collections = await self.backend.get_collections(obj_id)
 
             start = page * ITEMS_PER_PAGE
@@ -102,7 +122,7 @@ class TelegramBot:
             page_collections = collections[start:end]
 
             # Mensaje con lista numerada
-            msg_text = f"{movie["title"]}\nSelect a collection:\n\n"
+            msg_text = f"Select a collection:\n\n"
             for i, c in enumerate(page_collections, start=1 + start):
                 msg_text += f"{i}. {c['name']} (ID {c['id']})\n"
 
@@ -110,7 +130,7 @@ class TelegramBot:
             buttons = [[Button.inline(str(i), data=f"collection:{collections[i-1]["id"]}")] for i in range(start+1, min(end, len(collections))+1)]
 
             # Back to movie
-            buttons.append([Button.inline("⬅️ Back to movie", data=f"movie:{obj_id}")])
+            buttons.append([Button.inline("Create new Collection"), Button.inline("⬅️ Back to movie", data=f"movie:{obj_id}")])
 
             await event.edit(msg_text, buttons=buttons)
 
@@ -123,12 +143,9 @@ class TelegramBot:
             if not collection:
                 await event.edit("❌ Collection not found.")
                 return
-            
-            movie = await self.backend.get_movie(collection.get("movie_id", 0))
 
             files = collection.get("files", [])
-            movie_title = movie['title'] if movie else "N/A"
-            files_text = f"{movie_title}\n".join([
+            files_text = f"\n".join([
                 f"{i+1}. {f['filename']} ({self.human_readable_size(f['filesize'])})"
                 for i, f in enumerate(files)
             ]) or "No files"
@@ -225,26 +242,6 @@ class TelegramBot:
                 await event.edit(f"✅ File ID {file_id} deleted successfully.")
             else:
                 await event.edit(f"❌ Failed to delete file ID {file_id}.")
-
-
-    def get_movie_caption(self, movie):
-        caption = (
-                f"<b>{movie['title']}</b>\n\n"
-                f"Local ID: {movie['id']}\n"
-                f"TMDB ID: " + (
-                    f"<a href='https://www.themoviedb.org/movie/{movie['tmdb_id']}'>{movie['tmdb_id']}</a>\n"
-                    if movie.get("tmdb_id") else "N/A\n"
-                ) + 
-                f"Collections: {len(movie.get('collections', []))}"
-            )
-
-        buttons = [
-                [Button.inline("📂 Collections", data=f"movie_collections:{movie['id']}")],
-                [Button.inline("✏️ Edit Movie", data=f"edit_movie:{movie['id']}")]
-            ]
-        
-        return caption,buttons
-
 
     async def handle_new_message(self, event):
         if event.sender_id != int(AUTH_USER_ID):
