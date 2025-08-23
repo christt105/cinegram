@@ -54,14 +54,14 @@ class TelegramBot:
                 event.chat_id,
                 poster_url,
                 caption=PREFIX_MOVIE + movie['title'],
+                parse_mode="html",
             )
-            await event.respond(caption, parse_mode="html", buttons=buttons)
-        else:
-            await event.edit(caption, parse_mode="html", buttons=buttons)
+
+        await event.respond(caption, parse_mode="html", buttons=buttons)
     
     def get_movie_caption(self, movie):
         caption = (
-                f"<b>{movie['title']}</b>\n\n"
+                f"<b>{movie['title']}" + (f" ({movie['release_year']})" if movie.get("release_year") else "") + "</b>\n\n"
                 f"Local ID: {movie['id']}\n"
                 f"TMDB ID: " + (
                     f"<a href='https://www.themoviedb.org/movie/{movie['tmdb_id']}'>{movie['tmdb_id']}</a>\n"
@@ -124,7 +124,7 @@ class TelegramBot:
             # Mensaje con lista numerada
             msg_text = f"Select a collection:\n\n"
             for i, c in enumerate(page_collections, start=1 + start):
-                msg_text += f"{i}. {c['name']} (ID {c['id']})\n"
+                msg_text += f"{i}. {c['name']} (ID {c['id']}) - Quality: {c.get('quality','N/A')} - Files: {len(c.get('files', []))}\n"
 
             # Botones solo con números
             buttons = [[Button.inline(str(i), data=f"collection:{collections[i-1]["id"]}")] for i in range(start+1, min(end, len(collections))+1)]
@@ -150,7 +150,13 @@ class TelegramBot:
                 for i, f in enumerate(files)
             ]) or "No files"
 
-            caption = f"<b>{collection['name']}</b>\nFiles:\n{files_text}"
+            tags = ", ".join(
+                f"#{t.strip()}"
+                for t in (collection.get("tags") or "").split(",")
+                if t.strip()
+            ) or "N/A"
+
+            caption = f"<b>{collection['name']}</b>\n\nID: {collection['id']}\nQuality: {collection.get('quality','N/A')}\nAudio Languaje: {collection.get("audio_languages","N/A")}\nSubtitle Languaje: {collection.get("subtitle_languages","N/A")}\nTags: {tags}\nNotes: {collection.get("notes","N/A")}\n\n<b>Files:</b>\n{files_text}"
 
             buttons = [
                 [Button.inline("✏️ Edit Collection", data=f"edit_collection:{collection_id}")],
@@ -239,9 +245,9 @@ class TelegramBot:
             ] if file else []
 
             if result:
-                await event.edit(f"✅ File ID {file_id} deleted successfully.")
+                await event.edit(f"✅ File ID {file_id} deleted successfully.", buttons=buttons)
             else:
-                await event.edit(f"❌ Failed to delete file ID {file_id}.")
+                await event.edit(f"❌ Failed to delete file ID {file_id}.", buttons=buttons)
 
     async def handle_new_message(self, event):
         if event.sender_id != int(AUTH_USER_ID):

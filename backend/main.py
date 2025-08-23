@@ -72,7 +72,14 @@ class CollectionOut(BaseModel):
     id: int
     name: Optional[str]
     movie_id: Optional[int]
+    episode_id: Optional[int]
+    season_id: Optional[int]
     files: List[FileOut] = []
+    quality: Optional[str]
+    audio_languages: Optional[str]
+    subtitle_languages: Optional[str]
+    tags: Optional[str]
+    notes: Optional[str]
 
     class Config:
         from_attributes = True
@@ -83,6 +90,10 @@ class MovieOut(BaseModel):
     title: Optional[str]
     poster_path: Optional[str]
     collections: List[CollectionOut] = []
+    release_year: Optional[int]
+    overview: Optional[str]
+    tags: Optional[str]
+    notes: Optional[str]
 
     class Config:
         from_attributes = True
