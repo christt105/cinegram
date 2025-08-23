@@ -4,15 +4,21 @@ from tasks.file_meta import FileMeta
 
 
 class BackendClient:
-    def __init__(self):
-        self.base_url = BACKEND_URL
+    def __init__(self, base_url="http://backend:8000"):
+        self.base_url = base_url
+        self.session = None
+    
+    async def get_session(self):
+        if self.session is None or self.session.closed:
+            self.session = aiohttp.ClientSession()
+        return self.session        
 
     async def health(self):
         url = f"{self.base_url}/"
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url) as resp:
-                    return await resp.json()
+            session = await self.get_session()
+            async with session.get(url) as resp:
+                return await resp.json()
         except aiohttp.ClientError as e:
             return {"status": "unhealthy", "error": str(e)}
 
@@ -25,32 +31,45 @@ class BackendClient:
             "mime_type": file_meta.mime_type,
             "created_at": file_meta.created_at.isoformat(),
         }
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, json=data) as resp:
-                if resp.status != 200:
-                    text = await resp.text()
-                    raise RuntimeError(f"Upload failed: {resp.status} {text}")
-                return await resp.json()
+        session = await self.get_session()
+        async with session.post(url, json=data) as resp:
+            if resp.status != 200:
+                text = await resp.text()
+                raise RuntimeError(f"Upload failed: {resp.status} {text}")
+            return await resp.json()
 
-    async def list_items(self, limit: int = 100):
-        url = f"{self.base_url}/items?limit={limit}"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                return await resp.json()
-
-    async def get_item(self, item_id: int):
-        url = f"{self.base_url}/items/{item_id}"
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url) as resp:
-                if resp.status == 404:
-                    return None
-                return await resp.json()
-
-    async def patch_item(self, item_id: int, **kwargs):
-        url = f"{self.base_url}/items/{item_id}"
-        data = {k: v for k, v in kwargs.items() if v is not None}
-        async with aiohttp.ClientSession() as session:
-            async with session.patch(url, json=data) as resp:
-                if resp.status == 404:
-                    return None
-                return await resp.json()
+    async def get_movies(self):
+        session = await self.get_session()
+        async with session.get(f"{self.base_url}/movies") as resp:
+            return await resp.json()
+        
+    async def get_movie(self, local_id: int):
+        session = await self.get_session()
+        async with session.get(f"{self.base_url}/movies/{local_id}") as resp:
+            return await resp.json()
+    
+    async def search_movies(self, query: str):
+        session = await self.get_session()
+        async with session.get(f"{self.base_url}/movies/search", params={"q": query}) as resp:
+            return await resp.json()
+    
+    async def get_movie_by_tmdb(self, tmdb_id: int):
+        session = await self.get_session()
+        async with session.get(f"{self.base_url}/movies/tmdb/{tmdb_id}") as resp:
+            if resp.status == 404:
+                return None
+            return await resp.json()
+    
+    async def get_collections(self, movie_id: int):
+        session = await self.get_session()
+        async with session.get(f"{self.base_url}/movies/{movie_id}/collections") as resp:
+            if resp.status == 404:
+                return []
+            return await resp.json()
+        
+    async def get_collection(self, collection_id: int):
+        session = await self.get_session()
+        async with session.get(f"{self.base_url}/collections/{collection_id}") as resp:
+            if resp.status == 404:
+                return None
+            return await resp.json()

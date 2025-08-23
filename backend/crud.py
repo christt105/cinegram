@@ -1,15 +1,20 @@
 from sqlmodel import select
 from sqlalchemy.exc import NoResultFound
-from models import File, Collection
+from models import File, Collection, Movie
 from database import engine
 from sqlmodel import Session
 from datetime import datetime
 from typing import Optional, Dict, Any
+from logger import logger
+from tmdb import TMDB
 
 def get_or_create_collection(session: Session, collection_name: str, mime_type: str):
     
     if mime_type.startswith("video/"):
         # if it is a video, we can assume that it is a file on its own
+        
+        # TODO: Check if there is a collection with the same name and use the same movie_id or episode_id if it exists
+        
         collection = Collection(name=collection_name)
         session.add(collection)
         session.commit()
@@ -50,5 +55,60 @@ def create_file(session: Session, message_id, filename, filesize, mime_type, cre
     session.refresh(file)
     return file, collection
 
-def get_item(session: Session, item_id: int) -> Optional[File]:
+def get_file(session: Session, item_id: int) -> Optional[File]:
     return session.get(File, item_id)
+
+def get_collection(session: Session, item_id: int) -> Optional[File]:
+    return session.get(Collection, item_id)
+
+async def identify_collection(session: Session, collection_id: int, tmdb: TMDB):
+    logger.info(f"Identifying collection {collection_id}")
+    
+    collection = get_collection(session, collection_id)
+    
+    if not collection:
+        logger.error(f"Collection {collection_id} not found")
+        return
+    
+    if collection.movie_id is not None or collection.episode_id is not None:
+        logger.info(f"Collection {collection_id} already identified")
+        return
+    
+    tmdb_result = tmdb.identify_by_filename(collection.name)
+    
+    if not tmdb_result:
+        logger.warning(f"No TMDB identification result for collection {collection_id}")
+        return
+    
+    if not tmdb_result["media_type"]:
+        logger.warning(f"No media type found for collection {collection_id}")
+        return
+    
+    if tmdb_result["media_type"] == "movie":
+        movie = get_or_create_movie(session, tmdb_result["id"], tmdb_result["title"], tmdb_result.get("poster_path"))
+        collection.movie_id = movie.id
+        session.add(collection)
+        session.commit()
+        logger.info(f"Linked collection {collection_id} to movie {movie.id} ({movie.title})")
+    
+    elif tmdb_result["media_type"] == "tv":
+        # TODO: implement tv show linking
+        logger.info(f"Collection {collection_id} is a TV show (not yet linked)")
+    
+    logger.info(f"TMDB identification result: {tmdb_result}")
+    
+
+def get_or_create_movie(session: Session, tmdb_id: int, title: str, poster_path: str) -> Movie:
+    """Get or create a movie by TMDB ID."""
+    try:
+        movie = session.exec(
+            select(Movie).where(Movie.tmdb_id == tmdb_id)
+        ).one()
+        return movie
+    except NoResultFound:
+        movie = Movie(tmdb_id=tmdb_id, title=title, poster_path=poster_path)
+        session.add(movie)
+        session.commit()
+        session.refresh(movie)
+        return movie
+

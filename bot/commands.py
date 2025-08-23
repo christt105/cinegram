@@ -1,43 +1,135 @@
+from dataclasses import dataclass
+from typing import Callable, Awaitable
+from telethon import Button
 from telethon.tl.custom.message import Message
 from backend_client import BackendClient
+from logger import logger
+
+
+@dataclass
+class Command:
+    name: str
+    description: str
+    usage: str
+    handler: Callable[..., Awaitable[None]]
+
+
+# ======================
+# Command Handlers
+# ======================
 
 async def cmd_start(bot, event: Message, args: list[str], backend: BackendClient):
     await event.reply("👋 Hello! I'm your Media Library bot. Send me a file or use /help for commands.")
 
+
 async def cmd_help(bot, event: Message, args: list[str], backend: BackendClient):
-    await event.reply(
-        "Available commands:\n"
-        "/start - Welcome message\n"
-        "/help - Show this help\n"
-        "/ping - Check if bot is alive\n"
-        "/download <id> - Download a saved file\n"
-    )
+    msg = "📖 Available commands:\n\n"
+    for cmd in COMMANDS.values():
+        msg += f"{cmd.name} - {cmd.description}\nUsage: {cmd.usage}\n\n"
+    await event.reply(msg)
+
 
 async def cmd_health(bot, event: Message, args: list[str], backend: BackendClient):
     health = await backend.health()
-    await event.reply(f"{health['status']}")
+    await event.reply(f"✅ Backend status: {health['status']}")
 
-async def cmd_download(bot, event: Message, args: list[str], backend: BackendClient):
-    if not args:
-        await event.reply("⚠️ Usage: /download <message_id>")
+
+async def cmd_movies(bot, event: Message, args: list[str], backend: BackendClient):
+    movies = await backend.get_movies()
+    if not movies:
+        await event.reply("📭 No movies found.")
         return
 
-    try:
-        msg_id = int(args[0])
-        msg = await bot.client.get_messages(event.chat_id, ids=msg_id)
-        if msg and msg.file:
-            await msg.download_media("downloads/")
-            await event.reply(f"✅ File {msg.file.name} downloaded.")
-        else:
-            await event.reply("❌ No file found for that ID.")
-    except ValueError:
-        await event.reply("⚠️ Message ID must be a number.")
+    text = "🎬 Movies:\n"
+    for m in movies[:10]:
+        text += f"- {m['id']}: {m['title']} ({m.get('tmdb_id','?')})\n"
+    if len(movies) > 10:
+        text += f"\n... and {len(movies) - 10} more"
+
+    await event.reply(text)
 
 
-# Command registry
-COMMANDS = {
-    "/start": cmd_start,
-    "/help": cmd_help,
-    "/health": cmd_health,
-    "/download": cmd_download,
+async def cmd_movie(bot, event, args, backend):
+    if not args:
+        await event.reply("⚠️ Usage: /movie <local_id> | tmdbid-<tmdb_id>")
+        return
+
+    query = args[0]
+    if query.startswith("tmdbid-"):
+        tmdb_id = int(query.split("-", 1)[1])
+        movie = await backend.get_movie_by_tmdb(tmdb_id)
+    else:
+        try:
+            local_id = int(query)
+            movie = await backend.get_movie(local_id)
+        except ValueError:
+            await event.reply("⚠️ Invalid ID format.")
+            return
+
+    if not movie:
+        await event.reply("❌ Movie not found.")
+        return
+    
+    logger.info(f"Fetched movie: {movie}")
+
+    caption = (
+        f"<b>{movie['title']}</b>\n"
+        f"Local ID: {movie['id']}\n"
+        f"TMDB: {movie.get('tmdb_id', 'N/A')}\n"
+        f"Collections: {len(movie.get('collections', []))}"
+
+    )
+
+    buttons = [
+        [Button.inline("📂 Collections", data=f"movie_collections:{movie['id']}")],
+        [Button.inline("✏️ Edit Movie", data=f"edit_movie:{movie['id']}")]
+    ]
+
+    if movie.get("poster_path"):
+        poster_url = f"https://image.tmdb.org/t/p/w500{movie['poster_path']}"
+        await bot.client.send_file(
+            event.chat_id,
+            poster_url,
+            caption=caption,
+            parse_mode="html",
+            buttons=buttons,
+        )
+    else:
+        await event.reply(caption, buttons=buttons)
+
+# ======================
+# Command Registry
+# ======================
+
+COMMANDS: dict[str, Command] = {
+    "/start": Command(
+        name="/start",
+        description="Welcome message",
+        usage="/start",
+        handler=cmd_start,
+    ),
+    "/help": Command(
+        name="/help",
+        description="Show available commands",
+        usage="/help",
+        handler=cmd_help,
+    ),
+    "/health": Command(
+        name="/health",
+        description="Check backend health",
+        usage="/health",
+        handler=cmd_health,
+    ),
+    "/movies": Command(
+        name="/movies",
+        description="List stored movies",
+        usage="/movies",
+        handler=cmd_movies,
+    ),
+    "/movie": Command(
+        name="/movie",
+        description="Get a specific movie by ID",
+        usage="/movies <id> | tmdbid-<tmdb_id>",
+        handler=cmd_movie,
+    ),
 }

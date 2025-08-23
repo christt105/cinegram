@@ -1,12 +1,17 @@
+from datetime import datetime
+from typing import List, Optional
 from fastapi import FastAPI, Depends, BackgroundTasks, HTTPException
 from pydantic import BaseModel
-from sqlmodel import Session
+from sqlmodel import Session, select
 from database import init_db, get_session
-from crud import create_file, get_item
-from tmdb import identify_by_filename
+from crud import create_file, identify_collection
+from logger import logger
+from tmdb import TMDB
+from models import Movie, File, Collection
 import os
 
 app = FastAPI(title="jellygram-backend")
+tmdb = TMDB()
 
 # Initialize DB on startup
 @app.on_event("startup")
@@ -45,53 +50,79 @@ async def upload_endpoint(payload: UploadIn, background_tasks: BackgroundTasks, 
         created_at=payload.created_at,
     )
     
-    #background_tasks.add_task(identify_and_update, file.id)
+    if collection.movie_id is None or collection.episode_id is None:
+        background_tasks.add_task(identify_collection, session, collection.id, tmdb)
     
     return file
 
-async def identify_and_update(item_id: int):
-    # create a ephemeral session
-    from database import engine
-    from sqlmodel import Session
-    from crud import update_item, get_item
-    with Session(engine) as session:
-        item = get_item(session, item_id)
-        if not item:
-            return
-        # try identification by filename
-        result = await identify_by_filename(item.filename or "")
-        if result:
-            update_item(session, item_id, {
-                "media_type": result.get("media_type"),
-                "title": result.get("title"),
-                "year": int(result.get("year")) if result.get("year") else None,
-                "tmdb_id": result.get("tmdb_id"),
-                "status": "identified",
-            })
-        else:
-            update_item(session, item_id, {"status": "failed"})
 
-@app.get("/items", response_model=list[ItemOut])
-def get_items(limit: int = 100, session: Session = Depends(get_session)):
-    return list_items(session, limit=limit)
+class FileOut(BaseModel):
+    id: int
+    message_id: int
+    filename: str
+    filesize: int
+    mime_type: Optional[str]
+    created_at: datetime
 
-@app.get("/items/{item_id}", response_model=ItemOut)
-def get_item_route(item_id: int, session: Session = Depends(get_session)):
-    item = get_item(session, item_id)
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    return item
+    class Config:
+        from_attributes = True
 
-class ItemPatch(BaseModel):
-    title: str | None = None
-    year: int | None = None
-    tmdb_id: int | None = None
-    media_type: str | None = None
-    status: str | None = None
+class CollectionOut(BaseModel):
+    id: int
+    name: Optional[str]
+    movie_id: Optional[int]
+    files: List[FileOut] = []
 
-@app.patch("/items/{item_id}", response_model=ItemOut)
-def patch_item(item_id: int, data: ItemPatch, session: Session = Depends(get_session)):
-    item = update_item(session, item_id, data.dict(exclude_none=True))
-    if not item:
-        raise HTTPException(status_code=404, detail="Item not found")
-    return item
+    class Config:
+        from_attributes = True
+
+class MovieOut(BaseModel):
+    id: int
+    tmdb_id: Optional[int]
+    title: Optional[str]
+    poster_path: Optional[str]
+    collections: List[CollectionOut] = []
+
+    class Config:
+        from_attributes = True
+    
+
+@app.get("/movies", response_model=list[MovieOut])
+def list_movies(session: Session = Depends(get_session)):
+    """Return all movies stored in DB with collections and files"""
+    movies = session.exec(select(Movie)).all()
+    return movies
+
+@app.get("/movies/{movie_id}", response_model=MovieOut)
+def get_movie(movie_id: int, session: Session = Depends(get_session)):
+    """Return a single movie by ID with its collections and files"""
+    movie = session.get(Movie, movie_id)
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
+    return movie
+    
+@app.get("/movies/tmdb/{tmdb_id}", response_model=Optional[MovieOut])
+def get_movie_by_tmdb(tmdb_id: int, session: Session = Depends(get_session)):
+    """Return a single movie by TMDB ID with its collections and files"""
+    movie = session.exec(select(Movie).where(Movie.tmdb_id == tmdb_id)).first()
+    if not movie:
+        return None
+    return movie
+
+@app.get("/movies/{movie_id}/collections", response_model=List[CollectionOut])
+def get_collections(movie_id: int, session: Session = Depends(get_session)):
+    """Return all collections for a given movie ID with their files"""
+    movie = session.get(Movie, movie_id)
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
+    return movie.collections
+
+@app.get("/collections/{collection_id}", response_model=Optional[CollectionOut])
+def get_collection(collection_id: int, session: Session = Depends(get_session)):
+    """Return a single collection by ID with its files"""
+    collection = session.get(Collection, collection_id)
+    if not collection:
+        return None
+    return collection
+    
+    

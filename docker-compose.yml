@@ -7,7 +7,7 @@ services:
       - .env
     restart: unless-stopped
     volumes:
-      - C:\Users\chris\Desktop\Projects\jellygram\appdata/bot:/data
+      - C:\Users\laiag\Desktop\Christian\jellygram\appdata/bot:/data
   
   backend:
     build:
@@ -16,7 +16,7 @@ services:
     env_file:
       - .env
     volumes:
-      - C:\Users\chris\Desktop\Projects\jellygram\appdata/backend:/data
+      - C:\Users\laiag\Desktop\Christian\jellygram\appdata/backend:/data
     ports:
       - "8000:8000"
     restart: unless-stopped

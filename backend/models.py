@@ -9,7 +9,8 @@ from datetime import datetime, timezone
 class Movie(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     tmdb_id: Optional[int] = Field(default=None, unique=True, index=True)
-    manual_title: Optional[str] = None
+    poster_path: Optional[str] = None
+    title: Optional[str] = None
 
     collections: List["Collection"] = Relationship(back_populates="movie")
 
