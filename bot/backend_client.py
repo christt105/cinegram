@@ -73,3 +73,24 @@ class BackendClient:
             if resp.status == 404:
                 return None
             return await resp.json()
+        
+    async def get_file(self, file_id: int):
+        session = await self.get_session()
+        async with session.get(f"{self.base_url}/files/{file_id}") as resp:
+            if resp.status == 404:
+                return None
+            return await resp.json()
+    
+    async def delete_file(self, file_id: int):
+        session = await self.get_session()
+        async with session.delete(f"{self.base_url}/files/{file_id}") as resp:
+            if resp.status == 404:
+                return False
+            return resp.status == 200
+    
+    async def delete_collection(self, collection_id: int):
+        session = await self.get_session()
+        async with session.delete(f"{self.base_url}/collections/{collection_id}") as resp:
+            if resp.status == 404:
+                return False
+            return resp.status == 200

@@ -63,6 +63,7 @@ class FileOut(BaseModel):
     filesize: int
     mime_type: Optional[str]
     created_at: datetime
+    collection_id: int
 
     class Config:
         from_attributes = True
@@ -124,5 +125,35 @@ def get_collection(collection_id: int, session: Session = Depends(get_session)):
     if not collection:
         return None
     return collection
-    
+
+@app.get("/files/{file_id}", response_model=Optional[FileOut])
+def get_file(file_id: int, session: Session = Depends(get_session)):
+    """Return a single file by ID"""
+    file = session.get(File, file_id)
+    if not file:
+        return None
+    return file
+
+@app.delete("/files/{file_id}", response_model=dict)
+def delete_file(file_id: int, session: Session = Depends(get_session)):
+    """Delete a file record by ID"""
+    file = session.get(File, file_id)
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+    session.delete(file)
+    session.commit()
+    return {"status": "deleted", "file_id": file_id}
+
+@app.delete("/collections/{collection_id}", response_model=dict)
+def delete_collection(collection_id: int, session: Session = Depends(get_session)):
+    """Delete a collection and its associated files by ID"""
+    collection = session.get(Collection, collection_id)
+    if not collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+    # Optionally, delete associated files
+    for file in collection.files:
+        session.delete(file)
+    session.delete(collection)
+    session.commit()
+    return {"status": "deleted", "collection_id": collection_id}
     

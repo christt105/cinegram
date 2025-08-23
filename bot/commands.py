@@ -69,33 +69,8 @@ async def cmd_movie(bot, event, args, backend):
     if not movie:
         await event.reply("❌ Movie not found.")
         return
-    
-    logger.info(f"Fetched movie: {movie}")
 
-    caption = (
-        f"<b>{movie['title']}</b>\n"
-        f"Local ID: {movie['id']}\n"
-        f"TMDB: {movie.get('tmdb_id', 'N/A')}\n"
-        f"Collections: {len(movie.get('collections', []))}"
-
-    )
-
-    buttons = [
-        [Button.inline("📂 Collections", data=f"movie_collections:{movie['id']}")],
-        [Button.inline("✏️ Edit Movie", data=f"edit_movie:{movie['id']}")]
-    ]
-
-    if movie.get("poster_path"):
-        poster_url = f"https://image.tmdb.org/t/p/w500{movie['poster_path']}"
-        await bot.client.send_file(
-            event.chat_id,
-            poster_url,
-            caption=caption,
-            parse_mode="html",
-            buttons=buttons,
-        )
-    else:
-        await event.reply(caption, buttons=buttons)
+    await bot.send_movie_menu(event, movie)
 
 # ======================
 # Command Registry

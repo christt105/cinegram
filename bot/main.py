@@ -1,5 +1,10 @@
+import asyncio
 from bot import TelegramBot
 
-if __name__ == "__main__":
+async def main():
     bot = TelegramBot()
-    bot.run()
+    await bot.start()
+
+if __name__ == "__main__":
+    asyncio.run(main())
+
