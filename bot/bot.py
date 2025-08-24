@@ -53,7 +53,7 @@ class TelegramBot:
             await self.client.send_file(
                 event.chat_id,
                 poster_url,
-                caption=PREFIX_MOVIE + movie['title'],
+                caption=f"{PREFIX_MOVIE}{movie['title']} ({movie.get("release_year")})",
                 parse_mode="html",
             )
 
@@ -61,7 +61,6 @@ class TelegramBot:
     
     def get_movie_caption(self, movie):
         caption = (
-                f"<b>{movie['title']}" + (f" ({movie['release_year']})" if movie.get("release_year") else "") + "</b>\n\n"
                 f"Local ID: {movie['id']}\n"
                 f"TMDB ID: " + (
                     f"<a href='https://www.themoviedb.org/movie/{movie['tmdb_id']}'>{movie['tmdb_id']}</a>\n"
@@ -76,7 +75,7 @@ class TelegramBot:
                 [Button.inline("✏️ Edit Movie", data=f"edit_movie:{movie['id']}")]
             ]
         
-        return caption,buttons
+        return caption, buttons
     
     # TODO: Reestructurar toda esta mierda, que asco de python
     def human_readable_size(self, size: int) -> str:
@@ -160,7 +159,6 @@ class TelegramBot:
 
             buttons = [
                 [Button.inline("✏️ Edit Collection", data=f"edit_collection:{collection_id}")],
-                # Remove collection button
                 [Button.inline("🗑️ Delete Collection", data=f"delete_collection:{collection_id}")],
             ]
 
