@@ -21,6 +21,7 @@ class TelegramBot:
         self.queue = asyncio.Queue()
         self.backend = BackendClient()
         self.worker = Worker(self.queue)
+        self.pending_action = None
 
         self.client = TelegramClient(SESSION_FILE, API_ID, API_HASH)
         self.client.add_event_handler(self.handle_new_message, events.NewMessage)
@@ -149,13 +150,37 @@ class TelegramBot:
                 for i, f in enumerate(files)
             ]) or "No files"
 
+            movie_id = collection["movie_id"]
+            season_id = collection["season_id"]
+            episode_id = collection["episode_id"]
+
+            linked_to = "None"
+            if movie_id:
+                movie = await self.backend.get_movie(movie_id)
+                linked_to = f"Movie: [{movie["id"]}] {movie["title"]}"
+            elif season_id:
+                season = await self.backend.get_season(season_id)
+                linked_to = f"Season: [{season["id"]}] S{season["season_number"]}"
+            elif episode_id:
+                episode = await self.backend.get_episode(episode_id)
+                linked_to = f"Episode: [{episode["id"]}] S{episode["season_id"]}E{episode["epidose_number"]}"
+
+
             tags = ", ".join(
                 f"#{t.strip()}"
                 for t in (collection.get("tags") or "").split(",")
                 if t.strip()
             ) or "N/A"
 
-            caption = f"<b>{collection['name']}</b>\n\nID: {collection['id']}\nQuality: {collection.get('quality','N/A')}\nAudio Languaje: {collection.get("audio_languages","N/A")}\nSubtitle Languaje: {collection.get("subtitle_languages","N/A")}\nTags: {tags}\nNotes: {collection.get("notes","N/A")}\n\n<b>Files:</b>\n{files_text}"
+            caption = (
+                f"ID: {collection['id']}\n"
+                f"Quality: {collection.get('quality','N/A')}\n"
+                f"Audio Languaje: {collection.get("audio_languages","N/A")}\n"
+                f"Subtitle Languaje: {collection.get("subtitle_languages","N/A")}\n"
+                f"Tags: {tags}\n"
+                f"Notes: <blockquote>{collection.get("notes","N/A")}</blockquote>\n"
+                f"<b>Files:</b>\n{files_text}"
+            )
 
             buttons = [
                 [Button.inline("✏️ Edit Collection", data=f"edit_collection:{collection_id}")],
@@ -168,6 +193,61 @@ class TelegramBot:
 
             # Back button
             buttons.append([Button.inline("⬅️ Back to collections", data=f"movie_collections:{collection.get('movie_id', 0)}")])
+
+            await event.edit(caption, parse_mode="html", buttons=buttons)
+        
+        elif action == "edit_collection":
+            collection_id = obj_id
+            collection = await self.backend.get_collection(collection_id)
+            
+            if not collection:
+                await event.edit("❌ Collection not found.")
+                return
+
+            movie_id = collection["movie_id"]
+            season_id = collection["season_id"]
+            episode_id = collection["episode_id"]
+
+            linked_to = "None"
+            if movie_id:
+                movie = await self.backend.get_movie(movie_id)
+                linked_to = f"Movie: [{movie["id"]}] {movie["title"]}"
+            elif season_id:
+                season = await self.backend.get_season(season_id)
+                linked_to = f"Season: [{season["id"]}] S{season["season_number"]}"
+            elif episode_id:
+                episode = await self.backend.get_episode(episode_id)
+                linked_to = f"Episode: [{episode["id"]}] S{episode["season_id"]}E{episode["epidose_number"]}"
+
+            tags = ", ".join(
+                f"#{t.strip()}"
+                for t in (collection.get("tags") or "").split(",")
+                if t.strip()
+            ) or "N/A"
+            
+            details = [
+                f"{collection["name"]}",
+                f"ID: {collection['id']}",
+                f"Quality: {collection.get('quality','N/A')}",
+                f"Audio Language: {collection.get('audio_languages','N/A')}",
+                f"Subtitle Language: {collection.get('subtitle_languages','N/A')}",
+                f"Tags: {tags}",
+                f"Linked to:\n   {linked_to}\n"
+                f"Notes: {collection.get('notes','N/A')}",
+            ]
+
+            caption = "\n".join(details)
+
+            buttons = [
+                [Button.inline("Edit Name", data=f"edit_collection_name:{collection_id}")],
+                [Button.inline("Edit Quality", data=f"edit_collection_quality:{collection_id}")],
+                [Button.inline("Edit Audio Language", data=f"edit_collection_audio:{collection_id}")],
+                [Button.inline("Edit Subtitle Language", data=f"edit_collection_sub:{collection_id}")],
+                [Button.inline("Edit Tags", data=f"edit_collection_tags:{collection_id}")],
+                [Button.inline("Edit Notes", data=f"edit_collection_notes:{collection_id}")],
+            ]
+
+            buttons.append([Button.inline("⬅️ Back to collection", data=f"collection:{collection_id}")])
 
             await event.edit(caption, parse_mode="html", buttons=buttons)
         
@@ -210,9 +290,14 @@ class TelegramBot:
             buttons = [
             ]
 
+            if self.pending_action and self.pending_action["action"] == "change_collection_in_file":
+                message_id = self.pending_action.get("message_id")
+                message = await self.client.get_messages(event.chat_id, ids=message_id)
+                await message.delete()
+                self.pending_action = None
+
             collection = await self.backend.get_collection(file.get("collection_id", 0))
-            movie = await self.backend.get_movie(collection.get("movie_id", 0)) if collection else None
-            caption = f"{movie['title'] if movie else 'N/A'}\nCollection: {collection['name'] if collection else 'N/A'}"
+            caption = f"Collection: {collection['name'] if collection else 'N/A'}"
             
             if file:
                 caption += f"\n\n<b>File Details:</b>\nID: {file['id']}\nFilename: {file['filename']}\nSize: {self.human_readable_size(file['filesize'])}\nCreated At: {file['created_at']}"
@@ -220,10 +305,33 @@ class TelegramBot:
             else:
                 caption += "\n\n❌ File not found."
 
+            buttons.append([Button.inline("Change Collection", data=f"file_change:{file_id}")])
             buttons.append([Button.inline("⬅️ Back to collection", data=f"collection:{file.get('collection_id', 0)}")])
 
             await event.edit(caption, parse_mode="html", buttons=buttons)
         
+        elif action == "file_change":
+            file_id = obj_id
+
+            file = await self.backend.get_file(file_id)
+
+            msg = await event.get_message()
+            await event.edit(msg.text)
+
+            buttons = [[Button.inline("Cancel", data=f"file:{file_id}")]]
+            new_message = await event.respond(
+                f"📂 Change collection for file ID {file_id}.\n\n"
+                "➡️ Send me the ID of the target collection, or type `/newcol <name>` to create a new one.",
+                buttons=buttons
+            )
+            
+            self.pending_action = {
+                "action": "change_collection_in_file", 
+                "file_id": file_id,
+                "original_collection": file.get("collection_id") if file else None,
+                "message_id": new_message.id
+                }
+
         elif action == "delete_file":
             file_id = obj_id
 
@@ -246,6 +354,15 @@ class TelegramBot:
                 await event.edit(f"✅ File ID {file_id} deleted successfully.", buttons=buttons)
             else:
                 await event.edit(f"❌ Failed to delete file ID {file_id}.", buttons=buttons)
+        
+    def set_action(self, action_key: str, data: dict, callback_success, callback_cancel):
+        if self.pending_action != None:
+            callback_cancel()
+
+        self.pending_action = {
+                "action": action_key, 
+                "data": data
+                }
 
     async def handle_new_message(self, event):
         if event.sender_id != int(AUTH_USER_ID):
@@ -283,13 +400,48 @@ class TelegramBot:
                 reply_callback
                 ))
 
-        elif event.message.text and event.message.text.startswith("/"):
-            parts = event.message.text.strip().split()
-            command_name = parts[0].lower()
-            args = parts[1:]
+        elif event.message.text:
+            if event.message.text.startswith("/"):
+                parts = event.message.text.strip().split()
+                command_name = parts[0].lower()
+                args = parts[1:]
 
-            cmd = COMMANDS.get(command_name)
-            if cmd:
-                await cmd.handler(self, event, args, self.backend)
+                cmd = COMMANDS.get(command_name)
+                if cmd:
+                    await cmd.handler(self, event, args, self.backend)
+                else:
+                    await event.reply("❌ Unknown command. Use /help to see available commands.")
             else:
-                await event.reply("❌ Unknown command. Use /help to see available commands.")
+                if self.pending_action != None:
+                    action = self.pending_action.get("action")
+                    if action == "change_collection_in_file":
+                        text = event.message.text
+                        file_id = self.pending_action.get("file_id")
+                        if text.isdigit():
+                            collection_id = int(text)
+
+                            collection = await self.backend.get_collection(collection_id)
+
+                            if not collection:
+                                await event.respond(f"Collection with ID {collection_id} does not exists.")
+                            else:
+                                success, status = await self.backend.patch_file(file_id, {"collection_id": collection_id})
+                                if status == 200:
+                                    await event.respond(f"✅ File {file_id} moved to collection ID {collection_id}.")
+                                    self.pending_action = None
+                                else:
+                                    await event.respond(f"❌ Failed to move file {file_id} to collection {collection_id}. Error: {success}")
+                                
+                        else:
+                            await event.respond("❌ Invalid input. Send a numeric collection ID or `/newcol <name>`. Type `/cancel action` to cancel the action.")
+    
+    async def cancel_current_action(self, event):
+        if self.pending_action != None:
+            await event.reply("No active action to cancel")
+            return
+        
+        key_action = self.pending_action["key"]
+        self.pending_action = None
+        await event.reply(f"Current action with key: {key_action} cancelled")
+
+                        

@@ -15,7 +15,6 @@ COPY . /app
 
 ENV DATA_DIR=/data
 ENV DATABASE_PATH=/data/database.db
-ENV TMDB_API_KEY=""
 
 EXPOSE 8000
 

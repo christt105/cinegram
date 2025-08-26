@@ -72,6 +72,14 @@ async def cmd_movie(bot, event, args, backend):
 
     await bot.send_movie_menu(event, movie)
 
+
+async def cmd_cancel(bot, event: Message, args: list[str], backend: BackendClient):
+    if not args or len(args) == 0:
+        await event.reply("⚠️ Usage: /cancel action")
+        return
+
+    await bot.cancel_current_action(event)
+
 # ======================
 # Command Registry
 # ======================

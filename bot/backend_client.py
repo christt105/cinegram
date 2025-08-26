@@ -80,6 +80,13 @@ class BackendClient:
             if resp.status == 404:
                 return None
             return await resp.json()
+        
+    async def patch_file(self, file_id: int, data: dict):
+        session = await self.get_session()
+        async with session.patch(f"{self.base_url}/files/{file_id}", json=data) as resp:
+            if resp.status == 404:
+                return None
+            return await resp.json(), resp.status
     
     async def delete_file(self, file_id: int):
         session = await self.get_session()

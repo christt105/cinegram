@@ -168,3 +168,52 @@ def delete_collection(collection_id: int, session: Session = Depends(get_session
     session.commit()
     return {"status": "deleted", "collection_id": collection_id}
     
+class CollectionUpdate(BaseModel):
+    name: Optional[str] = None
+    quality: Optional[str] = None
+    audio_languages: Optional[str] = None
+    subtitle_languages: Optional[str] = None
+    tags: Optional[str] = None
+    notes: Optional[str] = None
+
+@app.patch("/collections/{collection_id}", response_model=Collection)
+def update_collection(
+    collection_id: int,
+    collection_update: CollectionUpdate,
+    session: Session = Depends(get_session),
+):
+    db_collection = session.get(Collection, collection_id)
+    if not db_collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    update_data = collection_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_collection, key, value)
+
+    session.add(db_collection)
+    session.commit()
+    session.refresh(db_collection)
+    return db_collection
+
+class FileUpdate(BaseModel):
+    collection_id: Optional[int] = None
+
+@app.patch("/files/{file_id}", response_model=File)
+def update_file(
+    file_id: int,
+    file_update: FileUpdate,
+    session: Session = Depends(get_session),
+):
+    db_file = session.get(File, file_id)
+    if not db_file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    update_data = file_update.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(db_file, key, value)
+
+    session.add(db_file)
+    session.commit()
+    session.refresh(db_file)
+    return db_file
+
