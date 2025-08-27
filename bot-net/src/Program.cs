@@ -1,4 +1,4 @@
-using TelegramBot;
+using Bot;
 
 var builder = Host.CreateApplicationBuilder(args);
 builder.Services.AddHostedService<Worker>();
