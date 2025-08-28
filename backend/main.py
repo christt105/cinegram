@@ -51,7 +51,7 @@ async def upload_endpoint(payload: UploadIn, background_tasks: BackgroundTasks, 
     )
     
     if collection.movie_id is None or collection.episode_id is None:
-        background_tasks.add_task(identify_collection, session, collection.id, tmdb)
+        background_tasks.add_task(identify_collection, collection.id, tmdb)
     
     return file
 
