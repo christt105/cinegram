@@ -53,16 +53,7 @@ public class DownloadHandler
     //         // Calcular %
     //         var percent = (int)(transmitted * 100 / size);
     //
-    //         string FormatSize(long bytes)
-    //         {
-    //             if (bytes > 1024L * 1024 * 1024)
-    //                 return $"{bytes / 1024f / 1024f / 1024f:0.00} GB";
-    //             if (bytes > 1024L * 1024)
-    //                 return $"{bytes / 1024f / 1024f:0.00} MB";
-    //             if (bytes > 1024)
-    //                 return $"{bytes / 1024f:0.00} KB";
-    //             return $"{bytes} B";
-    //         }
+    //         
     //
     //         // Throttle → editar como máximo cada 1s
     //         if ((now - _lastEditTime).TotalSeconds >= 5 || transmitted == size)

@@ -1,4 +1,5 @@
-﻿using Bot.Handlers;
+﻿using System.Text.Json;
+using Bot.Handlers;
 using Bot.Services;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types.Enums;
@@ -15,21 +16,24 @@ public class BotDispatcher
     private readonly FileHandler _fileHandler;
     private readonly MessageHandler _messageHandler;
 
-    public BotDispatcher(WTelegram.Bot bot, ApiClient apiClient)
+    public BotDispatcher(WTelegram.Bot bot, ApiClient apiClient, TaskQueue queue)
     {
         Bot = bot;
         ApiClient = apiClient;
+        Queue = queue;
 
         _allowedUser = Convert.ToInt32(Environment.GetEnvironmentVariable("TELEGRAM_AUTH_USER_ID"));
 
         _commandHandler = new CommandHandler(this);
-        _fileHandler = new FileHandler(Bot);
+        _fileHandler = new FileHandler(this);
         _messageHandler = new MessageHandler(Bot);
     }
 
     public WTelegram.Bot Bot { get; }
 
     public ApiClient ApiClient { get; }
+
+    public TaskQueue Queue { get; }
 
     public async Task InitBot()
     {
@@ -38,9 +42,11 @@ public class BotDispatcher
 
         await Bot.DropPendingUpdates();
 
+        await Bot.SendMessage(_allowedUser, "Bot started");
+
         Bot.OnMessage += HandleMessage;
-        Bot.OnUpdate += HandleUpdate;
-        Bot.OnError += HandleError;
+        Bot.OnUpdate  += HandleUpdate;
+        Bot.OnError   += HandleError;
 
         Log.Info("Bot initialized. Waiting for updates...");
     }

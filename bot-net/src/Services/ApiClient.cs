@@ -1,4 +1,6 @@
-﻿namespace Bot.Services;
+﻿using Bot.Models;
+
+namespace Bot.Services;
 
 using System;
 using System.Net.Http;
@@ -42,27 +44,31 @@ public class ApiClient : IDisposable
         }
     }
 
-    // public async Task<Dictionary<string, object>> UploadAsync(FileMeta fileMeta)
-    // {
-    //     var data = new Dictionary<string, object>
-    //     {
-    //         ["message_id"] = fileMeta.MessageId,
-    //         ["filename"] = fileMeta.Filename,
-    //         ["filesize"] = fileMeta.Filesize,
-    //         ["mime_type"] = fileMeta.MimeType,
-    //         ["created_at"] = fileMeta.CreatedAt.ToString("o") // ISO 8601
-    //     };
-    //
-    //     var response = await _httpClient.PostAsJsonAsync("/upload", data);
-    //     if (!response.IsSuccessStatusCode)
-    //     {
-    //         var text = await response.Content.ReadAsStringAsync();
-    //         throw new Exception($"Upload failed: {response.StatusCode} {text}");
-    //     }
-    //
-    //     return await response.Content.ReadFromJsonAsync<Dictionary<string, object>>(_jsonOptions)
-    //            ?? new Dictionary<string, object>();
-    // }
+    public async Task<UploadFileResult> UploadAsync(UploadFile fileMeta)
+    {
+        var payload = new
+        {
+            message_id = fileMeta.MessageId,
+            filename = fileMeta.FileName,
+            filesize = fileMeta.FileSize,
+            mime_type = fileMeta.MimeType,
+            created_at = fileMeta.UploadDate ?? DateTime.UtcNow.ToString("o") // ISO 8601
+        };
+
+        var response = await _httpClient.PostAsJsonAsync("/upload", payload);
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var text = await response.Content.ReadAsStringAsync();
+            throw new Exception($"Upload failed: {response.StatusCode} {text}");
+        }
+    
+        var result = await response.Content.ReadFromJsonAsync<UploadFileResult>(_jsonOptions);
+        if (result == null)
+            throw new Exception("Upload failed: response is null");
+
+        return result;
+    }
 
     public Task<List<Dictionary<string, object>>?> GetMoviesAsync()
         => _httpClient.GetFromJsonAsync<List<Dictionary<string, object>>>("/movies", _jsonOptions);
