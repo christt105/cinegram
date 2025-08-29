@@ -16,12 +16,24 @@ public class CommandHandler
 
         var commands = new ICommand[]
         {
-            new HealthCommand(bot.Bot, bot.ApiClient)
+            new StartCommand(bot.Bot),
+            new HealthCommand(bot.Bot, bot.ApiClient),
+            new MoviesCommand(bot.Bot, bot.ApiClient),
+            new MovieCommand(bot.Bot, bot.ApiClient),
         };
 
         commands = commands.Append(new HelpCommand(bot.Bot, commands)).ToArray();
 
         _commands = commands.ToDictionary(c => c.Key, c => c);
+
+        if (_commands.Any(c => !c.Key.StartsWith('/')))
+        {
+            var invalidCommands = string.Join(", ",
+                _commands.Select(c => !c.Key.StartsWith('/'))
+            );
+            Log.Error(
+                $"Commands {invalidCommands} will be ignored as it needs to be prefixed with `/`");
+        }
     }
 
     public async Task Handle(Message msg, UpdateType type)

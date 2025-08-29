@@ -1,13 +1,9 @@
-﻿using Bot.Models;
-
-namespace Bot.Services;
-
-using System;
-using System.Net.Http;
+﻿using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using System.Threading.Tasks;
-using System.Collections.Generic;
+using Bot.Models;
+
+namespace Bot.Services;
 
 public class ApiClient : IDisposable
 {
@@ -25,6 +21,11 @@ public class ApiClient : IDisposable
         {
             PropertyNameCaseInsensitive = true
         };
+    }
+
+    public void Dispose()
+    {
+        _httpClient.Dispose();
     }
 
     public async Task<Dictionary<string, object>> HealthAsync()
@@ -56,13 +57,13 @@ public class ApiClient : IDisposable
         };
 
         var response = await _httpClient.PostAsJsonAsync("/upload", payload);
-        
+
         if (!response.IsSuccessStatusCode)
         {
             var text = await response.Content.ReadAsStringAsync();
             throw new Exception($"Upload failed: {response.StatusCode} {text}");
         }
-    
+
         var result = await response.Content.ReadFromJsonAsync<UploadFileResult>(_jsonOptions);
         if (result == null)
             throw new Exception("Upload failed: response is null");
@@ -70,28 +71,52 @@ public class ApiClient : IDisposable
         return result;
     }
 
-    public Task<List<Dictionary<string, object>>?> GetMoviesAsync()
-        => _httpClient.GetFromJsonAsync<List<Dictionary<string, object>>>("/movies", _jsonOptions);
+    public async Task<List<Movie>?> GetMoviesAsync()
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<List<Movie>>("/movies", _jsonOptions);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            return [];
+        }
+    }
 
-    public Task<Dictionary<string, object>?> GetMovieAsync(int localId)
-        => _httpClient.GetFromJsonAsync<Dictionary<string, object>>($"/movies/{localId}", _jsonOptions);
+    public async Task<Movie?> GetMovieAsync(int localId)
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<Movie>($"/movies/{localId}", _jsonOptions);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
+
+    public async Task<Movie?> GetMovieByTmdbAsync(int tmdbId)
+    {
+        try
+        {
+            return await _httpClient.GetFromJsonAsync<Movie>($"/movies/tmdb/{tmdbId}", _jsonOptions);
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+    }
 
     public Task<List<Dictionary<string, object>>?> SearchMoviesAsync(string query)
-        => _httpClient.GetFromJsonAsync<List<Dictionary<string, object>>>($"/movies/search?q={Uri.EscapeDataString(query)}", _jsonOptions);
-
-    public async Task<Dictionary<string, object>?> GetMovieByTmdbAsync(int tmdbId)
     {
-        var resp = await _httpClient.GetAsync($"/movies/tmdb/{tmdbId}");
-        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
-            return null;
-
-        return await resp.Content.ReadFromJsonAsync<Dictionary<string, object>>(_jsonOptions);
+        return _httpClient.GetFromJsonAsync<List<Dictionary<string, object>>>(
+            $"/movies/search?q={Uri.EscapeDataString(query)}", _jsonOptions);
     }
 
     public async Task<List<Dictionary<string, object>>> GetCollectionsAsync(int movieId)
     {
         var resp = await _httpClient.GetAsync($"/movies/{movieId}/collections");
-        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+        if (resp.StatusCode == HttpStatusCode.NotFound)
             return new List<Dictionary<string, object>>();
 
         return await resp.Content.ReadFromJsonAsync<List<Dictionary<string, object>>>(_jsonOptions)
@@ -101,7 +126,7 @@ public class ApiClient : IDisposable
     public async Task<Dictionary<string, object>?> GetCollectionAsync(int collectionId)
     {
         var resp = await _httpClient.GetAsync($"/collections/{collectionId}");
-        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+        if (resp.StatusCode == HttpStatusCode.NotFound)
             return null;
 
         return await resp.Content.ReadFromJsonAsync<Dictionary<string, object>>(_jsonOptions);
@@ -110,7 +135,7 @@ public class ApiClient : IDisposable
     public async Task<Dictionary<string, object>?> GetFileAsync(int fileId)
     {
         var resp = await _httpClient.GetAsync($"/files/{fileId}");
-        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+        if (resp.StatusCode == HttpStatusCode.NotFound)
             return null;
 
         return await resp.Content.ReadFromJsonAsync<Dictionary<string, object>>(_jsonOptions);
@@ -119,7 +144,7 @@ public class ApiClient : IDisposable
     public async Task<(Dictionary<string, object>?, int)> PatchFileAsync(int fileId, object data)
     {
         var resp = await _httpClient.PatchAsync($"/files/{fileId}", JsonContent.Create(data));
-        if (resp.StatusCode == System.Net.HttpStatusCode.NotFound)
+        if (resp.StatusCode == HttpStatusCode.NotFound)
             return (null, 404);
 
         var content = await resp.Content.ReadFromJsonAsync<Dictionary<string, object>>(_jsonOptions);
@@ -136,10 +161,5 @@ public class ApiClient : IDisposable
     {
         var resp = await _httpClient.DeleteAsync($"/collections/{collectionId}");
         return resp.IsSuccessStatusCode;
-    }
-
-    public void Dispose()
-    {
-        _httpClient.Dispose();
     }
 }

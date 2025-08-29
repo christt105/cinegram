@@ -21,7 +21,7 @@ public class TaskQueue
             }
             catch (Exception ex)
             {
-                Log.Error($"[Queue] Error procesando tarea: {ex}");
+                Log.Error($"[Queue] Error processing the task: {ex}");
             }
         }
     }
