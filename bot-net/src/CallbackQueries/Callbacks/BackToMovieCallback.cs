@@ -5,6 +5,7 @@ using Telegram.Bot.Types.Enums;
 
 namespace Bot.CallbackQueries.Callbacks;
 
+[Callback(Id)]
 public class BackToMovieCallback : ICallbackQuery
 {
     public const string Id = "back-to-movie";

@@ -1,4 +1,5 @@
-﻿using Bot.CallbackQueries;
+﻿using System.Reflection;
+using Bot.CallbackQueries;
 using Bot.CallbackQueries.Callbacks;
 using CallbackQuery = Telegram.Bot.Types.CallbackQuery;
 
@@ -6,45 +7,25 @@ namespace Bot.Handlers;
 
 public class CallbackQueryHandler
 {
-    private readonly Dictionary<string, Func<string[], ICallbackQuery>> _factories;
+    private readonly Dictionary<string, Func<string[], ICallbackQuery>> _factories = new();
 
     public CallbackQueryHandler(BotDispatcher bot)
     {
-        _factories = new Dictionary<string, Func<string[], ICallbackQuery>>
+        var callbackTypes = typeof(CallbackQueryHandler).Assembly
+            .GetTypes()
+            .Where(t => typeof(ICallbackQuery).IsAssignableFrom(t) && !t.IsInterface && !t.IsAbstract);
+
+        foreach (var type in callbackTypes)
         {
-            {
-                SeeMovieCollectionsCallback.Id,
-                fields => SeeMovieCollectionsCallback.Create(fields, bot.Bot, bot.ApiClient)
-            },
-            {
-                BackToMovieCallback.Id,
-                fields => BackToMovieCallback.Create(fields, bot.Bot, bot.ApiClient)
-            },
-            {
-                SeeCollectionFilesCallback.Id,
-                fields => SeeCollectionFilesCallback.Create(fields, bot.Bot, bot.ApiClient)
-            },
-            {
-                EditMovieCallback.Id,
-                fields => EditMovieCallback.Create(fields, bot.Bot, bot.ApiClient)
-            },
-            {
-                EditCollectionCallback.Id,
-                fields => EditCollectionCallback.Create(fields, bot.Bot, bot.ApiClient)
-            },
-            {
-                DownloadMovieCallback.Id,
-                fields => DownloadMovieCallback.Create(fields, bot.Bot, bot.ApiClient)
-            },
-            {
-                CreateCollectionCallback.Id,
-                fields => CreateCollectionCallback.Create(fields, bot.Bot, bot.ApiClient)
-            },
-            {
-                ShowFileCallback.Id,
-                fields => ShowFileCallback.Create(fields, bot.Bot, bot.ApiClient)
-            }
-        };
+            var attr = type.GetCustomAttribute<CallbackAttribute>();
+            if (attr == null) continue;
+
+            var createMethod = type.GetMethod("Create", BindingFlags.Public | BindingFlags.Static);
+            if (createMethod == null) continue;
+
+            _factories[attr.Id] = fields =>
+                (ICallbackQuery)createMethod.Invoke(null, [fields, bot.Bot, bot.ApiClient])!;
+        }
     }
 
     public async Task HandleCallbackQueryAsync(CallbackQuery callbackQuery)
@@ -72,6 +53,14 @@ public class CallbackQueryHandler
         }
 
         var callback = factory(args);
-        await callback.ExecuteAsync(callbackQuery.Message, callbackQuery);
+        
+        try
+        {
+            await callback.ExecuteAsync(callbackQuery.Message, callbackQuery);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"Error executing callback {id}: {ex}");
+        }
     }
 }

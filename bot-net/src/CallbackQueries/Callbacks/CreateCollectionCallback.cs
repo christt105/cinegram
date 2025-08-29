@@ -3,8 +3,11 @@ using Telegram.Bot.Types;
 
 namespace Bot.CallbackQueries.Callbacks;
 
+[Callback(Id)]
 public class CreateCollectionCallback : ICallbackQuery
 {
+    public const string Id = "create-collection";
+
     private CreateCollectionCallback(int parse, WTelegram.Bot botBot, ApiClient botApiClient)
     {
         throw new NotImplementedException();
@@ -14,8 +17,6 @@ public class CreateCollectionCallback : ICallbackQuery
     {
         throw new NotImplementedException();
     }
-
-    public const string Id = "create-collection";
 
     public static ICallbackQuery Create(string[] fields, WTelegram.Bot botBot, ApiClient botApiClient)
     {

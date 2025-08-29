@@ -5,6 +5,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Bot.CallbackQueries.Callbacks;
 
+[Callback(Id)]
 public class ShowFileCallback : ICallbackQuery
 {
     public const string Id = "show-file";

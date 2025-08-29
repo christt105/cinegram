@@ -3,6 +3,7 @@ using Telegram.Bot.Types;
 
 namespace Bot.CallbackQueries.Callbacks;
 
+[Callback(Id)]
 public class EditMovieCallback : ICallbackQuery
 {
     private EditMovieCallback(int movieId, WTelegram.Bot bot, ApiClient apiClient)

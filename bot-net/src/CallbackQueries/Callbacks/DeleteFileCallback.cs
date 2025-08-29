@@ -2,6 +2,7 @@
 
 namespace Bot.CallbackQueries.Callbacks;
 
+[Callback(Id)]
 public class DeleteFileCallback : ICallbackQuery
 {
     public const string Id = "delete-file";

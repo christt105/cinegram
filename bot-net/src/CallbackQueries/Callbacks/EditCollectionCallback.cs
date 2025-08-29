@@ -3,6 +3,7 @@ using Telegram.Bot.Types;
 
 namespace Bot.CallbackQueries.Callbacks;
 
+[Callback(Id)]
 public class EditCollectionCallback : ICallbackQuery
 {
     public const string Id = "edit-collection";

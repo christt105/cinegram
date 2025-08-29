@@ -6,6 +6,7 @@ using Message = Telegram.Bot.Types.Message;
 
 namespace Bot.CallbackQueries.Callbacks;
 
+[Callback(Id)]
 public class SeeCollectionFilesCallback : ICallbackQuery
 {
     public const string Id = "see-collection-files";

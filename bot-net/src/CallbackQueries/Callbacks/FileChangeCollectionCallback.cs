@@ -2,6 +2,7 @@
 
 namespace Bot.CallbackQueries.Callbacks;
 
+[Callback(Id)]
 public class FileChangeCollectionCallback : ICallbackQuery
 {
     public const string Id = "file-change-collection";
