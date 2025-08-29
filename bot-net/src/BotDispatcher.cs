@@ -1,16 +1,17 @@
-﻿using System.Text.Json;
-using Bot.Handlers;
+﻿using Bot.Handlers;
 using Bot.Services;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types.Enums;
 using TelegramBot.Handlers;
-using WTelegram.Types;
+using Message = WTelegram.Types.Message;
+using Update = WTelegram.Types.Update;
 
 namespace Bot;
 
 public class BotDispatcher
 {
     private readonly int _allowedUser;
+    private readonly CallbackQueryHandler _callbackQueryHandler;
     private readonly CommandHandler _commandHandler;
 
     private readonly FileHandler _fileHandler;
@@ -27,6 +28,7 @@ public class BotDispatcher
         _commandHandler = new CommandHandler(this);
         _fileHandler = new FileHandler(this);
         _messageHandler = new MessageHandler(Bot);
+        _callbackQueryHandler = new CallbackQueryHandler(this);
     }
 
     public WTelegram.Bot Bot { get; }
@@ -45,8 +47,8 @@ public class BotDispatcher
         await Bot.SendMessage(_allowedUser, "Bot started");
 
         Bot.OnMessage += HandleMessage;
-        Bot.OnUpdate  += HandleUpdate;
-        Bot.OnError   += HandleError;
+        Bot.OnUpdate += HandleUpdate;
+        Bot.OnError += HandleError;
 
         Log.Info("Bot initialized. Waiting for updates...");
     }
@@ -70,14 +72,26 @@ public class BotDispatcher
         }
     }
 
-    private Task HandleUpdate(Update update)
+    private async Task HandleUpdate(Update update)
     {
-        if (update.Type == UpdateType.Unknown)
-            Console.WriteLine("Unknown update type: {0}", update.TLUpdate?.GetType().Name);
+        switch (update.Type)
+        {
+            case UpdateType.CallbackQuery:
+                if (update.CallbackQuery == null)
+                {
+                    Log.Error("Update type is CallbackQuery but no callback query was provided.");
+                    return;
+                }
 
-        Console.WriteLine(update.Type.ToString());
-
-        return Task.CompletedTask;
+                await _callbackQueryHandler.HandleCallbackQueryAsync(update.CallbackQuery);
+                break;
+            case UpdateType.Unknown:
+                Console.WriteLine("Unknown update type: {0}", update.TLUpdate?.GetType().Name);
+                break;
+            default:
+                Console.WriteLine($"No case to {update.Type}. {update.TLUpdate?.GetType().Name}");
+                break;
+        }
     }
 
     private Task HandleError(Exception e, HandleErrorSource src)

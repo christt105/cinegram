@@ -2,6 +2,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Bot.Models;
+using File = Bot.Models.File;
 
 namespace Bot.Services;
 
@@ -71,41 +72,33 @@ public class ApiClient : IDisposable
         return result;
     }
 
-    public async Task<List<Movie>?> GetMoviesAsync()
+    private async Task<T?> GetSafeAsync<T>(string url)
     {
         try
         {
-            return await _httpClient.GetFromJsonAsync<List<Movie>>("/movies", _jsonOptions);
+            return await _httpClient.GetFromJsonAsync<T>(url, _jsonOptions);
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
-            return [];
+            return default;
         }
+    }
+
+    public async Task<List<Movie>?> GetMoviesAsync()
+    {
+        return await GetSafeAsync<List<Movie>>("/movies");
     }
 
     public async Task<Movie?> GetMovieAsync(int localId)
     {
-        try
-        {
-            return await _httpClient.GetFromJsonAsync<Movie>($"/movies/{localId}", _jsonOptions);
-        }
-        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-        {
-            return null;
-        }
+        return await GetSafeAsync<Movie>($"/movies/{localId}");
     }
 
     public async Task<Movie?> GetMovieByTmdbAsync(int tmdbId)
     {
-        try
-        {
-            return await _httpClient.GetFromJsonAsync<Movie>($"/movies/tmdb/{tmdbId}", _jsonOptions);
-        }
-        catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-        {
-            return null;
-        }
+        return await GetSafeAsync<Movie>($"/movies/tmdb/{tmdbId}");
     }
+
 
     public Task<List<Dictionary<string, object>>?> SearchMoviesAsync(string query)
     {
@@ -113,32 +106,19 @@ public class ApiClient : IDisposable
             $"/movies/search?q={Uri.EscapeDataString(query)}", _jsonOptions);
     }
 
-    public async Task<List<Dictionary<string, object>>> GetCollectionsAsync(int movieId)
+    public async Task<List<Collection>?> GetCollectionsAsync(int movieId)
     {
-        var resp = await _httpClient.GetAsync($"/movies/{movieId}/collections");
-        if (resp.StatusCode == HttpStatusCode.NotFound)
-            return new List<Dictionary<string, object>>();
-
-        return await resp.Content.ReadFromJsonAsync<List<Dictionary<string, object>>>(_jsonOptions)
-               ?? new List<Dictionary<string, object>>();
+        return await GetSafeAsync<List<Collection>>($"/movies/{movieId}/collections");
     }
 
-    public async Task<Dictionary<string, object>?> GetCollectionAsync(int collectionId)
+    public async Task<Collection?> GetCollectionAsync(int collectionId)
     {
-        var resp = await _httpClient.GetAsync($"/collections/{collectionId}");
-        if (resp.StatusCode == HttpStatusCode.NotFound)
-            return null;
-
-        return await resp.Content.ReadFromJsonAsync<Dictionary<string, object>>(_jsonOptions);
+        return await GetSafeAsync<Collection>($"/collections/{collectionId}");
     }
 
-    public async Task<Dictionary<string, object>?> GetFileAsync(int fileId)
+    public async Task<File?> GetFileAsync(int fileId)
     {
-        var resp = await _httpClient.GetAsync($"/files/{fileId}");
-        if (resp.StatusCode == HttpStatusCode.NotFound)
-            return null;
-
-        return await resp.Content.ReadFromJsonAsync<Dictionary<string, object>>(_jsonOptions);
+        return await GetSafeAsync<File>($"/files/{fileId}");
     }
 
     public async Task<(Dictionary<string, object>?, int)> PatchFileAsync(int fileId, object data)

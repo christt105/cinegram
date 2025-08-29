@@ -1,7 +1,7 @@
 ﻿using Bot.Services;
+using Bot.Utils;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.ReplyMarkups;
 using Message = WTelegram.Types.Message;
 
 namespace Bot.Commands;
@@ -53,25 +53,14 @@ public class MovieCommand : ICommand
             $"https://image.tmdb.org/t/p/w500{movie.PosterPath}",
             $"🎬 {movie.Title} ({movie.ReleaseYear}) [tmdbid-{movie.TmdbId}]");
 
-        var infoText = $@"{movie.Title} ({movie.ReleaseYear})
-
-ID: {movie.Id}
-TMDB ID: [{movie.TmdbId}](https://www.themoviedb.org/movie/{movie.TmdbId})
-Collections: {movie.Collections!.Length}";
-
-        var buttons = new[]
-        {
-            new[] { InlineKeyboardButton.WithCallbackData("📂 Collections") },
-            new[] { InlineKeyboardButton.WithCallbackData("⬇️ Download") },
-            new[] { InlineKeyboardButton.WithCallbackData("✏️ Edit Movie") }
-        };
+        var infoText = Beautify.FormatMovie(movie);
 
         var infoMessage = await _bot.SendMessage(
             msg.Chat.Id,
             infoText,
             ParseMode.MarkdownV2,
             linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
-            replyMarkup: new InlineKeyboardMarkup(buttons));
+            replyMarkup: MessageBuilder.GetMovieButtons(movie.Id));
     }
 
     public string Key => "/movie";

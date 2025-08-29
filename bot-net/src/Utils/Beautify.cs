@@ -1,4 +1,6 @@
-﻿namespace Bot.Utils;
+﻿using Bot.Models;
+
+namespace Bot.Utils;
 
 public static class Beautify
 {
@@ -11,5 +13,16 @@ public static class Beautify
             > 1024 => $"{bytes / 1024f:0.00} KB",
             _ => $"{bytes} B"
         };
+    }
+
+    public static string FormatMovie(Movie movie)
+    {
+        return $"""
+                Title: {movie.Title}
+                Release Year: {movie.ReleaseYear}
+                ID: {movie.Id}
+                TMDB ID: [{movie.TmdbId}](https://www.themoviedb.org/movie/{movie.TmdbId})
+                Collections: {movie.Collections!.Length}
+                """;
     }
 }
