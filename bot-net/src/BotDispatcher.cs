@@ -83,7 +83,15 @@ public class BotDispatcher
                     return;
                 }
 
-                await _callbackQueryHandler.HandleCallbackQueryAsync(update.CallbackQuery);
+                var callback = update.CallbackQuery;
+
+                if (callback.From == null || callback.From.Id != _allowedUser)
+                {
+                    Log.Info($"User {callback.From?.Username} with ID({callback.From?.Id}) is not allowed.");
+                    return;
+                }
+
+                await _callbackQueryHandler.HandleCallbackQueryAsync(callback);
                 break;
             case UpdateType.Unknown:
                 Console.WriteLine("Unknown update type: {0}", update.TLUpdate?.GetType().Name);
