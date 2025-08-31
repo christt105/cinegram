@@ -1,6 +1,6 @@
 ﻿using Telegram.Bot.Types;
 
-namespace Bot.CallbackQueries.Callbacks;
+namespace Bot.CallbackQueries.Callbacks.File;
 
 [Callback(Id)]
 public class FileChangeCollectionCallback : ICallbackQuery

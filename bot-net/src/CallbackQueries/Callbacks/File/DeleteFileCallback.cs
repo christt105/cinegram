@@ -2,7 +2,7 @@
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
-namespace Bot.CallbackQueries.Callbacks;
+namespace Bot.CallbackQueries.Callbacks.File;
 
 [Callback(Id)]
 public class DeleteFileCallback : ICallbackQuery

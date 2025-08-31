@@ -1,7 +1,7 @@
 ﻿using Bot.Services;
 using Telegram.Bot.Types;
 
-namespace Bot.CallbackQueries.Callbacks;
+namespace Bot.CallbackQueries.Callbacks.Movie;
 
 [Callback(Id)]
 public class DownloadMovieCallback : ICallbackQuery

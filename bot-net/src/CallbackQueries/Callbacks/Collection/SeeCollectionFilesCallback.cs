@@ -1,10 +1,12 @@
-﻿using Bot.Services;
+﻿using Bot.CallbackQueries.Callbacks.File;
+using Bot.CallbackQueries.Callbacks.Movie;
+using Bot.Services;
 using Bot.Utils;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using Message = Telegram.Bot.Types.Message;
 
-namespace Bot.CallbackQueries.Callbacks;
+namespace Bot.CallbackQueries.Callbacks.Collection;
 
 [Callback(Id)]
 public class SeeCollectionFilesCallback : ICallbackQuery

@@ -3,7 +3,7 @@ using Bot.Utils;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 
-namespace Bot.CallbackQueries.Callbacks;
+namespace Bot.CallbackQueries.Callbacks.Movie;
 
 [Callback(Id)]
 public class BackToMovieCallback : ICallbackQuery

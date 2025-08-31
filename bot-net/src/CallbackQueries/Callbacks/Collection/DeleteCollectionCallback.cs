@@ -1,6 +1,6 @@
 ﻿using Telegram.Bot.Types;
 
-namespace Bot.CallbackQueries.Callbacks;
+namespace Bot.CallbackQueries.Callbacks.Collection;
 
 [Callback(Id)]
 public class DeleteCollectionCallback : ICallbackQuery
