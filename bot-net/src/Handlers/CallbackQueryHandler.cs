@@ -26,6 +26,8 @@ public class CallbackQueryHandler
             _factories[attr.Id] = fields =>
                 (ICallbackQuery)createMethod.Invoke(null, [fields, bot.Bot, bot.ApiClient])!;
         }
+
+        Log.Info($"Registered {_factories.Count} callback query handlers.\n\n{string.Join("\n", _factories.Keys)}");
     }
 
     public async Task HandleCallbackQueryAsync(CallbackQuery callbackQuery)
