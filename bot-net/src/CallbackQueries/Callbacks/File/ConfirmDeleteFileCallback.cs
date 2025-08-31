@@ -1,8 +1,9 @@
-using Bot.CallbackQueries;
 using Bot.CallbackQueries.Callbacks.Collection;
 using Bot.Services;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
+
+namespace Bot.CallbackQueries.Callbacks.File;
 
 [Callback(Id)]
 public class ConfirmDeleteFileCallback : ICallbackQuery
@@ -30,7 +31,7 @@ public class ConfirmDeleteFileCallback : ICallbackQuery
 
         await _bot.EditMessageText(message.Chat.Id, message.MessageId, text, replyMarkup: file != null && file.CollectionId.HasValue ?
         new[]{
-        InlineKeyboardButton.WithCallbackData("Back to files", SeeCollectionFilesCallback.Pack(file.CollectionId.Value))
+            InlineKeyboardButton.WithCallbackData("Back to files", SeeCollectionFilesCallback.Pack(file.CollectionId.Value))
         } : null);
     }
 
