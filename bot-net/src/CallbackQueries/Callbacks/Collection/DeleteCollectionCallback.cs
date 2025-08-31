@@ -6,8 +6,9 @@ namespace Bot.CallbackQueries.Callbacks.Collection;
 public class DeleteCollectionCallback : ICallbackQuery
 {
     public const string Id = "delete-collection";
-    public Task ExecuteAsync(Message? message, CallbackQuery callbackQueryBase)
+    public Task ExecuteAsync(Message? message)
     {
+        // TODO: Implement logic
         throw new NotImplementedException();
     }
 

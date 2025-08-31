@@ -18,12 +18,12 @@ public class EditMovieCallback : ICallbackQuery
         return CallbackDataPacker.Pack(Id, [movieId.ToString()]);
     }
 
-    public static ICallbackQuery Create(string[] fields, WTelegram.Bot botBot, ApiClient botApiClient)
+    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new EditMovieCallback(int.Parse(fields[0]), botBot, botApiClient);
+        return new EditMovieCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
     }
 
-    public Task ExecuteAsync(Message? message, CallbackQuery callbackQueryBase)
+    public Task ExecuteAsync(Message? message)
     {
         throw new NotImplementedException();
     }

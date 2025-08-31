@@ -23,7 +23,7 @@ public class SeeCollectionFilesCallback : ICallbackQuery
         _apiClient = apiClient;
     }
 
-    public async Task ExecuteAsync(Message? message, CallbackQuery callbackQuery)
+    public async Task ExecuteAsync(Message? message)
     {
         var collection = await _apiClient.GetCollectionAsync(_collectionId);
 
@@ -69,9 +69,9 @@ public class SeeCollectionFilesCallback : ICallbackQuery
         await _bot.EditMessageText(message!.Chat.Id, message.MessageId, text, replyMarkup: buttons.ToArray());
     }
 
-    public static ICallbackQuery Create(string[] packedFields, WTelegram.Bot bot, ApiClient apiClient)
+    public static ICallbackQuery Create(string[] packedFields, BotDispatcher dispatcher)
     {
-        return new SeeCollectionFilesCallback(int.Parse(packedFields[0]), bot, apiClient);
+        return new SeeCollectionFilesCallback(int.Parse(packedFields[0]), dispatcher.Bot, dispatcher.ApiClient);
     }
 
     public static string Pack(int collectionId)

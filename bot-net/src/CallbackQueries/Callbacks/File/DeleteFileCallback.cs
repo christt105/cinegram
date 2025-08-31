@@ -12,14 +12,14 @@ public class DeleteFileCallback : ICallbackQuery
     private WTelegram.Bot _bot;
     private ApiClient _apiClient;
 
-    public DeleteFileCallback(int v, WTelegram.Bot botBot, ApiClient botApiClient)
+    public DeleteFileCallback(int fileId, WTelegram.Bot bot, ApiClient apiClient)
     {
-        _fileId = v;
-        _bot = botBot;
-        _apiClient = botApiClient;
+        _fileId = fileId;
+        _bot = bot;
+        _apiClient = apiClient;
     }
 
-    public async Task ExecuteAsync(Message? message, CallbackQuery callbackQueryBase)
+    public async Task ExecuteAsync(Message? message)
     {
         await _bot.EditMessageText(
             message.Chat.Id,
@@ -35,9 +35,9 @@ public class DeleteFileCallback : ICallbackQuery
             });
     }
 
-    public static ICallbackQuery Create(string[] fields, WTelegram.Bot botBot, ApiClient botApiClient)
+    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new DeleteFileCallback(int.Parse(fields[0]), botBot, botApiClient);
+        return new DeleteFileCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
     }
 
     public static string Parse(int fileId)

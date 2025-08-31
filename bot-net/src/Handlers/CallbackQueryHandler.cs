@@ -24,7 +24,7 @@ public class CallbackQueryHandler
             if (createMethod == null) continue;
 
             _factories[attr.Id] = fields =>
-                (ICallbackQuery)createMethod.Invoke(null, [fields, bot.Bot, bot.ApiClient])!;
+                (ICallbackQuery)createMethod.Invoke(null, [fields, bot])!;
         }
 
         Log.Info($"Registered {_factories.Count} callback query handlers.\n\n{string.Join("\n", _factories.Keys)}");
@@ -58,7 +58,7 @@ public class CallbackQueryHandler
         
         try
         {
-            await callback.ExecuteAsync(callbackQuery.Message, callbackQuery);
+            await callback.ExecuteAsync(callbackQuery.Message);
         }
         catch (Exception ex)
         {

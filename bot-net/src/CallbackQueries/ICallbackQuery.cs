@@ -4,5 +4,5 @@ namespace Bot.CallbackQueries;
 
 public interface ICallbackQuery
 {
-    Task ExecuteAsync(Message? message, CallbackQuery callbackQueryBase);
+    Task ExecuteAsync(Message? message);
 }

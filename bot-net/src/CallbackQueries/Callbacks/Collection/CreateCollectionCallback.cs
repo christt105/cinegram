@@ -8,18 +8,20 @@ public class CreateCollectionCallback : ICallbackQuery
 {
     public const string Id = "create-collection";
 
-    private CreateCollectionCallback(int parse, WTelegram.Bot botBot, ApiClient botApiClient)
+    private CreateCollectionCallback(int collectionId, WTelegram.Bot bot, ApiClient apiClient)
     {
+        // TODO: Implement logic
         throw new NotImplementedException();
     }
 
-    public Task ExecuteAsync(Message? message, CallbackQuery callbackQueryBase)
+    public Task ExecuteAsync(Message? message)
     {
+        // TODO: Implement logic
         throw new NotImplementedException();
     }
 
-    public static ICallbackQuery Create(string[] fields, WTelegram.Bot botBot, ApiClient botApiClient)
+    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new CreateCollectionCallback(int.Parse(fields[0]), botBot, botApiClient);
+        return new CreateCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
     }
 }

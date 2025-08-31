@@ -13,7 +13,7 @@ public class DownloadMovieCallback : ICallbackQuery
 
     public const string Id = "download-movie";
 
-    public Task ExecuteAsync(Message? message, CallbackQuery callbackQueryBase)
+    public Task ExecuteAsync(Message? message)
     {
         throw new NotImplementedException();
     }
@@ -23,8 +23,8 @@ public class DownloadMovieCallback : ICallbackQuery
         return CallbackDataPacker.Pack(Id, [movieId.ToString()]);
     }
 
-    public static ICallbackQuery Create(string[] fields, WTelegram.Bot botBot, ApiClient botApiClient)
+    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new DownloadMovieCallback(int.Parse(fields[0]), botBot, botApiClient);
+        return new DownloadMovieCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
     }
 }

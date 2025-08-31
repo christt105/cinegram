@@ -20,7 +20,7 @@ public class ConfirmDeleteFileCallback : ICallbackQuery
         _apiClient = apiClient;
     }
 
-    public async Task ExecuteAsync(Message? message, CallbackQuery callbackQueryBase)
+    public async Task ExecuteAsync(Message? message)
     {
         var file = await _apiClient.GetFileAsync(_fileId);
         var result = await _apiClient.DeleteFileAsync(_fileId);
@@ -35,9 +35,9 @@ public class ConfirmDeleteFileCallback : ICallbackQuery
         } : null);
     }
 
-    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, ApiClient apiClient)
+    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new ConfirmDeleteFileCallback(int.Parse(fields[0]), bot, apiClient);
+        return new ConfirmDeleteFileCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
     }
 
     public static string Pack(int fileId)

@@ -20,7 +20,7 @@ public class BackToMovieCallback : ICallbackQuery
         _apiClient = apiClient;
     }
 
-    public async Task ExecuteAsync(Message? message, CallbackQuery callbackQueryBase)
+    public async Task ExecuteAsync(Message? message)
     {
         var movie = await _apiClient.GetMovieAsync(_movieId);
 
@@ -35,9 +35,9 @@ public class BackToMovieCallback : ICallbackQuery
             replyMarkup: MessageBuilder.GetMovieButtons(_movieId));
     }
 
-    public static ICallbackQuery Create(string[] fields, WTelegram.Bot botBot, ApiClient botApiClient)
+    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new BackToMovieCallback(int.Parse(fields[0]), botBot, botApiClient);
+        return new BackToMovieCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
     }
 
     public static string Pack(int movieId)

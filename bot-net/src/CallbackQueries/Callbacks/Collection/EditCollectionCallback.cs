@@ -10,11 +10,13 @@ public class EditCollectionCallback : ICallbackQuery
 
     public EditCollectionCallback(int collectionId, WTelegram.Bot bot, ApiClient apiClient)
     {
+        // TODO: Implement logic
         throw new NotImplementedException();
     }
 
-    public Task ExecuteAsync(Message? message, CallbackQuery callbackQueryBase)
+    public Task ExecuteAsync(Message? message)
     {
+        // TODO: Implement logic
         throw new NotImplementedException();
     }
 
@@ -23,8 +25,8 @@ public class EditCollectionCallback : ICallbackQuery
         return CallbackDataPacker.Pack(Id, [collectionId.ToString()]);
     }
 
-    public static ICallbackQuery Create(string[] fields, WTelegram.Bot botBot, ApiClient botApiClient)
+    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new EditCollectionCallback(int.Parse(fields[0]), botBot, botApiClient);
+        return new EditCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
     }
 }

@@ -21,13 +21,13 @@ public class ShowFileCallback : ICallbackQuery
         _apiClient = apiClient;
     }
 
-    public async Task ExecuteAsync(Message? message, CallbackQuery callbackQueryBase)
+    public async Task ExecuteAsync(Message? message)
     {
         var file = await _apiClient.GetFileAsync(_fileId);
 
         if (file is null)
         {
-            await _bot.EditMessageText(message.Chat.Id, message.MessageId, $"File {_fileId} not found");
+            await _bot.EditMessageText(message!.Chat.Id, message.MessageId, $"File {_fileId} not found");
             return;
         }
 
@@ -60,7 +60,7 @@ public class ShowFileCallback : ICallbackQuery
             }
         };
 
-        await _bot.EditMessageText(message.Chat.Id, message.MessageId, text, replyMarkup: buttons);
+        await _bot.EditMessageText(message!.Chat.Id, message.MessageId, text, replyMarkup: buttons);
     }
 
     public static string Pack(int fileId)
@@ -68,8 +68,8 @@ public class ShowFileCallback : ICallbackQuery
         return CallbackDataPacker.Pack(Id, [fileId.ToString()]);
     }
 
-    public static ICallbackQuery Create(string[] fields, WTelegram.Bot botBot, ApiClient botApiClient)
+    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new ShowFileCallback(int.Parse(fields[0]), botBot, botApiClient);
+        return new ShowFileCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
     }
 }
