@@ -14,7 +14,7 @@ public class ShowFileCallback : ICallbackQuery
     private readonly WTelegram.Bot _bot;
     private readonly int _fileId;
 
-    private ShowFileCallback(int fileId, WTelegram.Bot bot, ApiClient apiClient)
+    public ShowFileCallback(int fileId, WTelegram.Bot bot, ApiClient apiClient)
     {
         _fileId = fileId;
         _bot = bot;

@@ -16,7 +16,7 @@ public class SeeCollectionFilesCallback : ICallbackQuery
     private readonly WTelegram.Bot _bot;
     private readonly int _collectionId;
 
-    private SeeCollectionFilesCallback(int collectionId, WTelegram.Bot bot, ApiClient apiClient)
+    public SeeCollectionFilesCallback(int collectionId, WTelegram.Bot bot, ApiClient apiClient)
     {
         _collectionId = collectionId;
         _bot = bot;

@@ -16,6 +16,7 @@ public class BotDispatcher
 
     private readonly FileHandler _fileHandler;
     private readonly MessageHandler _messageHandler;
+    private readonly PendingActionHandler _pendingActionHandler;
 
     public BotDispatcher(WTelegram.Bot bot, ApiClient apiClient, TaskQueue queue)
     {
@@ -29,6 +30,7 @@ public class BotDispatcher
         _fileHandler = new FileHandler(this);
         _messageHandler = new MessageHandler(Bot);
         _callbackQueryHandler = new CallbackQueryHandler(this);
+        _pendingActionHandler = new PendingActionHandler(Bot);
     }
 
     public WTelegram.Bot Bot { get; }
@@ -36,6 +38,8 @@ public class BotDispatcher
     public ApiClient ApiClient { get; }
 
     public TaskQueue Queue { get; }
+
+    public PendingActionHandler PendingActionHandler => _pendingActionHandler;
 
     public async Task InitBot()
     {
@@ -68,7 +72,10 @@ public class BotDispatcher
             if (msg.Text.StartsWith('/'))
                 await _commandHandler.Handle(msg, type);
             else
-                await _messageHandler.Handle(msg, type);
+                if (_pendingActionHandler.HasPendingAction())
+                    await _pendingActionHandler.Handle(msg, type);
+                else
+                    await _messageHandler.Handle(msg, type);
         }
     }
 

@@ -13,9 +13,8 @@ public class MessageHandler
         _bot = bot;
     }
 
-    public async Task Handle(Message msg, UpdateType type)
+    public Task Handle(Message msg, UpdateType type)
     {
-        await _bot.SendMessage(msg.Chat.Id, "Hello",
-            replyParameters: new ReplyParameters { MessageId = msg.MessageId });
+        return Task.CompletedTask;
     }
 }

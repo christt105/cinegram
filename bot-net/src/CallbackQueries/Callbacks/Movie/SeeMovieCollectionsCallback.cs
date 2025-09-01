@@ -14,7 +14,7 @@ public class SeeMovieCollectionsCallback : ICallbackQuery
     private readonly WTelegram.Bot _bot;
     private readonly int _movieId;
 
-    private SeeMovieCollectionsCallback(int movieId, WTelegram.Bot bot, ApiClient apiClient)
+    public SeeMovieCollectionsCallback(int movieId, WTelegram.Bot bot, ApiClient apiClient)
     {
         _movieId = movieId;
         _bot = bot;

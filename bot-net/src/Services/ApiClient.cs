@@ -121,15 +121,25 @@ public class ApiClient : IDisposable
         return await GetSafeAsync<File>($"/files/{fileId}");
     }
 
-    public async Task<(Dictionary<string, object>?, int)> PatchFileAsync(int fileId, object data)
+    public async Task<File?> PatchFileAsync(int fileId, FileUpdate update)
     {
-        var resp = await _httpClient.PatchAsync($"/files/{fileId}", JsonContent.Create(data));
-        if (resp.StatusCode == HttpStatusCode.NotFound)
-            return (null, 404);
+        var response = await _httpClient.PatchAsync(
+            $"/files/{fileId}",
+            JsonContent.Create(update, options: _jsonOptions)
+        );
 
-        var content = await resp.Content.ReadFromJsonAsync<Dictionary<string, object>>(_jsonOptions);
-        return (content, (int)resp.StatusCode);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var text = await response.Content.ReadAsStringAsync();
+            throw new Exception($"PatchFile failed: {response.StatusCode} {text}");
+        }
+
+        return await response.Content.ReadFromJsonAsync<File>(_jsonOptions);
     }
+
 
     public async Task<bool> DeleteFileAsync(int fileId)
     {
@@ -141,5 +151,14 @@ public class ApiClient : IDisposable
     {
         var resp = await _httpClient.DeleteAsync($"/collections/{collectionId}");
         return resp.IsSuccessStatusCode;
+    }
+
+    public async Task<Collection?> CreateCollectionAsync(CreateCollectionRequest request)
+    {
+        var response = await _httpClient.PostAsJsonAsync("/collections", request, _jsonOptions);
+
+        if (response.IsSuccessStatusCode) return await response.Content.ReadFromJsonAsync<Collection>(_jsonOptions);
+        var text = await response.Content.ReadAsStringAsync();
+        throw new Exception($"CreateCollection failed: {response.StatusCode} {text}");
     }
 }

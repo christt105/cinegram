@@ -195,6 +195,41 @@ def update_collection(
     session.refresh(db_collection)
     return db_collection
 
+class CollectionCreate(BaseModel):
+    name: str
+    movie_id: Optional[int] = None
+    season_id: Optional[int] = None
+    episode_id: Optional[int] = None
+    quality: Optional[str] = None
+    audio_languages: Optional[str] = None
+    subtitle_languages: Optional[str] = None
+    tags: Optional[str] = None
+    notes: Optional[str] = None
+
+@app.post("/collections", response_model=CollectionOut)
+def create_collection(
+    collection_in: CollectionCreate,
+    session: Session = Depends(get_session),
+):
+    """Create a new collection"""
+    new_collection = Collection(
+        name=collection_in.name,
+        movie_id=collection_in.movie_id,
+        season_id=collection_in.season_id,
+        episode_id=collection_in.episode_id,
+        quality=collection_in.quality,
+        audio_languages=collection_in.audio_languages,
+        subtitle_languages=collection_in.subtitle_languages,
+        tags=collection_in.tags,
+        notes=collection_in.notes,
+    )
+
+    session.add(new_collection)
+    session.commit()
+    session.refresh(new_collection)
+    return new_collection
+
+
 class FileUpdate(BaseModel):
     collection_id: Optional[int] = None
 

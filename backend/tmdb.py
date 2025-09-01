@@ -5,7 +5,7 @@ import tmdbsimple as tmdb
 
 from config import TMDB_API_KEY
 
-tmdb.REQUESTS_TIMEOUT = 5
+tmdb.REQUESTS_TIMEOUT = 15
 
 class TMDB:
     def __init__(self, api_key: str = TMDB_API_KEY):
