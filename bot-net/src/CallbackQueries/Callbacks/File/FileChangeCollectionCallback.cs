@@ -36,7 +36,7 @@ public class FileChangeCollectionCallback : ICallbackQuery
                 },
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("Cancel", CancelPendingActionCallback.Pack(_fileId))
+                    InlineKeyboardButton.WithCallbackData("Cancel", CancelPendingActionCallback.Pack())
                 }
             });
 
@@ -78,7 +78,7 @@ public class FileChangeCollectionCallback : ICallbackQuery
         Log.Info($"Collection ID for file {_fileId} changed to {collectionId}");
         await _bot.SendMessage(message.Chat.Id, $"Collection ID changed to {collectionId}.");
         if (previousCollectionId.HasValue)
-            await new SeeCollectionFilesCallback(previousCollectionId.Value, _bot, _apiClient)
+            await new ShowCollectionCallback(previousCollectionId.Value, _bot, _apiClient)
                 .ExecuteAsync(message);
     }
 

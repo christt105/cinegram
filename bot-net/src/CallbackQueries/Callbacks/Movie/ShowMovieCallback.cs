@@ -6,14 +6,14 @@ using Telegram.Bot.Types.Enums;
 namespace Bot.CallbackQueries.Callbacks.Movie;
 
 [Callback(Id)]
-public class BackToMovieCallback : ICallbackQuery
+public class ShowMovieCallback : ICallbackQuery
 {
-    public const string Id = "back-to-movie";
+    public const string Id = "Movie";
     private readonly ApiClient _apiClient;
     private readonly WTelegram.Bot _bot;
     private readonly int _movieId;
 
-    private BackToMovieCallback(int movieId, WTelegram.Bot bot, ApiClient apiClient)
+    private ShowMovieCallback(int movieId, WTelegram.Bot bot, ApiClient apiClient)
     {
         _movieId = movieId;
         _bot = bot;
@@ -37,7 +37,7 @@ public class BackToMovieCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new BackToMovieCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new ShowMovieCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
     }
 
     public static string Pack(int movieId)

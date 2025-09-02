@@ -9,14 +9,14 @@ using Message = Telegram.Bot.Types.Message;
 namespace Bot.CallbackQueries.Callbacks.Collection;
 
 [Callback(Id)]
-public class SeeCollectionFilesCallback : ICallbackQuery
+public class ShowCollectionCallback : ICallbackQuery
 {
-    public const string Id = "see-collection-files";
+    public const string Id = "see-collection";
     private readonly ApiClient _apiClient;
     private readonly WTelegram.Bot _bot;
     private readonly int _collectionId;
 
-    public SeeCollectionFilesCallback(int collectionId, WTelegram.Bot bot, ApiClient apiClient)
+    public ShowCollectionCallback(int collectionId, WTelegram.Bot bot, ApiClient apiClient)
     {
         _collectionId = collectionId;
         _bot = bot;
@@ -34,20 +34,7 @@ public class SeeCollectionFilesCallback : ICallbackQuery
             return;
         }
 
-        var text = $"""
-                    Collection
-
-                    Name: {collection.Name}
-                    Collection Id: {collection.Id}
-                    Movie Id: {collection.MovieId}
-                    Quality: {collection.Quality}
-                    Audio Language: {collection.AudioLanguages}
-                    Subtitle Language: {collection.SubtitleLanguages}
-                    Tags: {collection.Tags}
-                    Notes: {collection.Notes}
-                    Files:
-                    {string.Join("\n", collection.Files!.Select((f, i) => $"- {i + 1}. {f.FileName} ({Beautify.FormatSize(f.FileSize)})"))}
-                    """;
+        var text = Beautify.FormatCollection(collection);
 
         List<List<InlineKeyboardButton>> buttons = [];
 
@@ -71,7 +58,7 @@ public class SeeCollectionFilesCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] packedFields, BotDispatcher dispatcher)
     {
-        return new SeeCollectionFilesCallback(int.Parse(packedFields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new ShowCollectionCallback(int.Parse(packedFields[0]), dispatcher.Bot, dispatcher.ApiClient);
     }
 
     public static string Pack(int collectionId)

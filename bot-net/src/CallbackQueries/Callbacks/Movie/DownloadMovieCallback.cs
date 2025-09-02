@@ -6,21 +6,37 @@ namespace Bot.CallbackQueries.Callbacks.Movie;
 [Callback(Id)]
 public class DownloadMovieCallback : ICallbackQuery
 {
-    private DownloadMovieCallback(int movieId, WTelegram.Bot botBot, ApiClient botApiClient)
+    private readonly int _collectionId;
+    private readonly WTelegram.Bot _bot;
+    private readonly ApiClient _apiClient;
+
+    public DownloadMovieCallback(int collectionId, WTelegram.Bot bot, ApiClient apiClient)
     {
-        throw new NotImplementedException();
+        _collectionId = collectionId;
+        _bot = bot;
+        _apiClient = apiClient;
     }
 
     public const string Id = "download-movie";
 
-    public Task ExecuteAsync(Message? message)
+    public async Task ExecuteAsync(Message? message)
     {
-        throw new NotImplementedException();
+        var collection = await _apiClient.GetCollectionAsync(_collectionId);
+
+        if (collection is null)
+        {
+            var error = $"Failed to get the collection with ID {_collectionId}";
+            Log.Error(error);
+            await _bot.SendMessage(message.Chat.Id, error);
+            return;
+        }
+        
+        //collection.
     }
 
-    public static string Pack(int movieId)
+    public static string Pack(int collectionId)
     {
-        return CallbackDataPacker.Pack(Id, [movieId.ToString()]);
+        return CallbackDataPacker.Pack(Id, [collectionId.ToString()]);
     }
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)

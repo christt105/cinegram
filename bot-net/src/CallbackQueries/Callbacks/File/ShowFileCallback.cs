@@ -56,7 +56,7 @@ public class ShowFileCallback : ICallbackQuery
             new[]
             {
                 InlineKeyboardButton.WithCallbackData("\u2b05\ufe0f Back to collection",
-                    SeeCollectionFilesCallback.Pack(file.CollectionId.Value))
+                    ShowCollectionCallback.Pack(file.CollectionId.Value))
             }
         };
 

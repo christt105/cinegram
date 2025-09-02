@@ -27,7 +27,7 @@ public class DeleteCollectionCallback : ICallbackQuery
             {
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("Cancel", SeeCollectionFilesCallback.Pack(_collectionId)),
+                    InlineKeyboardButton.WithCallbackData("Cancel", ShowCollectionCallback.Pack(_collectionId)),
                     InlineKeyboardButton.WithCallbackData("Delete", ConfirmDeleteCollectionCallback.Pack(_collectionId))
                 }
             });

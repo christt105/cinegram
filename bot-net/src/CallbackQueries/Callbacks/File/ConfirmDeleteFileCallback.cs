@@ -31,7 +31,7 @@ public class ConfirmDeleteFileCallback : ICallbackQuery
 
         await _bot.EditMessageText(message.Chat.Id, message.MessageId, text, replyMarkup: file != null && file.CollectionId.HasValue ?
         new[]{
-            InlineKeyboardButton.WithCallbackData("Back to files", SeeCollectionFilesCallback.Pack(file.CollectionId.Value))
+            InlineKeyboardButton.WithCallbackData("Back to files", ShowCollectionCallback.Pack(file.CollectionId.Value))
         } : null);
     }
 

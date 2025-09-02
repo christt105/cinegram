@@ -49,9 +49,11 @@ public class MovieCommand : ICommand
             return;
         }
 
-        var coverMessage = await _bot.SendPhoto(msg.Chat.Id,
-            $"https://image.tmdb.org/t/p/w500{movie.PosterPath}",
-            $"🎬 {movie.Title} ({movie.ReleaseYear}) [tmdbid-{movie.TmdbId}]");
+        var coverMessage = movie.PosterPath != null
+            ? await _bot.SendPhoto(msg.Chat.Id,
+                MessageBuilder.FormatTmdbImageUrl(movie.PosterPath),
+                Beautify.FormatMovieHeader(movie))
+            : await _bot.SendMessage(msg.Chat.Id, Beautify.FormatMovieHeader(movie));
 
         var infoText = Beautify.FormatMovie(movie);
 

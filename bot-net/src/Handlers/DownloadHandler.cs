@@ -1,11 +1,16 @@
-﻿namespace Bot.Handlers;
+﻿using Telegram.Bot.Types.ReplyMarkups;
+using TL;
+
+namespace Bot.Handlers;
 
 public class DownloadHandler
 {
-    // private long _lastProgressBytes;
-    // private DateTime _lastProgressTime = DateTime.UtcNow;
-    // private DateTime _lastEditTime = DateTime.MinValue;
-    //
+    private WTelegram.Bot _bot;
+    
+    private long _lastProgressBytes;
+    private DateTime _lastProgressTime = DateTime.UtcNow;
+    private DateTime _lastEditTime = DateTime.MinValue;
+    
     // private async Task HandleVideoDownload(Message msg)
     // {
     //     var document = msg.Document;
@@ -19,7 +24,6 @@ public class DownloadHandler
     //     var file = await _bot!.GetFile(document.FileId);
     //
     //     var downloadingMessage = await _bot.SendMessage(msg.Chat.Id, "Descargando", replyParameters: msg);
-    //
     //
     //     var tlMessage = msg.TLMessage() as TL.Message;
     //     var mmd = tlMessage.media as MessageMediaDocument;

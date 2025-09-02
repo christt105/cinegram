@@ -161,4 +161,23 @@ public class ApiClient : IDisposable
         var text = await response.Content.ReadAsStringAsync();
         throw new Exception($"CreateCollection failed: {response.StatusCode} {text}");
     }
+
+    public async Task<Collection?> PatchCollectionAsync(int collectionId, UpdateCollectionRequest update)
+    {
+        var response = await _httpClient.PatchAsync(
+            $"/collections/{collectionId}",
+            JsonContent.Create(update, options: _jsonOptions)
+        );
+
+        if (response.StatusCode == HttpStatusCode.NotFound)
+            return null;
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var text = await response.Content.ReadAsStringAsync();
+            throw new Exception($"PatchCollection failed: {response.StatusCode} {text}");
+        }
+
+        return await response.Content.ReadFromJsonAsync<Collection>(_jsonOptions);
+    }
 }
