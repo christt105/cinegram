@@ -1,6 +1,7 @@
 ﻿using Bot.Commands;
+using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
-using WTelegram.Types;
+using Message = WTelegram.Types.Message;
 
 namespace Bot.Handlers;
 
@@ -34,6 +35,14 @@ public class CommandHandler
             Log.Error(
                 $"Commands {invalidCommands} will be ignored as it needs to be prefixed with `/`");
         }
+    }
+
+    // Commands shown in the Telegram "/" menu (command without the leading slash, as Telegram expects).
+    public IEnumerable<BotCommand> GetMenuCommands()
+    {
+        return _commands.Values
+            .Where(c => c.Key.StartsWith('/'))
+            .Select(c => new BotCommand { Command = c.Key.TrimStart('/'), Description = c.Description });
     }
 
     public async Task Handle(Message msg, UpdateType type)
