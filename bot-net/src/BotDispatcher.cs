@@ -48,6 +48,9 @@ public class BotDispatcher
 
         await Bot.DropPendingUpdates();
 
+        // Register the command list so it shows up in Telegram's "/" autocomplete menu.
+        await Bot.SetMyCommands(_commandHandler.GetMenuCommands());
+
         await Bot.SendMessage(_allowedUser, "Bot started");
 
         Bot.OnMessage += HandleMessage;
