@@ -26,6 +26,7 @@ class UploadIn(BaseModel):
     filesize: int | None = None
     mime_type: str | None = None
     created_at: str | None = None  # ISO format date string
+    tmdb_id: int | None = None     # Pre-identified TMDB ID (skips async search when provided)
 
 # Response model (simple)
 class ItemOut(BaseModel):
@@ -49,10 +50,13 @@ async def upload_endpoint(payload: UploadIn, background_tasks: BackgroundTasks, 
         mime_type=payload.mime_type,
         created_at=payload.created_at,
     )
-    
-    if collection.movie_id is None or collection.episode_id is None:
-        background_tasks.add_task(identify_collection, collection.id, tmdb)
-    
+
+    if collection.movie_id is None and collection.episode_id is None:
+        background_tasks.add_task(
+            identify_collection, collection.id, tmdb,
+            forced_tmdb_id=payload.tmdb_id
+        )
+
     return file
 
 

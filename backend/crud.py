@@ -87,11 +87,9 @@ def get_or_create_collection(session: Session, filename: str, mime_type: str):
     session.refresh(collection)
     return collection
 
-def create_file(session: Session, message_id, filename, filesize, mime_type, created_at):
-    
-    
+def create_file(session: Session, message_id, filename, filesize, mime_type, created_at, tmdb_id=None):
     collection = get_or_create_collection(session, filename, mime_type)
-    
+
     file = File(
         message_id=message_id,
         filename=filename,
@@ -111,41 +109,46 @@ def get_file(session: Session, item_id: int) -> Optional[File]:
 def get_collection(session: Session, item_id: int) -> Optional[File]:
     return session.get(Collection, item_id)
 
-async def identify_collection(collection_id: int, tmdb: TMDB):
-    logger.info(f"Identifying collection {collection_id}")
-    
+async def identify_collection(collection_id: int, tmdb: TMDB, forced_tmdb_id: int | None = None):
+    logger.info(f"Identifying collection {collection_id}" + (f" (forced tmdb_id={forced_tmdb_id})" if forced_tmdb_id else ""))
+
     with Session(engine) as session:
         collection = get_collection(session, collection_id)
-        
+
         if not collection:
             logger.error(f"Collection {collection_id} not found")
             return
-        
+
         if collection.movie_id is not None or collection.episode_id is not None:
             logger.info(f"Collection {collection_id} already identified")
             return
-        
-        tmdb_result = tmdb.identify_by_filename(collection.name)
-        
+
+        if forced_tmdb_id is not None:
+            tmdb_result = tmdb.identify_by_tmdbid(forced_tmdb_id, "movie")
+        else:
+            tmdb_result = tmdb.identify_by_filename(collection.name)
+
         if not tmdb_result:
             logger.warning(f"No TMDB identification result for collection {collection_id}")
             return
-        
-        if not tmdb_result["media_type"]:
+
+        media_type = tmdb_result.get("media_type")
+
+        if not media_type:
             logger.warning(f"No media type found for collection {collection_id}")
             return
-        
-        if tmdb_result["media_type"] == "movie":
+
+        if media_type == "movie":
             movie = get_or_create_movie(session, tmdb_result)
             collection.movie_id = movie.id
             session.add(collection)
             session.commit()
             logger.info(f"Linked collection {collection_id} to movie {movie.id} ({movie.title})")
-        
-        elif tmdb_result["media_type"] == "tv":
+
+        elif media_type == "tv":
             # TODO: implement tv show linking
             logger.info(f"Collection {collection_id} is a TV show (not yet linked)")
-        
+
         logger.info(f"TMDB identification result: {tmdb_result}")
         
     

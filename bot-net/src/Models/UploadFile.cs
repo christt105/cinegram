@@ -13,4 +13,6 @@ public class UploadFile
     [JsonPropertyName("mime_type")] public string? MimeType { get; set; }
 
     [JsonPropertyName("created_at")] public string? UploadDate { get; set; } // ISO string
+
+    [JsonPropertyName("tmdb_id")] public int? TmdbId { get; set; }
 }

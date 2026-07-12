@@ -19,6 +19,9 @@ services:
       - .env
     volumes:
       - C:\Users\chris\Desktop\Projects\jellygram\appdata/bot-net:/data
+      # Import directories — set IMPORT_MOVIES_DIR / IMPORT_SHOWS_DIR in .env if you change these paths
+      - /mnt/disco/70-79_Media/Peliculas:/data/import/movies:ro
+      - /mnt/disco/70-79_Media/Series:/data/import/shows:ro
   
   backend:
     build:

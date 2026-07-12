@@ -20,7 +20,8 @@ public class CommandHandler
             new StartCommand(bot.Bot),
             new HealthCommand(bot.Bot, bot.ApiClient),
             new MoviesCommand(bot.Bot, bot.ApiClient),
-            new MovieCommand(bot.Bot, bot.ApiClient)
+            new MovieCommand(bot.Bot, bot.ApiClient),
+            new ImportCommand(bot)
         };
 
         commands = commands.Append(new HelpCommand(bot.Bot, commands)).ToArray();
