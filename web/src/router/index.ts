@@ -29,6 +29,12 @@ const router = createRouter({
       props: { type: 'telegram' }
     },
     {
+      path: '/item/:type/:id',
+      name: 'item-detail',
+      component: () => import('../views/ItemDetailView.vue'),
+      props: true
+    },
+    {
       path: '/queue',
       name: 'queue',
       component: QueueView

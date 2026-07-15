@@ -1,32 +1,15 @@
 <template>
-  <div class="glass-panel media-card" @mouseenter="isHovered = true" @mouseleave="isHovered = false">
+  <div class="glass-panel media-card" @click="goToDetail" @mouseenter="isHovered = true" @mouseleave="isHovered = false" style="cursor: pointer;">
     <div class="media-image-container">
       <img :src="media.coverUrl" :alt="media.title" class="media-image" v-if="media.coverUrl" />
       
-      <!-- Circle delete button in top-left, only visible on hover -->
-      <button 
-        v-if="media.isOnTelegram" 
-        class="circle-btn delete-btn" 
-        :class="{ visible: isHovered }"
-        @click.stop="emit('delete')" 
-        title="Borrar respaldo"
-      >
-        <Trash2 :size="14" />
-      </button>
-
-      <!-- Bottom action bar sliding up -->
+      <!-- Simple indicator for sync state instead of massive buttons -->
       <div class="media-action-bar" :class="{ active: isHovered }">
-        <button v-if="!media.isOnTelegram" class="action-bar-btn primary" @click.stop="emit('upload', media)">
-          <UploadCloud :size="14" />
-          <span>Respaldar en Telegram</span>
+        <button v-if="!media.isOnTelegram" class="action-bar-btn primary">
+          <span>Respaldar / Opciones</span>
         </button>
-        <button v-else-if="!media.isInJellyfin" class="action-bar-btn secondary" @click.stop="emit('download-all', media)">
-          <DownloadCloud :size="14" />
-          <span>Descargar Todo</span>
-        </button>
-        <button v-else class="action-bar-btn success" disabled>
-          <CheckCircle :size="14" />
-          <span>Sincronizado</span>
+        <button v-else class="action-bar-btn secondary">
+          <span>Ver Detalles</span>
         </button>
       </div>
 
@@ -48,59 +31,14 @@
       
       <p v-if="media.synopsis" class="media-synopsis">{{ media.synopsis }}</p>
 
-      <!-- Expandable TV episodes list -->
-      <div v-if="media.type === 'series' && media.seasons && media.seasons.length" class="episodes-section">
-        <button class="expand-episodes-btn" @click.stop="toggleEpisodes">
-          {{ showEpisodes ? 'Ocultar Episodios' : `Ver Episodios (${totalEpisodesCount} respaldados)` }}
-        </button>
-        <div v-if="showEpisodes" class="episodes-list">
-          <div v-for="season in sortedSeasons" :key="season.id" class="season-block">
-            <div class="season-header">
-              <h5 class="season-title">Temporada {{ season.season_number }}</h5>
-              <button 
-                v-if="media.isOnTelegram"
-                class="season-download-btn" 
-                @click.stop="emit('download-season', { seriesId: media.rawId, seasonNumber: season.season_number, title: media.title })"
-                title="Descargar temporada"
-              >
-                <DownloadCloud :size="11" />
-                <span>Descargar Temp.</span>
-              </button>
-            </div>
-            <div class="episodes-grid">
-              <div v-for="ep in season.episodes" :key="ep.id" class="episode-item">
-                <span class="episode-badge">E{{ ep.episode_number }}</span>
-                <button 
-                  v-if="media.isOnTelegram"
-                  class="ep-download-btn" 
-                  @click.stop="emit('download-episode', { seriesId: media.rawId, seasonNumber: season.season_number, episodeNumber: ep.episode_number, title: media.title })"
-                  title="Descargar capítulo"
-                >
-                  <DownloadCloud :size="10" />
-                </button>
-              </div>
-              <!-- Packs de temporada -->
-              <div v-if="season.collections && season.collections.length" class="episode-item season-pack">
-                <span class="episode-badge pack-badge">Pack Completo</span>
-                <button 
-                  v-if="media.isOnTelegram"
-                  class="ep-download-btn" 
-                  @click.stop="emit('download-season', { seriesId: media.rawId, seasonNumber: season.season_number, title: media.title })"
-                  title="Descargar pack"
-                >
-                  <DownloadCloud :size="10" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- We removed the expandable episodes list. It is now handled in ItemDetailView.vue -->
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { UploadCloud, DownloadCloud, CheckCircle, Send as SendIcon, Trash2 } from 'lucide-vue-next';
 import type { Media } from '../api/jellyfin';
 import type { BackendSeason } from '../api/backend';
@@ -119,6 +57,12 @@ const props = defineProps<{
 
 const emit = defineEmits(['delete', 'download-all', 'download-season', 'download-episode', 'upload']);
 const isHovered = ref(false);
+const router = useRouter();
+
+const goToDetail = () => {
+  const typeParam = props.media.type === 'movie' ? 'movies' : 'series';
+  router.push(`/item/${typeParam}/${props.media.rawId}`);
+};
 
 const showEpisodes = ref(false);
 const toggleEpisodes = () => {
