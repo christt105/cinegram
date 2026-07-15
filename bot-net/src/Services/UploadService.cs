@@ -144,6 +144,7 @@ public class UploadService
             {
                 var discovered = Directory.GetFiles(localPath, "*.*", SearchOption.AllDirectories)
                     .Where(f => videoExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                    .OrderBy(f => f)
                     .ToList();
                 filesToUpload.AddRange(discovered);
             }
@@ -320,14 +321,26 @@ public class UploadService
 
     private string TranslatePath(string hostPath)
     {
-        if (hostPath.StartsWith("/mnt/disco/70-79_Media/Peliculas"))
+        // Handle various host and container mappings
+        var peliculasPrefixes = new[] { "/mnt/disco/70-79_Media/Peliculas", "/media/disco/Peliculas", "/Disco/70-79_Media/Peliculas" };
+        var seriesPrefixes = new[] { "/mnt/disco/70-79_Media/Series", "/media/disco/Series", "/Disco/70-79_Media/Series" };
+
+        foreach (var prefix in peliculasPrefixes)
         {
-            return hostPath.Replace("/mnt/disco/70-79_Media/Peliculas", "/data/import/movies");
+            if (hostPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return hostPath.Replace(prefix, "/data/import/movies", StringComparison.OrdinalIgnoreCase);
+            }
         }
-        if (hostPath.StartsWith("/mnt/disco/70-79_Media/Series"))
+
+        foreach (var prefix in seriesPrefixes)
         {
-            return hostPath.Replace("/mnt/disco/70-79_Media/Series", "/data/import/shows");
+            if (hostPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return hostPath.Replace(prefix, "/data/import/shows", StringComparison.OrdinalIgnoreCase);
+            }
         }
+        
         return hostPath;
     }
 

@@ -483,7 +483,7 @@ def enqueue_episode_endpoint(series_id: int, season_number: int, episode_number:
 
 @app.get("/downloads/pending")
 def list_pending_downloads(session: Session = Depends(get_session)):
-    tasks = session.exec(select(DownloadTask).where(DownloadTask.status.in_(["pending", "downloading", "failed"]))).all()
+    tasks = session.exec(select(DownloadTask).where(DownloadTask.status == "pending")).all()
     result = []
     for t in tasks:
         coll = session.get(Collection, t.collection_id)
@@ -602,8 +602,32 @@ def enqueue_upload(payload: UploadEnqueueIn, session: Session = Depends(get_sess
 
 @app.get("/uploads/pending")
 def list_pending_uploads(session: Session = Depends(get_session)):
+    tasks = session.exec(select(UploadTask).where(UploadTask.status == "pending")).all()
+    return tasks
+
+@app.get("/uploads/queue")
+def list_queue_uploads(session: Session = Depends(get_session)):
     tasks = session.exec(select(UploadTask).where(UploadTask.status.in_(["pending", "uploading", "failed"]))).all()
     return tasks
+
+@app.get("/downloads/queue")
+def list_queue_downloads(session: Session = Depends(get_session)):
+    tasks = session.exec(select(DownloadTask).where(DownloadTask.status.in_(["pending", "downloading", "failed"]))).all()
+    result = []
+    for t in tasks:
+        coll = session.get(Collection, t.collection_id)
+        if not coll:
+            continue
+        series = session.get(Series, coll.series_id)
+        result.append({
+            "id": t.id,
+            "collection_id": t.collection_id,
+            "title": series.title if series else "Unknown",
+            "status": t.status,
+            "progress": t.progress,
+            "error_message": t.error_message
+        })
+    return result
 
 class UploadStatusIn(BaseModel):
     status: str

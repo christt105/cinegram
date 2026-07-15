@@ -91,8 +91,8 @@ const fetchQueues = async () => {
     const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://192.168.1.15:8005';
     
     const [upRes, downRes] = await Promise.all([
-      fetch(`${backendUrl}/uploads/pending`),
-      fetch(`${backendUrl}/downloads/pending`)
+      fetch(`${backendUrl}/uploads/queue`),
+      fetch(`${backendUrl}/downloads/queue`)
     ]);
     
     if (upRes.ok) uploads.value = await upRes.json();
