@@ -106,6 +106,7 @@ class CollectionOut(BaseModel):
     subtitle_languages: Optional[str]
     tags: Optional[str]
     notes: Optional[str]
+    technical_metadata: Optional[str] = None
 
     class Config:
         from_attributes = True
