@@ -30,9 +30,13 @@
                 <span v-if="col.audio_languages" style="font-size: 0.9rem; color: #a1a1aa;">Audio: {{ col.audio_languages }}</span>
                 <span v-if="col.technical_metadata" class="meta-badge">Info. Técnica Disponible</span>
               </div>
-              <div class="col-actions">
-                <button @click="downloadCollection(col.id)" class="glass-button primary">Descargar a Jellyfin</button>
-                <button @click="deleteCollection(col.id)" class="glass-button danger">Borrar de DB</button>
+              <div class="col-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end;">
+                <button @click="downloadCollection(col.id)" class="glass-button primary">
+                  <DownloadCloud :size="16" /> Descargar
+                </button>
+                <button @click="deleteCollection(col.id)" class="glass-button danger">
+                  <Trash2 :size="16" /> Borrar
+                </button>
               </div>
             </div>
           </div>
@@ -44,10 +48,10 @@
           <h2 style="margin-bottom: 1.5rem; font-size: 2rem;">Temporadas</h2>
           <div v-for="season in item.seasons" :key="season.id" class="season-block">
             
-            <div class="season-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+            <div class="season-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap; gap: 1rem;">
               <h3 style="font-size: 1.5rem; margin: 0;">Temporada {{ season.season_number }}</h3>
               <button @click="downloadSeason(season.season_number)" class="glass-button primary">
-                Descargar Temp. Completa
+                <DownloadCloud :size="16" /> Descargar Temp.
               </button>
             </div>
             
@@ -61,8 +65,12 @@
                 <div v-if="ep.collections && ep.collections.length > 0" class="ep-collections">
                   <div v-for="col in ep.collections" :key="col.id" class="collection-item">
                     <span style="font-size: 0.85rem; color: #a1a1aa; margin-right: 8px;">{{ col.quality || 'Auto' }}</span>
-                    <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm">Bajar</button>
-                    <button @click="deleteCollection(col.id)" class="glass-button danger btn-sm">Borrar</button>
+                    <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm icon-only" title="Descargar">
+                      <DownloadCloud :size="14" />
+                    </button>
+                    <button @click="deleteCollection(col.id)" class="glass-button danger btn-sm icon-only" title="Borrar">
+                      <Trash2 :size="14" />
+                    </button>
                   </div>
                 </div>
                 <div v-else class="no-col" style="color: var(--text-secondary); font-size: 0.85rem;">No respaldado aún</div>
@@ -78,6 +86,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { DownloadCloud, Trash2 } from 'lucide-vue-next'
 
 const props = defineProps<{
   type: string
@@ -189,19 +198,22 @@ onMounted(() => {
 }
 .episode-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 0.75rem;
 }
 .episode-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 .ep-info {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.5rem;
   align-items: center;
+  flex: 1 1 auto;
 }
 .season-block {
   margin-bottom: 2.5rem;
@@ -237,6 +249,9 @@ onMounted(() => {
   font-size: 0.8rem;
   margin-left: 1rem;
 }
+.icon-only {
+  padding: 4px 6px;
+}
 
 @media (max-width: 768px) {
   .item-hero {
@@ -244,8 +259,16 @@ onMounted(() => {
   }
   .hero-poster {
     width: 100%;
-    max-width: 300px;
+    max-width: 200px;
     margin: 0 auto;
+  }
+  .episode-list {
+    grid-template-columns: 1fr;
+  }
+  .collection-item {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
   }
 }
 </style>
