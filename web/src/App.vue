@@ -37,7 +37,7 @@
     
     <main class="main-content">
       <header class="header">
-        <div class="search-bar glass-panel" v-if="$route.name !== 'settings'">
+        <div class="search-bar glass-panel" v-if="!['settings', 'item-detail'].includes($route.name as string)">
           <Search :size="18" class="search-icon" />
           <input type="text" v-model="searchQuery" placeholder="Search for movies, series..." />
         </div>

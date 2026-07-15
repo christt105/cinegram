@@ -1,8 +1,8 @@
 <template>
   <div class="item-detail-page">
     <div class="header-nav">
-      <button @click="$router.back()" class="btn btn-secondary">
-        &larr; Back
+      <button @click="$router.back()" class="glass-button">
+        &larr; Volver
       </button>
     </div>
 
@@ -30,8 +30,8 @@
                 <span v-if="col.technical_metadata" class="meta-badge">Info. Técnica Disponible</span>
               </div>
               <div class="col-actions">
-                <button @click="downloadCollection(col.id)" class="btn btn-primary">Download to Jellyfin</button>
-                <button @click="deleteCollection(col.id)" class="btn btn-danger">Delete from DB</button>
+                <button @click="downloadCollection(col.id)" class="glass-button primary">Descargar a Jellyfin</button>
+                <button @click="deleteCollection(col.id)" class="glass-button danger">Borrar de DB</button>
               </div>
             </div>
           </div>
@@ -54,11 +54,11 @@
                 <div v-if="ep.collections && ep.collections.length > 0" class="ep-collections">
                   <div v-for="col in ep.collections" :key="col.id" class="collection-item">
                     <span>{{ col.quality }}</span>
-                    <button @click="downloadCollection(col.id)" class="btn btn-primary btn-sm">Download</button>
-                    <button @click="deleteCollection(col.id)" class="btn btn-danger btn-sm">Delete</button>
+                    <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm">Descargar</button>
+                    <button @click="deleteCollection(col.id)" class="glass-button danger btn-sm">Borrar</button>
                   </div>
                 </div>
-                <div v-else class="no-col">Not uploaded yet</div>
+                <div v-else class="no-col" style="color: var(--text-secondary); font-size: 0.9rem;">No respaldado aún</div>
               </div>
             </div>
           </div>
@@ -180,9 +180,17 @@ onMounted(() => {
   align-items: flex-end;
 }
 .btn-sm {
-  padding: 0.25rem 0.5rem;
+  padding: 4px 10px;
   font-size: 0.8rem;
   margin-left: 0.5rem;
+}
+.danger {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  color: #fca5a5 !important;
+}
+.danger:hover {
+  background: rgba(239, 68, 68, 0.4) !important;
 }
 .meta-badge {
   background: rgba(255,255,255,0.1);
