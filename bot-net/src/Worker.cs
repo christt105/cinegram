@@ -15,7 +15,7 @@ public class Worker : BackgroundService
             var apiHash = Environment.GetEnvironmentVariable("TELEGRAM_API_HASH")!;
             var botToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN")!;
 
-            var backendUrl = Environment.GetEnvironmentVariable("BACKEND_URL") ?? "http:backend:8000";
+            var backendUrl = Environment.GetEnvironmentVariable("BACKEND_URL") ?? "http://backend:8000";
 
             await using var connection = new SqliteConnection(@"Data Source=/data/bot.sqlite");
             using var apiClient = new ApiClient(backendUrl);
@@ -25,6 +25,12 @@ public class Worker : BackgroundService
             var botDispatcher = new BotDispatcher(bot, apiClient, _queue);
 
             await botDispatcher.InitBot();
+
+            var downloadService = new DownloadService(bot, apiClient, _queue);
+            _ = downloadService.PollAndProcessAsync(stoppingToken);
+
+            var uploadService = new UploadService(bot, apiClient, _queue);
+            _ = uploadService.PollAndProcessAsync(stoppingToken);
 
             _ = _queue.StartProcessing(stoppingToken);
 

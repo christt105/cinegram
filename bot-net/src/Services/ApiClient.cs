@@ -1,4 +1,4 @@
-﻿using System.Net;
+using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Bot.Models;
@@ -73,6 +73,21 @@ public class ApiClient : IDisposable
         return result;
     }
 
+    public async Task<bool> IdentifyCollectionAsync(int collectionId, int tmdbId)
+    {
+        var payload = new { tmdb_id = tmdbId };
+        var response = await _httpClient.PostAsJsonAsync($"/collections/{collectionId}/identify", payload);
+        
+        if (!response.IsSuccessStatusCode)
+        {
+            var text = await response.Content.ReadAsStringAsync();
+            Log.Error($"Identify failed: {response.StatusCode} {text}");
+            return false;
+        }
+        
+        return true;
+    }
+
     private async Task<T?> GetSafeAsync<T>(string url)
     {
         try
@@ -88,6 +103,11 @@ public class ApiClient : IDisposable
     public async Task<List<Movie>?> GetMoviesAsync()
     {
         return await GetSafeAsync<List<Movie>>("/movies");
+    }
+
+    public async Task<List<Series>?> GetSeriesAsync()
+    {
+        return await GetSafeAsync<List<Series>>("/series");
     }
 
     public async Task<Movie?> GetMovieAsync(int localId)
@@ -180,5 +200,39 @@ public class ApiClient : IDisposable
         }
 
         return await response.Content.ReadFromJsonAsync<Collection>(_jsonOptions);
+    }
+
+    public async Task<List<DownloadTask>?> GetPendingDownloadsAsync()
+    {
+        return await GetSafeAsync<List<DownloadTask>>("/downloads/pending");
+    }
+
+    public async Task<bool> UpdateDownloadStatusAsync(int taskId, string status, int progress, string? errorMessage = null)
+    {
+        var payload = new
+        {
+            status = status,
+            progress = progress,
+            error_message = errorMessage
+        };
+        var response = await _httpClient.PostAsJsonAsync($"/downloads/{taskId}/status", payload);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<List<UploadTask>?> GetPendingUploadsAsync()
+    {
+        return await GetSafeAsync<List<UploadTask>>("/uploads/pending");
+    }
+
+    public async Task<bool> UpdateUploadStatusAsync(int taskId, string status, int progress, string? errorMessage = null)
+    {
+        var payload = new
+        {
+            status = status,
+            progress = progress,
+            error_message = errorMessage
+        };
+        var response = await _httpClient.PostAsJsonAsync($"/uploads/{taskId}/status", payload);
+        return response.IsSuccessStatusCode;
     }
 }

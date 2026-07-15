@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using Bot;
 using Bot.Models;
 using Bot.Services;
@@ -14,12 +14,14 @@ public class FileHandler
     private readonly WTelegram.Bot _bot;
     private readonly ApiClient _apiClient;
     private readonly TaskQueue _queue;
+    private readonly Bot.Handlers.PendingActionHandler _pendingActionHandler;
 
     public FileHandler(BotDispatcher bot)
     {
         _bot = bot.Bot;
         _queue = bot.Queue;
         _apiClient = bot.ApiClient;
+        _pendingActionHandler = bot.PendingActionHandler;
     }
 
     public async Task Handle(Message msg, UpdateType type)
@@ -58,17 +60,56 @@ Starting to process...";
 
         Log.Info(JsonSerializer.Serialize(result));
         
-        var message = @$"📥 New file received:
+        if (result.MovieId == null && result.EpisodeId == null && result.SeasonId == null && result.CollectionId.HasValue)
+        {
+            var message = @$"⚠️ No pude identificar automáticamente el archivo.
 Id: {file.MessageId}
 Name: {file.FileName}
-Date: {file.UploadDate}
-File size: {Beautify.FormatSize(file.FileSize)}
-File extension: {file.MimeType}
 
-Processed:
-File ID: {result.Id}
+Por favor, responde a este mensaje con el ID de TMDB numérico para enlazarla manualmente.";
+
+            await _bot.EditMessageText(answer.Chat.Id, answer.MessageId, message);
+            
+            await _pendingActionHandler.SetPendingAction(new Bot.Handlers.PendingActionHandler.PendingAction(
+                id: $"identify_{result.CollectionId}",
+                chatId: answer.Chat.Id,
+                owner: this,
+                callback: async (text) =>
+                {
+                    if (int.TryParse(text.Trim(), out var tmdbId))
+                    {
+                        await _bot.SendMessage(answer.Chat.Id, $"Intentando enlazar con TMDB ID {tmdbId}...");
+                        var success = await _apiClient.IdentifyCollectionAsync(result.CollectionId.Value, tmdbId);
+                        if (success)
+                        {
+                            await _bot.SendMessage(answer.Chat.Id, "✅ Archivo enlazado correctamente.");
+                        }
+                        else
+                        {
+                            await _bot.SendMessage(answer.Chat.Id, "❌ Hubo un error al enlazar el archivo (posible ID incorrecto).");
+                        }
+                    }
+                    else
+                    {
+                        await _bot.SendMessage(answer.Chat.Id, "❌ ID inválido. Operación cancelada.");
+                    }
+                },
+                cancelCallback: async () =>
+                {
+                    await _bot.SendMessage(answer.Chat.Id, "Operación de enlace cancelada.");
+                }
+            ));
+        }
+        else
+        {
+            var message = @$"✅ Archivo procesado e identificado correctamente:
+Id: {file.MessageId}
+Name: {file.FileName}
+Movie ID: {result.MovieId}
+Season ID: {result.SeasonId}
+Episode ID: {result.EpisodeId}
 Collection ID: {result.CollectionId}";
-
-        await _bot.EditMessageText(answer.Chat.Id, answer.MessageId, message);
+            await _bot.EditMessageText(answer.Chat.Id, answer.MessageId, message);
+        }
     }
 }

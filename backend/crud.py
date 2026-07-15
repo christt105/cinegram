@@ -1,6 +1,6 @@
 from sqlmodel import select
 from sqlalchemy.exc import NoResultFound
-from models import File, Collection, Movie
+from models import File, Collection, Movie, Series, Season, Episode
 from database import engine
 from sqlmodel import Session
 from datetime import datetime
@@ -109,47 +109,256 @@ def get_file(session: Session, item_id: int) -> Optional[File]:
 def get_collection(session: Session, item_id: int) -> Optional[File]:
     return session.get(Collection, item_id)
 
-async def identify_collection(collection_id: int, tmdb: TMDB, forced_tmdb_id: int | None = None):
+def identify_collection(session: Session, collection_id: int, tmdb: TMDB, forced_tmdb_id: int | None = None) -> bool:
     logger.info(f"Identifying collection {collection_id}" + (f" (forced tmdb_id={forced_tmdb_id})" if forced_tmdb_id else ""))
 
-    with Session(engine) as session:
-        collection = get_collection(session, collection_id)
+    collection = get_collection(session, collection_id)
 
-        if not collection:
-            logger.error(f"Collection {collection_id} not found")
-            return
+    if not collection:
+        logger.error(f"Collection {collection_id} not found")
+        return False
 
-        if collection.movie_id is not None or collection.episode_id is not None:
-            logger.info(f"Collection {collection_id} already identified")
-            return
+    if forced_tmdb_id is None and (collection.movie_id is not None or collection.episode_id is not None):
+        logger.info(f"Collection {collection_id} already identified")
+        return True
 
+    parsed = TMDB.clean_filename(collection.name)
+    clean_name = parsed["clean_name"]
+    content_type = parsed["type"]
+
+    tmdb_result = None
+
+    try:
         if forced_tmdb_id is not None:
-            tmdb_result = tmdb.identify_by_tmdbid(forced_tmdb_id, "movie")
+            tmdb_result = tmdb.identify_by_tmdbid(forced_tmdb_id, content_type)
         else:
-            tmdb_result = tmdb.identify_by_filename(collection.name)
+            # Try local DB match first to save API calls and ensure consistency
+            if content_type == "tv":
+                existing_series = session.exec(
+                    select(Series).where(Series.manual_title == clean_name)
+                ).first()
+                if existing_series:
+                    logger.info(f"Local Series match found for '{clean_name}': Series {existing_series.id}")
+                    tmdb_result = {
+                        "id": existing_series.tmdb_id,
+                        "name": existing_series.manual_title,
+                        "media_type": "tv"
+                    }
+            else:
+                existing_movie = session.exec(
+                    select(Movie).where(Movie.title == clean_name)
+                ).first()
+                if existing_movie:
+                    logger.info(f"Local Movie match found for '{clean_name}': Movie {existing_movie.id}")
+                    tmdb_result = {
+                        "id": existing_movie.tmdb_id,
+                        "title": existing_movie.title,
+                        "media_type": "movie"
+                    }
 
-        if not tmdb_result:
-            logger.warning(f"No TMDB identification result for collection {collection_id}")
-            return
+            # Fallback to TMDB API if not matched locally
+            if not tmdb_result:
+                tmdb_result = tmdb.identify_by_filename(collection.name)
+    except Exception as e:
+        logger.error(f"Failed to identify collection {collection_id}: {e}")
+        tmdb_result = None
 
-        media_type = tmdb_result.get("media_type")
+    if not tmdb_result:
+        logger.warning(f"No TMDB identification result for collection {collection_id}")
+        return False
 
-        if not media_type:
-            logger.warning(f"No media type found for collection {collection_id}")
-            return
+    media_type = tmdb_result.get("media_type")
 
-        if media_type == "movie":
-            movie = get_or_create_movie(session, tmdb_result)
-            collection.movie_id = movie.id
+    if not media_type:
+        logger.warning(f"No media type found for collection {collection_id}")
+        return False
+
+    if media_type == "movie":
+        movie = get_or_create_movie(session, tmdb_result)
+        collection.movie_id = movie.id
+        collection.episode_id = None
+        collection.season_id = None
+        session.add(collection)
+        session.commit()
+        logger.info(f"Linked collection {collection_id} to movie {movie.id} ({movie.title})")
+        propagate_identification(session, clean_name, tmdb)
+        prune_orphaned_media(session)
+        return True
+
+    elif media_type == "tv":
+        series = get_or_create_series(session, tmdb_result)
+        
+        # Parse season & episode from name
+        parsed = TMDB.clean_filename(collection.name)
+        season_num = parsed.get("season")
+        episode_num = parsed.get("episode")
+        
+        collection.movie_id = None # Clear movie reference if it's TV
+        
+        if season_num is not None:
+            season = get_or_create_season(session, series.id, season_num)
+            
+            if episode_num is not None:
+                episode = get_or_create_episode(session, season.id, episode_num)
+                collection.episode_id = episode.id
+                collection.season_id = None
+                session.add(collection)
+                session.commit()
+                logger.info(f"Linked collection {collection_id} to TV episode: {series.manual_title} S{season_num:02d}E{episode_num:02d}")
+                propagate_identification(session, clean_name, tmdb)
+                prune_orphaned_media(session)
+                return True
+            else:
+                collection.season_id = season.id
+                collection.episode_id = None
+                session.add(collection)
+                session.commit()
+                logger.info(f"Linked collection {collection_id} to TV season pack: {series.manual_title} Season {season_num}")
+                propagate_identification(session, clean_name, tmdb)
+                prune_orphaned_media(session)
+                return True
+        else:
+            # Fallback if no season parsed: Link to a default Season 1
+            season = get_or_create_season(session, series.id, 1)
+            collection.season_id = season.id
+            collection.episode_id = None
             session.add(collection)
             session.commit()
-            logger.info(f"Linked collection {collection_id} to movie {movie.id} ({movie.title})")
+            logger.info(f"Linked collection {collection_id} to TV series (fallback Season 1): {series.manual_title}")
+            propagate_identification(session, clean_name, tmdb)
+            prune_orphaned_media(session)
+            return True
 
-        elif media_type == "tv":
-            # TODO: implement tv show linking
-            logger.info(f"Collection {collection_id} is a TV show (not yet linked)")
+    logger.info(f"TMDB identification result: {tmdb_result}")
+    return False
 
-        logger.info(f"TMDB identification result: {tmdb_result}")
+
+def prune_orphaned_media(session: Session):
+    """Delete any movies or series that no longer have any collections linked (orphans)."""
+    try:
+        # Prune movies
+        movies = session.exec(select(Movie)).all()
+        for m in movies:
+            if len(m.collections) == 0:
+                logger.info(f"Pruning orphaned movie {m.id} ({m.title})")
+                session.delete(m)
+
+        # Prune series
+        series = session.exec(select(Series)).all()
+        for s in series:
+            has_files = False
+            for season in s.seasons:
+                if len(season.collections) > 0:
+                    has_files = True
+                    break
+                for ep in season.episodes:
+                    if len(ep.collections) > 0:
+                        has_files = True
+                        break
+            if not has_files:
+                logger.info(f"Pruning orphaned series {s.id} ({s.manual_title})")
+                for season in s.seasons:
+                    for ep in season.episodes:
+                        session.delete(ep)
+                    session.delete(season)
+                session.delete(s)
+        session.commit()
+    except Exception as e:
+        logger.error(f"Failed to prune orphans: {e}")
+
+
+def propagate_identification(session: Session, clean_name: str, tmdb: TMDB):
+    """Automatically propagate identification to other unidentified collections with the same clean name."""
+    try:
+        unidentified = session.exec(
+            select(Collection)
+            .where(Collection.movie_id == None)
+            .where(Collection.episode_id == None)
+            .where(Collection.season_id == None)
+        ).all()
+        for coll in unidentified:
+            coll_parsed = TMDB.clean_filename(coll.name)
+            if coll_parsed["clean_name"] == clean_name:
+                logger.info(f"Propagating identification for '{clean_name}' to collection {coll.id} ({coll.name})")
+                # Recursive call will resolve it instantly using the local DB match
+                identify_collection(session, coll.id, tmdb)
+    except Exception as e:
+        logger.error(f"Error during propagation: {e}")
+
+
+def get_or_create_series(session: Session, tmdb_series: dict) -> Series:
+    tmdb_id = tmdb_series["id"]
+    series = session.exec(select(Series).where(Series.tmdb_id == tmdb_id)).first()
+    
+    release_year = None
+    first_air = tmdb_series.get("first_air_date")
+    if first_air and len(first_air) >= 4:
+        try:
+            release_year = int(first_air[:4])
+        except ValueError:
+            pass
+
+    if not series:
+        series = Series(
+            tmdb_id=tmdb_id,
+            manual_title=tmdb_series.get("name") or tmdb_series.get("original_name"),
+            poster_path=tmdb_series.get("poster_path"),
+            overview=tmdb_series.get("overview"),
+            release_year=release_year
+        )
+        session.add(series)
+        session.commit()
+        session.refresh(series)
+    else:
+        # Update missing fields
+        updated = False
+        if not series.poster_path and tmdb_series.get("poster_path"):
+            series.poster_path = tmdb_series.get("poster_path")
+            updated = True
+        if not series.overview and tmdb_series.get("overview"):
+            series.overview = tmdb_series.get("overview")
+            updated = True
+        if not series.release_year and release_year:
+            series.release_year = release_year
+            updated = True
+        if updated:
+            session.add(series)
+            session.commit()
+            session.refresh(series)
+    return series
+
+def get_or_create_season(session: Session, series_id: int, season_number: int) -> Season:
+    season = session.exec(
+        select(Season)
+        .where(Season.series_id == series_id)
+        .where(Season.season_number == season_number)
+    ).first()
+    if not season:
+        season = Season(
+            series_id=series_id,
+            season_number=season_number
+        )
+        session.add(season)
+        session.commit()
+        session.refresh(season)
+    return season
+
+def get_or_create_episode(session: Session, season_id: int, episode_number: int) -> Episode:
+    episode = session.exec(
+        select(Episode)
+        .where(Episode.season_id == season_id)
+        .where(Episode.episode_number == episode_number)
+    ).first()
+    if not episode:
+        episode = Episode(
+            season_id=season_id,
+            episode_number=episode_number,
+            title=f"Episode {episode_number}"
+        )
+        session.add(episode)
+        session.commit()
+        session.refresh(episode)
+    return episode
         
     
 def get_or_create_movie(session: Session, tmdb_movie: dict) -> Movie:

@@ -25,6 +25,9 @@ class Series(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     tmdb_id: Optional[int] = Field(default=None, unique=True, index=True)
     manual_title: Optional[str] = None
+    poster_path: Optional[str] = None
+    overview: Optional[str] = None
+    release_year: Optional[int] = None
     tags: Optional[str] = None
     notes: Optional[str] = None
 
@@ -100,3 +103,26 @@ class File(SQLModel, table=True):
 
     collection_id: int = Field(foreign_key="collection.id")
     collection: "Collection" = Relationship(back_populates="files")
+
+class DownloadTask(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    collection_id: int = Field(foreign_key="collection.id")
+    status: str = "pending" # pending, downloading, completed, failed
+    progress: int = 0
+    error_message: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None
+
+class UploadTask(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    jellyfin_id: str
+    tmdb_id: Optional[int] = None
+    media_type: str # movie or series
+    path: str
+    title: str
+    year: Optional[int] = None
+    status: str = "pending" # pending, uploading, completed, failed
+    progress: int = 0
+    error_message: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    completed_at: Optional[datetime] = None

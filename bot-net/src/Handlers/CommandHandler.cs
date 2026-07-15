@@ -1,4 +1,4 @@
-﻿using Bot.Commands;
+using Bot.Commands;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using Message = WTelegram.Types.Message;
@@ -20,6 +20,7 @@ public class CommandHandler
             new StartCommand(bot.Bot),
             new HealthCommand(bot.Bot, bot.ApiClient),
             new MoviesCommand(bot.Bot, bot.ApiClient),
+            new SeriesCommand(bot.Bot, bot.ApiClient),
             new MovieCommand(bot.Bot, bot.ApiClient),
             new ImportCommand(bot)
         };

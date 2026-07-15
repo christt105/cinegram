@@ -1,5 +1,8 @@
 import time
-from backend.tmdb import TMDB  # replace with the actual module name where your TMDB class lives
+try:
+    from backend.tmdb import TMDB
+except ImportError:
+    from tmdb import TMDB
 
 # Initialize with your API key (it’s already set in config)
 tmdb_client = TMDB()

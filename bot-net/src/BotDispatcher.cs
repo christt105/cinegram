@@ -1,4 +1,4 @@
-﻿using Bot.Handlers;
+using Bot.Handlers;
 using Bot.Services;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types.Enums;
@@ -26,11 +26,11 @@ public class BotDispatcher
 
         _allowedUser = Convert.ToInt32(Environment.GetEnvironmentVariable("TELEGRAM_AUTH_USER_ID"));
 
+        _pendingActionHandler = new PendingActionHandler(Bot);
         _commandHandler = new CommandHandler(this);
         _fileHandler = new FileHandler(this);
         _messageHandler = new MessageHandler(Bot);
         _callbackQueryHandler = new CallbackQueryHandler(this);
-        _pendingActionHandler = new PendingActionHandler(Bot);
     }
 
     public WTelegram.Bot Bot { get; }

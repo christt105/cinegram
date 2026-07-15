@@ -63,6 +63,27 @@ class TMDB:
         # Remove extra stacked extensions (e.g. .mkv.zip.001)
         name = re.sub(r"\.(zip|7z|rar|mkv|avi|mp4)$", "", name, flags=re.IGNORECASE)
 
+        # Extract season and episode if TV type
+        season = None
+        episode = None
+        
+        # Try SxxExx
+        match_sxe = re.search(r"[Ss](\d{1,2})[Ee](\d{1,3})", name)
+        if match_sxe:
+            season = int(match_sxe.group(1))
+            episode = int(match_sxe.group(2))
+        else:
+            # Try xxNxx (e.g. 5x08)
+            match_cross = re.search(r"\b(\d{1,2})x(\d{1,3})\b", name)
+            if match_cross:
+                season = int(match_cross.group(1))
+                episode = int(match_cross.group(2))
+            else:
+                # Try "Temporada X" or "Season X"
+                match_season = re.search(r"\b(?:Temporada|Season)\s+(\d+)\b", name, re.IGNORECASE)
+                if match_season:
+                    season = int(match_season.group(1))
+
         content_type = detect_hint_type(name)
 
         # Remove episode markers (e.g. "1x125", "S05E10") from the clean name
@@ -83,7 +104,9 @@ class TMDB:
         return {
             "tmdbid": tmdbid,
             "clean_name": name,
-            "type": content_type
+            "type": content_type,
+            "season": season,
+            "episode": episode
         }
     
     def identify_by_tmdbid(self, tmdbid: int, content_type: str) -> dict:

@@ -1,0 +1,24 @@
+using System.Text.Json.Serialization;
+
+namespace Bot.Models;
+
+public class DownloadTask
+{
+    [JsonPropertyName("task_id")] public int TaskId { get; set; }
+    [JsonPropertyName("collection_id")] public int CollectionId { get; set; }
+    [JsonPropertyName("media_type")] public string MediaType { get; set; }
+    [JsonPropertyName("title")] public string Title { get; set; }
+    [JsonPropertyName("year")] public int? Year { get; set; }
+    [JsonPropertyName("season_number")] public int? SeasonNumber { get; set; }
+    [JsonPropertyName("episode_number")] public int? EpisodeNumber { get; set; }
+    [JsonPropertyName("quality")] public string Quality { get; set; }
+    [JsonPropertyName("files")] public DownloadFileItem[] Files { get; set; }
+}
+
+public class DownloadFileItem
+{
+    [JsonPropertyName("id")] public int Id { get; set; }
+    [JsonPropertyName("message_id")] public int MessageId { get; set; }
+    [JsonPropertyName("filename")] public string Filename { get; set; }
+    [JsonPropertyName("filesize")] public long Filesize { get; set; }
+}
