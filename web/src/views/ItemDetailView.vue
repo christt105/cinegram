@@ -56,21 +56,26 @@
             </div>
             
             <div class="episode-list">
-              <div v-for="ep in season.episodes" :key="ep.id" class="episode-item glass-panel">
-                <div class="ep-info">
+              <div v-for="ep in season.episodes" :key="ep.id" class="episode-item glass-panel" style="flex-direction: column; align-items: stretch; gap: 0;">
+                <div class="ep-info" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
                   <strong style="color: var(--jellyfin-blue);">E{{ ep.episode_number }}</strong>
                   <span style="font-weight: 500;">{{ ep.title?.replace(/^Episode\s+\d+$/, '') || 'Episodio ' + ep.episode_number }}</span>
                 </div>
                 
-                <div v-if="ep.collections && ep.collections.length > 0" class="ep-collections">
-                  <div v-for="col in ep.collections" :key="col.id" class="collection-item">
-                    <span style="font-size: 0.85rem; color: #a1a1aa; margin-right: 8px;">{{ col.quality || 'Auto' }}</span>
-                    <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm icon-only" title="Descargar">
-                      <DownloadCloud :size="14" />
-                    </button>
-                    <button @click="deleteCollection(col.id)" class="glass-button danger btn-sm icon-only" title="Borrar">
-                      <Trash2 :size="14" />
-                    </button>
+                <div v-if="ep.collections && ep.collections.length > 0" class="ep-collections" style="width: 100%;">
+                  <div v-for="col in ep.collections" :key="col.id" class="collection-item" style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 8px; margin-bottom: 0.5rem;">
+                    <div style="display: flex; flex-direction: column;">
+                      <span style="font-size: 0.85rem; color: #a1a1aa;">{{ col.quality || 'Auto' }}</span>
+                      <span style="font-size: 0.75rem; color: #666;">{{ col.files?.length || 0 }} archivos</span>
+                    </div>
+                    <div style="display: flex; gap: 0.25rem;">
+                      <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm icon-only" title="Descargar">
+                        <DownloadCloud :size="14" />
+                      </button>
+                      <button @click="deleteCollection(col.id)" class="glass-button danger btn-sm icon-only" title="Borrar">
+                        <Trash2 :size="14" />
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div v-else class="no-col" style="color: var(--text-secondary); font-size: 0.85rem;">No respaldado aún</div>
