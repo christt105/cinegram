@@ -178,8 +178,8 @@ public class UploadService
 
                 Log.Info($"[Uploader] Processing file {fileIndex + 1}/{filesToUpload.Count}: {fileInfo.Name} ({fileSize} bytes)");
 
-                // Límite de 4GB
-                const long splitLimit = 4000000000;
+                // Límite de 2GB (Telegram non-Premium)
+                const long splitLimit = 1950000000;
 
                 if (fileSize > splitLimit)
                 {
