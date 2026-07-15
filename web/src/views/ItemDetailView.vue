@@ -28,7 +28,8 @@
               <div class="col-info" style="display: flex; flex-direction: column; gap: 0.5rem;">
                 <strong style="font-size: 1.1rem; color: #4ade80;">{{ col.name || col.quality || 'Respaldo Completo' }}</strong>
                 <span v-if="col.audio_languages" style="font-size: 0.9rem; color: #a1a1aa;">Audio: {{ col.audio_languages }}</span>
-                <span v-if="col.technical_metadata" class="meta-badge">Info. Técnica Disponible</span>
+                <span v-if="getTechMeta(col)" style="font-size: 0.8rem; color: #a1a1aa; max-width: 100%;">{{ getTechMeta(col) }}</span>
+                <span v-else-if="col.technical_metadata" class="meta-badge">Info. Técnica Disponible</span>
               </div>
               <div class="col-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end;">
                 <button @click="downloadCollection(col.id)" class="glass-button primary">
@@ -151,6 +152,21 @@ const downloadSeason = async (seasonNumber: number) => {
   } catch (err) {
     console.error(err)
   }
+}
+
+const getTechMeta = (col: any) => {
+    if (!col.technical_metadata) return null;
+    try {
+        const meta = JSON.parse(col.technical_metadata);
+        let res = [];
+        if (meta.video_codec) res.push(`${meta.video_codec}`);
+        if (meta.hdr && meta.hdr !== 'SDR') res.push(`${meta.hdr}`);
+        if (meta.audio_languages && meta.audio_languages.length > 0) res.push(`Aud: ${meta.audio_languages.join(',')}`);
+        if (meta.subtitle_languages && meta.subtitle_languages.length > 0) res.push(`Sub: ${meta.subtitle_languages.join(',')}`);
+        return res.length > 0 ? res.join(' | ') : null;
+    } catch (e) {
+        return null;
+    }
 }
 
 const deleteCollection = async (collectionId: number) => {
