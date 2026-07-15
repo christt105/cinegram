@@ -561,5 +561,27 @@ const sortedSeasons = computed(() => {
     opacity: 0.95;
     transform: scale(0.9);
   }
+@media (max-width: 768px) {
+  .media-content {
+    padding: 12px;
+  }
+  
+  .media-header {
+    flex-direction: column;
+    gap: 4px;
+  }
+  
+  .media-title {
+    font-size: 0.9rem;
+  }
+  
+  .media-year {
+    font-size: 0.75rem;
+    padding: 1px 4px;
+  }
+  
+  .media-synopsis {
+    display: none;
+  }
 }
 </style>

@@ -483,7 +483,7 @@ def enqueue_episode_endpoint(series_id: int, season_number: int, episode_number:
 
 @app.get("/downloads/pending")
 def list_pending_downloads(session: Session = Depends(get_session)):
-    tasks = session.exec(select(DownloadTask).where(DownloadTask.status == "pending")).all()
+    tasks = session.exec(select(DownloadTask).where(DownloadTask.status.in_(["pending", "downloading", "failed"]))).all()
     result = []
     for t in tasks:
         coll = session.get(Collection, t.collection_id)
@@ -602,7 +602,7 @@ def enqueue_upload(payload: UploadEnqueueIn, session: Session = Depends(get_sess
 
 @app.get("/uploads/pending")
 def list_pending_uploads(session: Session = Depends(get_session)):
-    tasks = session.exec(select(UploadTask).where(UploadTask.status == "pending")).all()
+    tasks = session.exec(select(UploadTask).where(UploadTask.status.in_(["pending", "uploading", "failed"]))).all()
     return tasks
 
 class UploadStatusIn(BaseModel):

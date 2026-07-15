@@ -19,6 +19,10 @@
           <Send :size="20" />
           <span>Telegram Library</span>
         </router-link>
+        <router-link to="/queue" class="nav-item" active-class="active">
+          <List :size="20" />
+          <span>Transfers</span>
+        </router-link>
         <router-link to="/settings" class="nav-item" active-class="active">
           <Settings :size="20" />
           <span>Settings</span>
@@ -59,7 +63,7 @@
 </template>
 
 <script setup lang="ts">
-import { Film, Tv, Send, Settings, Search, User } from 'lucide-vue-next';
+import { Film, Tv, Send, Settings, Search, User, List } from 'lucide-vue-next';
 import { onMounted, ref, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useJellyfin } from './api/jellyfin';
@@ -446,7 +450,7 @@ onMounted(() => {
   }
   
   .media-grid {
-    grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
     gap: 12px;
   }
 }
