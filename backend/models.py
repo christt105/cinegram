@@ -74,6 +74,7 @@ class Collection(SQLModel, table=True):
     subtitle_languages: Optional[str] = None  # Comma separated
     tags: Optional[str] = None
     notes: Optional[str] = None
+    technical_metadata: Optional[str] = None
 
     movie_id: Optional[int] = Field(default=None, foreign_key="movie.id")
     season_id: Optional[int] = Field(default=None, foreign_key="season.id")

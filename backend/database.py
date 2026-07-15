@@ -17,6 +17,11 @@ def init_db():
                 session.commit()
             except Exception:
                 pass
+        try:
+            session.execute(text("ALTER TABLE collection ADD COLUMN technical_metadata TEXT;"))
+            session.commit()
+        except Exception:
+            pass
 
 def get_session():
     with Session(engine) as session:

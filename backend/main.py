@@ -36,8 +36,7 @@ class UploadIn(BaseModel):
     mime_type: str | None = None
     created_at: str | None = None  # ISO format date string
     tmdb_id: int | None = None     # Pre-identified TMDB ID (skips async search when provided)
-
-# Response model (simple)
+    technical_metadata: str | None = None
 class ItemOut(BaseModel):
     id: int
     message_id: int | None
@@ -61,6 +60,8 @@ def upload_endpoint(payload: UploadIn, session: Session = Depends(get_session)):
         filesize=payload.filesize,
         mime_type=payload.mime_type,
         created_at=payload.created_at,
+        tmdb_id=payload.tmdb_id,
+        technical_metadata=payload.technical_metadata
     )
 
     if collection.movie_id is None and collection.episode_id is None and collection.season_id is None:

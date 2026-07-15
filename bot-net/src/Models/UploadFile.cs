@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace Bot.Models;
 
@@ -15,4 +15,6 @@ public class UploadFile
     [JsonPropertyName("created_at")] public string? UploadDate { get; set; } // ISO string
 
     [JsonPropertyName("tmdb_id")] public int? TmdbId { get; set; }
+
+    [JsonPropertyName("technical_metadata")] public string? TechnicalMetadata { get; set; }
 }

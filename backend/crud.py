@@ -49,7 +49,7 @@ def try_subtract_quality(filename: str):
     return resolution, hdr
 
 
-def get_or_create_collection(session: Session, filename: str, mime_type: str):
+def get_or_create_collection(session: Session, filename: str, mime_type: str, technical_metadata: Optional[str] = None):
 
     collection_name = filename.split('.')[0] # TODO: Improve collection name extraction logic (?)
 
@@ -66,7 +66,7 @@ def get_or_create_collection(session: Session, filename: str, mime_type: str):
         
         # TODO: Check if there is a collection with the same name and use the same movie_id or episode_id if it exists
         
-        collection = Collection(name=collection_name, quality=quality)
+        collection = Collection(name=collection_name, quality=quality, technical_metadata=technical_metadata)
         session.add(collection)
         session.commit()
         session.refresh(collection)
@@ -79,16 +79,21 @@ def get_or_create_collection(session: Session, filename: str, mime_type: str):
     ).first()
 
     if collection:
+        if technical_metadata and not collection.technical_metadata:
+            collection.technical_metadata = technical_metadata
+            session.add(collection)
+            session.commit()
+            session.refresh(collection)
         return collection
 
-    collection = Collection(name=collection_name, quality=quality)
+    collection = Collection(name=collection_name, quality=quality, technical_metadata=technical_metadata)
     session.add(collection)
     session.commit()
     session.refresh(collection)
     return collection
 
-def create_file(session: Session, message_id, filename, filesize, mime_type, created_at, tmdb_id=None):
-    collection = get_or_create_collection(session, filename, mime_type)
+def create_file(session: Session, message_id, filename, filesize, mime_type, created_at, tmdb_id=None, technical_metadata=None):
+    collection = get_or_create_collection(session, filename, mime_type, technical_metadata)
 
     file = File(
         message_id=message_id,

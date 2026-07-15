@@ -175,6 +175,16 @@ public class UploadService
                 var videoFile = filesToUpload[fileIndex];
                 var fileInfo = new FileInfo(videoFile);
                 var fileSize = fileInfo.Length;
+                
+                string? technicalMetadata = null;
+                try
+                {
+                    technicalMetadata = await ExtractMetadataAsync(videoFile);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error($"[Uploader] Failed to extract metadata for {videoFile}: {ex.Message}");
+                }
 
                 Log.Info($"[Uploader] Processing file {fileIndex + 1}/{filesToUpload.Count}: {fileInfo.Name} ({fileSize} bytes)");
 
@@ -241,7 +251,8 @@ public class UploadService
                                 FileSize = partInfo.Length,
                                 MimeType = "application/zip",
                                 UploadDate = DateTime.UtcNow.ToString("O"),
-                                TmdbId = task.TmdbId
+                                TmdbId = task.TmdbId,
+                                TechnicalMetadata = partIndex == 0 ? technicalMetadata : null // Only attach to first part
                             };
                             await _apiClient.UploadAsync(uploadFile);
                         }
@@ -286,7 +297,8 @@ public class UploadService
                             FileSize = fileInfo.Length,
                             MimeType = GuessMime(videoFile),
                             UploadDate = DateTime.UtcNow.ToString("O"),
-                            TmdbId = task.TmdbId
+                            TmdbId = task.TmdbId,
+                            TechnicalMetadata = technicalMetadata
                         };
                         await _apiClient.UploadAsync(uploadFile);
                     }
@@ -377,4 +389,31 @@ public class UploadService
             ".webm" => "video/webm",
             _ => "video/octet-stream"
         };
+
+    private static async Task<string> ExtractMetadataAsync(string filePath)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "ffprobe",
+            Arguments = $"-v quiet -print_format json -show_format -show_streams \"{filePath}\"",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+        
+        using var process = Process.Start(startInfo);
+        if (process == null) throw new Exception("Failed to start ffprobe process.");
+        
+        var output = await process.StandardOutput.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        
+        if (process.ExitCode != 0)
+        {
+            var error = await process.StandardError.ReadToEndAsync();
+            throw new Exception($"ffprobe failed with exit code {process.ExitCode}: {error}");
+        }
+        
+        return output;
+    }
 }

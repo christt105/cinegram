@@ -55,7 +55,8 @@ public class ApiClient : IDisposable
             filesize = fileMeta.FileSize,
             mime_type = fileMeta.MimeType,
             created_at = fileMeta.UploadDate ?? DateTime.UtcNow.ToString("o"), // ISO 8601
-            tmdb_id = fileMeta.TmdbId
+            tmdb_id = fileMeta.TmdbId,
+            technical_metadata = fileMeta.TechnicalMetadata
         };
 
         var response = await _httpClient.PostAsJsonAsync("/upload", payload);
