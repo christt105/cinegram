@@ -165,8 +165,30 @@ public class DownloadService
             }
 
             Log.Info($"[Downloader] Moving video to final path: {fullPath}");
-            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+            var finalDir = Path.GetDirectoryName(fullPath)!;
+            Directory.CreateDirectory(finalDir);
             System.IO.File.Move(mainVideo, fullPath, overwrite: true);
+
+            // Fix permissions so Jellyfin (or other host users) can modify/delete the files
+            try
+            {
+                var chmodDirInfo = new ProcessStartInfo("chmod", $"777 \"{finalDir}\"") { UseShellExecute = false, CreateNoWindow = true };
+                Process.Start(chmodDirInfo)?.WaitForExit();
+                
+                var chmodFileInfo = new ProcessStartInfo("chmod", $"666 \"{fullPath}\"") { UseShellExecute = false, CreateNoWindow = true };
+                Process.Start(chmodFileInfo)?.WaitForExit();
+
+                var parentDir = Path.GetDirectoryName(finalDir);
+                if (parentDir != null && parentDir != showsDir && parentDir != moviesDir)
+                {
+                    var chmodParentInfo = new ProcessStartInfo("chmod", $"777 \"{parentDir}\"") { UseShellExecute = false, CreateNoWindow = true };
+                    Process.Start(chmodParentInfo)?.WaitForExit();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"[Downloader] Failed to set permissions for {fullPath}", ex);
+            }
 
             // 5. Update Status
             await _apiClient.UpdateDownloadStatusAsync(task.TaskId, "completed", 100);
