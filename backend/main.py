@@ -619,11 +619,30 @@ def list_queue_downloads(session: Session = Depends(get_session)):
         coll = session.get(Collection, t.collection_id)
         if not coll:
             continue
-        series = session.get(Series, coll.series_id)
+        title = coll.name or "Unknown"
+        if coll.movie_id:
+            movie = session.get(Movie, coll.movie_id)
+            if movie:
+                title = movie.title or movie.manual_title or title
+        elif coll.episode_id:
+            episode = session.get(Episode, coll.episode_id)
+            if episode and episode.season_id:
+                season = session.get(Season, episode.season_id)
+                if season and season.series_id:
+                    series = session.get(Series, season.series_id)
+                    if series:
+                        title = f"{series.title or series.manual_title} - S{season.season_number}E{episode.episode_number}"
+        elif coll.season_id:
+            season = session.get(Season, coll.season_id)
+            if season and season.series_id:
+                series = session.get(Series, season.series_id)
+                if series:
+                    title = f"{series.title or series.manual_title} - S{season.season_number}"
+
         result.append({
             "id": t.id,
             "collection_id": t.collection_id,
-            "title": series.title if series else "Unknown",
+            "title": title,
             "status": t.status,
             "progress": t.progress,
             "error_message": t.error_message
