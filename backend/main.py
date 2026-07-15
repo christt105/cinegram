@@ -231,11 +231,17 @@ def delete_collection(collection_id: int, session: Session = Depends(get_session
 
 @app.get("/movies/{movie_id}", response_model=MovieOut)
 def get_movie(movie_id: int, session: Session = Depends(get_session)):
-    """Return a single movie by ID with its collections and files"""
     movie = session.get(Movie, movie_id)
     if not movie:
         raise HTTPException(status_code=404, detail="Movie not found")
     return movie
+
+@app.get("/series/{series_id}", response_model=SeriesOut)
+def get_series(series_id: int, session: Session = Depends(get_session)):
+    series = session.get(Series, series_id)
+    if not series:
+        raise HTTPException(status_code=404, detail="Series not found")
+    return series
     
 @app.get("/movies/tmdb/{tmdb_id}", response_model=Optional[MovieOut])
 def get_movie_by_tmdb(tmdb_id: int, session: Session = Depends(get_session)):
@@ -631,13 +637,13 @@ def list_queue_downloads(session: Session = Depends(get_session)):
                 if season and season.series_id:
                     series = session.get(Series, season.series_id)
                     if series:
-                        title = f"{series.title or series.manual_title} - S{season.season_number}E{episode.episode_number}"
+                        title = f"{series.manual_title or 'Unknown Series'} - S{season.season_number}E{episode.episode_number}"
         elif coll.season_id:
             season = session.get(Season, coll.season_id)
             if season and season.series_id:
                 series = session.get(Series, season.series_id)
                 if series:
-                    title = f"{series.title or series.manual_title} - S{season.season_number}"
+                    title = f"{series.manual_title or 'Unknown Series'} - S{season.season_number}"
 
         result.append({
             "id": t.id,
