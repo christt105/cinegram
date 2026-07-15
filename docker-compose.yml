@@ -46,9 +46,6 @@ services:
     restart: unless-stopped
     ports:
       - "5173:5173"
-    volumes:
-      - ./web:/app
-      - /app/node_modules
     environment:
       - VITE_JELLYFIN_URL=${JELLYFIN_URL:-http://192.168.1.15:8096}
       - VITE_JELLYFIN_TOKEN=${JELLYFIN_TOKEN:-}
