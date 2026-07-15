@@ -134,13 +134,29 @@ public class DownloadService
 
             if (task.MediaType == "movie")
             {
-                var dirName = task.Year != null ? $"{task.Title} ({task.Year})" : task.Title;
+                string dirName;
+                if (task.TmdbId != null)
+                {
+                    dirName = task.Year != null ? $"{task.Title} ({task.Year}) [tmdbid-{task.TmdbId}]" : $"{task.Title} [tmdbid-{task.TmdbId}]";
+                }
+                else
+                {
+                    dirName = task.Year != null ? $"{task.Title} ({task.Year})" : task.Title;
+                }
                 var fileName = task.Year != null ? $"{task.Title} ({task.Year}){qSuffix}{extension}" : $"{task.Title}{qSuffix}{extension}";
                 fullPath = Path.Combine(moviesDir, dirName, fileName);
             }
             else
             {
-                var dirName = task.Year != null ? $"{task.Title} ({task.Year})" : task.Title;
+                string dirName;
+                if (task.TvdbId != null)
+                {
+                    dirName = $"{task.Title} [tvdbid-{task.TvdbId}]";
+                }
+                else
+                {
+                    dirName = task.Year != null ? $"{task.Title} ({task.Year})" : task.Title;
+                }
                 var seasonDir = $"Season {task.SeasonNumber:D2}";
                 var fileName = task.Year != null 
                     ? $"{task.Title} ({task.Year}) - S{task.SeasonNumber:D2}E{task.EpisodeNumber:D2}{qSuffix}{extension}" 

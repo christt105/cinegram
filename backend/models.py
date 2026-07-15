@@ -24,6 +24,7 @@ class Movie(SQLModel, table=True):
 class Series(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     tmdb_id: Optional[int] = Field(default=None, unique=True, index=True)
+    tvdb_id: Optional[int] = None
     manual_title: Optional[str] = None
     poster_path: Optional[str] = None
     overview: Optional[str] = None

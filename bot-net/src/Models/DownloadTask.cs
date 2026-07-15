@@ -12,6 +12,8 @@ public class DownloadTask
     [JsonPropertyName("season_number")] public int? SeasonNumber { get; set; }
     [JsonPropertyName("episode_number")] public int? EpisodeNumber { get; set; }
     [JsonPropertyName("quality")] public string Quality { get; set; }
+    [JsonPropertyName("tmdb_id")] public int? TmdbId { get; set; }
+    [JsonPropertyName("tvdb_id")] public int? TvdbId { get; set; }
     [JsonPropertyName("files")] public DownloadFileItem[] Files { get; set; }
 }
 

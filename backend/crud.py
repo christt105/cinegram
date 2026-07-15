@@ -298,9 +298,22 @@ def get_or_create_series(session: Session, tmdb_series: dict) -> Series:
         except ValueError:
             pass
 
+    # Fetch tvdb_id from TMDB if not available
+    tvdb_id = None
+    if not series or not getattr(series, "tvdb_id", None):
+        try:
+            import tmdbsimple as tmdb_lib
+            tv_details = tmdb_lib.TV(tmdb_id)
+            exts = tv_details.external_ids()
+            if exts and "tvdb_id" in exts:
+                tvdb_id = exts["tvdb_id"]
+        except Exception as e:
+            logger.error(f"Error fetching TVDB ID for TMDB series {tmdb_id}: {e}")
+
     if not series:
         series = Series(
             tmdb_id=tmdb_id,
+            tvdb_id=tvdb_id,
             manual_title=tmdb_series.get("name") or tmdb_series.get("original_name"),
             poster_path=tmdb_series.get("poster_path"),
             overview=tmdb_series.get("overview"),
@@ -312,6 +325,9 @@ def get_or_create_series(session: Session, tmdb_series: dict) -> Series:
     else:
         # Update missing fields
         updated = False
+        if not getattr(series, "tvdb_id", None) and tvdb_id:
+            series.tvdb_id = tvdb_id
+            updated = True
         if not series.poster_path and tmdb_series.get("poster_path"):
             series.poster_path = tmdb_series.get("poster_path")
             updated = True

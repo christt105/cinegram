@@ -11,12 +11,11 @@ def init_db():
     # Auto-migration fallback for SQLite
     from sqlmodel import text
     with Session(engine) as session:
-        for column, col_type in [("poster_path", "VARCHAR"), ("overview", "VARCHAR"), ("release_year", "INTEGER")]:
+        for column, col_type in [("poster_path", "VARCHAR"), ("overview", "VARCHAR"), ("release_year", "INTEGER"), ("tvdb_id", "INTEGER")]:
             try:
                 session.execute(text(f"ALTER TABLE series ADD COLUMN {column} {col_type};"))
                 session.commit()
             except Exception:
-                # Column already exists or table doesn't exist yet
                 pass
 
 def get_session():

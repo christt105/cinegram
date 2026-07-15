@@ -494,11 +494,14 @@ def list_pending_downloads(session: Session = Depends(get_session)):
         year = None
         season_num = None
         episode_num = None
+        tmdb_id = None
+        tvdb_id = None
         if coll.movie_id:
             movie = session.get(Movie, coll.movie_id)
             if movie:
                 title = movie.title
                 year = movie.release_year
+                tmdb_id = movie.tmdb_id
         elif coll.episode_id:
             episode = session.get(Episode, coll.episode_id)
             if episode:
@@ -511,6 +514,8 @@ def list_pending_downloads(session: Session = Depends(get_session)):
                     if series:
                         title = series.manual_title
                         year = series.release_year
+                        tmdb_id = series.tmdb_id
+                        tvdb_id = series.tvdb_id
         elif coll.season_id:
             season = session.get(Season, coll.season_id)
             if season:
@@ -520,6 +525,8 @@ def list_pending_downloads(session: Session = Depends(get_session)):
                 if series:
                     title = series.manual_title
                     year = series.release_year
+                    tmdb_id = series.tmdb_id
+                    tvdb_id = series.tvdb_id
         result.append({
             "task_id": t.id,
             "collection_id": t.collection_id,
@@ -529,6 +536,8 @@ def list_pending_downloads(session: Session = Depends(get_session)):
             "season_number": season_num,
             "episode_number": episode_num,
             "quality": coll.quality or "1080p",
+            "tmdb_id": tmdb_id,
+            "tvdb_id": tvdb_id,
             "files": [
                 {
                     "id": f.id,
