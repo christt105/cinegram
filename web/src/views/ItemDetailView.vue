@@ -159,10 +159,32 @@ const getTechMeta = (col: any) => {
     try {
         const meta = JSON.parse(col.technical_metadata);
         let res = [];
-        if (meta.video_codec) res.push(`${meta.video_codec}`);
-        if (meta.hdr && meta.hdr !== 'SDR') res.push(`${meta.hdr}`);
-        if (meta.audio_languages && meta.audio_languages.length > 0) res.push(`Aud: ${meta.audio_languages.join(',')}`);
-        if (meta.subtitle_languages && meta.subtitle_languages.length > 0) res.push(`Sub: ${meta.subtitle_languages.join(',')}`);
+        if (meta.format) {
+            if (meta.format.size) {
+                const gb = parseInt(meta.format.size) / (1024 * 1024 * 1024);
+                res.push(`${gb.toFixed(2)} GB`);
+            }
+            if (meta.format.bit_rate) {
+                const mbps = parseInt(meta.format.bit_rate) / 1000000;
+                res.push(`${mbps.toFixed(1)} Mbps`);
+            }
+        }
+        
+        if (meta.streams) {
+            const video = meta.streams.find((s:any) => s.codec_type === 'video');
+            if (video && video.codec_name) res.push(video.codec_name.toUpperCase());
+            
+            const audios = meta.streams
+                .filter((s:any) => s.codec_type === 'audio' && s.tags && (s.tags.language || s.tags.LANGUAGE))
+                .map((s:any) => s.tags.language || s.tags.LANGUAGE);
+            if (audios.length > 0) res.push(`Aud: ${[...new Set(audios)].join(',')}`);
+            
+            const subs = meta.streams
+                .filter((s:any) => s.codec_type === 'subtitle' && s.tags && (s.tags.language || s.tags.LANGUAGE))
+                .map((s:any) => s.tags.language || s.tags.LANGUAGE);
+            if (subs.length > 0) res.push(`Sub: ${[...new Set(subs)].join(',')}`);
+        }
+        
         return res.length > 0 ? res.join(' | ') : null;
     } catch (e) {
         return null;

@@ -21,7 +21,10 @@
             <div v-if="item.MediaSources && item.MediaSources.length > 1" style="display:flex; flex-direction:column; gap:0.5rem;">
               <h3 style="font-size: 1.1rem; color: #a1a1aa; margin: 0;">Versiones disponibles:</h3>
               <div v-for="ms in item.MediaSources" :key="ms.Id" style="display:flex; justify-content:space-between; align-items:center; background: rgba(0,0,0,0.2); padding: 0.5rem 1rem; border-radius: 8px;">
-                <span style="font-size: 0.9rem;">{{ ms.Name || 'Versión alternativa' }}</span>
+                <div style="display: flex; flex-direction: column;">
+                  <span style="font-size: 0.9rem; font-weight: bold;">{{ ms.Name || 'Versión alternativa' }}</span>
+                  <span style="font-size: 0.75rem; color: #a1a1aa;">{{ getMediaSourceDetails(ms) }}</span>
+                </div>
                 <button @click="uploadItem(item, 'movie', ms.Path)" class="glass-button primary btn-sm">
                   <UploadCloud :size="14" style="margin-right:0.25rem;" /> Subir
                 </button>
@@ -65,7 +68,10 @@
                 <div class="ep-actions" style="display:flex; flex-direction:column; gap:0.5rem;">
                   <div v-if="ep.MediaSources && ep.MediaSources.length > 1" style="display:flex; flex-direction:column; gap:0.5rem; align-items:flex-end;">
                     <div v-for="ms in ep.MediaSources" :key="ms.Id" style="display:flex; gap:0.5rem; align-items:center;">
-                      <span style="font-size:0.75rem; color:#a1a1aa; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="ms.Name">{{ ms.Name || 'Versión' }}</span>
+                      <div style="display: flex; flex-direction: column; align-items: flex-end;">
+                        <span style="font-size:0.75rem; font-weight: bold; color:#e4e4e7; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="ms.Name">{{ ms.Name || 'Versión' }}</span>
+                        <span style="font-size:0.65rem; color:#a1a1aa; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="getMediaSourceDetails(ms)">{{ getMediaSourceDetails(ms) }}</span>
+                      </div>
                       <button @click="uploadItem(ep, 'series', ms.Path)" class="glass-button primary btn-sm icon-only" title="Subir Versión">
                         <UploadCloud :size="14" />
                       </button>
@@ -108,6 +114,16 @@ const fetchItem = async () => {
     const data = await fetchItemDetails(props.id, props.type as 'movie' | 'series')
     if (data.ImageTags && data.ImageTags.Primary) {
       data.poster_path = getImageUrl(data.Id, data.ImageTags.Primary, 500)
+    }
+    
+    if (data.MediaSources) {
+        // filter out 'Grouping' type if 'Default' with same Path exists, to avoid duplicates
+        const uniquePaths = new Set();
+        data.MediaSources = data.MediaSources.filter((ms: any) => {
+            if (uniquePaths.has(ms.Path)) return false;
+            uniquePaths.add(ms.Path);
+            return true;
+        });
     }
     
     // sorting seasons and episodes just in case
@@ -154,6 +170,34 @@ const uploadItem = async (target: any, mediaType: string, forcePath?: string) =>
         console.error(e);
         alert("Error al encolar subida.");
     }
+}
+
+const formatBytes = (bytes: number) => {
+    if (!bytes) return '';
+    const gb = bytes / (1024 * 1024 * 1024);
+    return gb.toFixed(2) + ' GB';
+}
+
+const formatBitrate = (bitrate: number) => {
+    if (!bitrate) return '';
+    const mbps = bitrate / 1000000;
+    return mbps.toFixed(1) + ' Mbps';
+}
+
+const getMediaSourceDetails = (ms: any) => {
+    let res = [];
+    if (ms.Size) res.push(formatBytes(ms.Size));
+    if (ms.Bitrate) res.push(formatBitrate(ms.Bitrate));
+
+    if (!ms.MediaStreams) return res.join(' | ');
+    const video = ms.MediaStreams.find((s:any) => s.Type === 'Video');
+    const audios = ms.MediaStreams.filter((s:any) => s.Type === 'Audio' && s.Language).map((s:any) => s.Language);
+    const subs = ms.MediaStreams.filter((s:any) => s.Type === 'Subtitle' && s.Language).map((s:any) => s.Language);
+    
+    if (video) res.push(`${video.DisplayTitle || video.Codec}`);
+    if (audios.length > 0) res.push(`Audio: ${[...new Set(audios)].join(', ')}`);
+    if (subs.length > 0) res.push(`Subs: ${[...new Set(subs)].join(', ')}`);
+    return res.join(' | ');
 }
 
 onMounted(() => {
