@@ -18,7 +18,12 @@
           <div v-for="task in uploads" :key="task.id" class="glass-panel task-card">
             <div class="task-info">
               <h4>{{ task.title || 'Unknown Media' }} ({{ task.year || '' }})</h4>
-              <span class="badge" :class="task.status">{{ task.status }}</span>
+              <div style="display:flex; gap:0.5rem; align-items:center;">
+                <span class="badge" :class="task.status">{{ task.status }}</span>
+                <button v-if="task.status === 'pending' || task.status === 'failed'" @click="cancelUpload(task.id)" class="glass-button danger btn-sm icon-only" title="Cancel">
+                  <X :size="14" />
+                </button>
+              </div>
             </div>
             <div class="progress-bar-container">
               <div class="progress-bar" :style="{ width: (task.progress || 0) + '%' }"></div>
@@ -41,7 +46,12 @@
           <div v-for="task in downloads" :key="task.id" class="glass-panel task-card">
             <div class="task-info">
               <h4>{{ task.title || 'Collection ID: ' + task.collection_id }}</h4>
-              <span class="badge" :class="task.status">{{ task.status }}</span>
+              <div style="display:flex; gap:0.5rem; align-items:center;">
+                <span class="badge" :class="task.status">{{ task.status }}</span>
+                <button v-if="task.status === 'pending' || task.status === 'failed'" @click="cancelDownload(task.id)" class="glass-button danger btn-sm icon-only" title="Cancel">
+                  <X :size="14" />
+                </button>
+              </div>
             </div>
             <div class="progress-bar-container">
               <div class="progress-bar" :style="{ width: (task.progress || 0) + '%' }"></div>
@@ -59,7 +69,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import { RefreshCw } from 'lucide-vue-next';
+import { RefreshCw, X } from 'lucide-vue-next';
 
 interface UploadTask {
   id: number;
@@ -84,12 +94,11 @@ const uploads = ref<UploadTask[]>([]);
 const downloads = ref<DownloadTask[]>([]);
 const isLoading = ref(false);
 let pollInterval: any = null;
+const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://192.168.1.15:8005';
 
 const fetchQueues = async () => {
   isLoading.value = true;
   try {
-    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://192.168.1.15:8005';
-    
     const [upRes, downRes] = await Promise.all([
       fetch(`${backendUrl}/uploads/queue`),
       fetch(`${backendUrl}/downloads/queue`)
@@ -101,6 +110,26 @@ const fetchQueues = async () => {
     console.error('Error fetching queues:', error);
   } finally {
     isLoading.value = false;
+  }
+};
+
+const cancelUpload = async (id: number) => {
+  if (!confirm("Cancel this upload task?")) return;
+  try {
+    await fetch(`${backendUrl}/uploads/${id}`, { method: 'DELETE' });
+    fetchQueues();
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const cancelDownload = async (id: number) => {
+  if (!confirm("Cancel this download task?")) return;
+  try {
+    await fetch(`${backendUrl}/downloads/${id}`, { method: 'DELETE' });
+    fetchQueues();
+  } catch (err) {
+    console.error(err);
   }
 };
 

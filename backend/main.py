@@ -618,6 +618,18 @@ def list_queue_uploads(session: Session = Depends(get_session)):
     tasks = session.exec(select(UploadTask).where(UploadTask.status.in_(["pending", "uploading", "failed"]))).all()
     return tasks
 
+@app.delete("/uploads/{task_id}")
+def delete_upload_task(task_id: int, session: Session = Depends(get_session)):
+    task = session.get(UploadTask, task_id)
+    if not task:
+        raise HTTPException(404, "Task not found")
+    if task.status == "uploading":
+        raise HTTPException(400, "Cannot delete a running task")
+    session.delete(task)
+    session.commit()
+    return {"status": "ok"}
+
+
 @app.get("/downloads/queue")
 def list_queue_downloads(session: Session = Depends(get_session)):
     tasks = session.exec(select(DownloadTask).where(DownloadTask.status.in_(["pending", "downloading", "failed"]))).all()
@@ -675,4 +687,16 @@ def update_upload_status(task_id: int, payload: UploadStatusIn, session: Session
     session.add(task)
     session.commit()
     return {"status": "ok"}
+
+@app.delete("/downloads/{task_id}")
+def delete_download_task(task_id: int, session: Session = Depends(get_session)):
+    task = session.get(DownloadTask, task_id)
+    if not task:
+        raise HTTPException(404, "Task not found")
+    if task.status == "downloading":
+        raise HTTPException(400, "Cannot delete a running task")
+    session.delete(task)
+    session.commit()
+    return {"status": "ok"}
+
 
