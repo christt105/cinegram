@@ -8,9 +8,9 @@
     </div>
 
     <div v-if="isLoading" class="loading-state">Loading...</div>
-    <div v-else-if="item" class="item-content glass-panel">
+    <div v-else-if="item" class="item-content">
       
-      <div class="item-hero">
+      <div class="item-hero glass-panel" style="padding: 1.5rem; border-radius: 16px;">
         <img v-if="item.poster_path" :src="item.poster_path.startsWith('/') ? 'https://image.tmdb.org/t/p/w500' + item.poster_path : item.poster_path" class="hero-poster" />
         <div class="hero-info">
           <h1>{{ item.title || item.manual_title || 'Unknown Title' }}</h1>
@@ -109,7 +109,16 @@ const fetchItem = async () => {
     const endpoint = props.type === 'movies' ? `/movies/${props.id}` : `/series/${props.id}`
     const res = await fetch(`${backendUrl}${endpoint}`)
     if (res.ok) {
-      item.value = await res.json()
+      const data = await res.json()
+      if (data.seasons) {
+        data.seasons.sort((a: any, b: any) => a.season_number - b.season_number)
+        data.seasons.forEach((season: any) => {
+          if (season.episodes) {
+            season.episodes.sort((a: any, b: any) => a.episode_number - b.episode_number)
+          }
+        })
+      }
+      item.value = data
     }
   } catch (err) {
     console.error(err)
