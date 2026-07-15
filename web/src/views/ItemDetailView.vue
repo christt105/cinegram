@@ -4,6 +4,7 @@
       <button @click="$router.back()" class="glass-button">
         &larr; Volver
       </button>
+      <div style="flex-grow:1"></div>
     </div>
 
     <div v-if="isLoading" class="loading-state">Loading...</div>
@@ -40,25 +41,31 @@
 
         <!-- Series have seasons and episodes -->
         <div v-if="type === 'series'" class="seasons-section">
-          <h2>Seasons</h2>
+          <h2 style="margin-bottom: 1.5rem; font-size: 2rem;">Temporadas</h2>
           <div v-for="season in item.seasons" :key="season.id" class="season-block">
-            <h3>Season {{ season.season_number }}</h3>
+            
+            <div class="season-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1);">
+              <h3 style="font-size: 1.5rem; margin: 0;">Temporada {{ season.season_number }}</h3>
+              <button @click="downloadSeason(season.season_number)" class="glass-button primary">
+                Descargar Temp. Completa
+              </button>
+            </div>
             
             <div class="episode-list">
               <div v-for="ep in season.episodes" :key="ep.id" class="episode-item glass-panel">
                 <div class="ep-info">
-                  <strong>Episode {{ ep.episode_number }}</strong>
-                  <span>{{ ep.title || 'Unknown' }}</span>
+                  <strong style="color: var(--jellyfin-blue);">E{{ ep.episode_number }}</strong>
+                  <span style="font-weight: 500;">{{ ep.title?.replace(/^Episode\s+\d+$/, '') || 'Episodio ' + ep.episode_number }}</span>
                 </div>
                 
                 <div v-if="ep.collections && ep.collections.length > 0" class="ep-collections">
                   <div v-for="col in ep.collections" :key="col.id" class="collection-item">
-                    <span>{{ col.quality }}</span>
-                    <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm">Descargar</button>
+                    <span style="font-size: 0.85rem; color: #a1a1aa; margin-right: 8px;">{{ col.quality || 'Auto' }}</span>
+                    <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm">Bajar</button>
                     <button @click="deleteCollection(col.id)" class="glass-button danger btn-sm">Borrar</button>
                   </div>
                 </div>
-                <div v-else class="no-col" style="color: var(--text-secondary); font-size: 0.9rem;">No respaldado aún</div>
+                <div v-else class="no-col" style="color: var(--text-secondary); font-size: 0.85rem;">No respaldado aún</div>
               </div>
             </div>
           </div>
@@ -101,9 +108,22 @@ const downloadCollection = async (collectionId: number) => {
   try {
     const res = await fetch(`${backendUrl}/downloads/enqueue/collection/${collectionId}`, { method: 'POST' })
     if (res.ok) {
-      alert("Download added to queue!")
+      alert("Descarga añadida a la cola.")
     } else {
-      alert("Failed to enqueue download.")
+      alert("Error al añadir descarga.")
+    }
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+const downloadSeason = async (seasonNumber: number) => {
+  try {
+    const res = await fetch(`${backendUrl}/downloads/enqueue/series/${props.id}/season/${seasonNumber}`, { method: 'POST' })
+    if (res.ok) {
+      alert("Temporada completa añadida a la cola.")
+    } else {
+      alert("Error al descargar temporada.")
     }
   } catch (err) {
     console.error(err)
@@ -162,20 +182,38 @@ onMounted(() => {
   line-height: 1.6;
   opacity: 0.8;
 }
-.collection-list, .episode-list {
+.collection-list {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
-.collection-item, .episode-item {
+.episode-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 0.75rem;
+}
+.episode-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
+  padding: 0.75rem 1rem;
+}
+.ep-info {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+.season-block {
+  margin-bottom: 2.5rem;
+}
+.collection-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.2rem 0;
 }
 .ep-collections {
   display: flex;
-  gap: 1rem;
   flex-direction: column;
   align-items: flex-end;
 }
