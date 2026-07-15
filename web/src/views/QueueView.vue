@@ -40,7 +40,7 @@
         <div v-else class="task-list">
           <div v-for="task in downloads" :key="task.id" class="glass-panel task-card">
             <div class="task-info">
-              <h4>Collection ID: {{ task.collection_id }}</h4>
+              <h4>{{ task.title || 'Collection ID: ' + task.collection_id }}</h4>
               <span class="badge" :class="task.status">{{ task.status }}</span>
             </div>
             <div class="progress-bar-container">
