@@ -10,7 +10,7 @@
     <div v-else-if="item" class="item-content glass-panel">
       
       <div class="item-hero">
-        <img v-if="item.poster_path" :src="item.poster_path" class="hero-poster" />
+        <img v-if="item.poster_path" :src="item.poster_path.startsWith('/') ? 'https://image.tmdb.org/t/p/w500' + item.poster_path : item.poster_path" class="hero-poster" />
         <div class="hero-info">
           <h1>{{ item.title || item.manual_title || 'Unknown Title' }}</h1>
           <p class="year">{{ item.release_year }}</p>
@@ -24,10 +24,10 @@
           <h2>Available Versions</h2>
           <div v-if="item.collections && item.collections.length > 0" class="collection-list">
             <div v-for="col in item.collections" :key="col.id" class="collection-item glass-panel">
-              <div class="col-info">
-                <strong>{{ col.quality || 'Unknown Quality' }}</strong>
-                <span v-if="col.audio_languages">Audio: {{ col.audio_languages }}</span>
-                <span v-if="col.technical_metadata" class="meta-badge">Metadata Available</span>
+              <div class="col-info" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                <strong style="font-size: 1.1rem; color: #4ade80;">{{ col.name || col.quality || 'Respaldo Completo' }}</strong>
+                <span v-if="col.audio_languages" style="font-size: 0.9rem; color: #a1a1aa;">Audio: {{ col.audio_languages }}</span>
+                <span v-if="col.technical_metadata" class="meta-badge">Info. Técnica Disponible</span>
               </div>
               <div class="col-actions">
                 <button @click="downloadCollection(col.id)" class="btn btn-primary">Download to Jellyfin</button>
