@@ -54,7 +54,7 @@
           {{ showEpisodes ? 'Ocultar Episodios' : `Ver Episodios (${totalEpisodesCount} respaldados)` }}
         </button>
         <div v-if="showEpisodes" class="episodes-list">
-          <div v-for="season in media.seasons" :key="season.id" class="season-block">
+          <div v-for="season in sortedSeasons" :key="season.id" class="season-block">
             <div class="season-header">
               <h5 class="season-title">Temporada {{ season.season_number }}</h5>
               <button 
@@ -135,6 +135,20 @@ const totalEpisodesCount = computed(() => {
     }
   });
   return count;
+});
+
+const sortedSeasons = computed(() => {
+  if (!props.media.seasons) return [];
+  // Clone to avoid mutating props
+  const clonedSeasons = JSON.parse(JSON.stringify(props.media.seasons));
+  
+  return clonedSeasons.sort((a: any, b: any) => a.season_number - b.season_number)
+    .map((season: any) => {
+      if (season.episodes) {
+        season.episodes.sort((a: any, b: any) => a.episode_number - b.episode_number);
+      }
+      return season;
+    });
 });
 </script>
 

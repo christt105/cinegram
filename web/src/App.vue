@@ -7,22 +7,22 @@
       </div>
       
       <nav class="nav-menu">
-        <a href="/movies" class="nav-item" :class="{ active: activeTab === 'movies' }" @click.prevent="activeTab = 'movies'">
+        <router-link to="/movies" class="nav-item" active-class="active">
           <Film :size="20" />
           <span>Movies</span>
-        </a>
-        <a href="/series" class="nav-item" :class="{ active: activeTab === 'series' }" @click.prevent="activeTab = 'series'">
+        </router-link>
+        <router-link to="/series" class="nav-item" active-class="active">
           <Tv :size="20" />
           <span>Series</span>
-        </a>
-        <a href="/telegram" class="nav-item" :class="{ active: activeTab === 'telegram' }" @click.prevent="activeTab = 'telegram'">
+        </router-link>
+        <router-link to="/telegram" class="nav-item" active-class="active">
           <Send :size="20" />
           <span>Telegram Library</span>
-        </a>
-        <a href="/settings" class="nav-item" :class="{ active: activeTab === 'settings' }" @click.prevent="activeTab = 'settings'">
+        </router-link>
+        <router-link to="/settings" class="nav-item" active-class="active">
           <Settings :size="20" />
           <span>Settings</span>
-        </a>
+        </router-link>
       </nav>
       
       <div class="server-status">
@@ -33,7 +33,7 @@
     
     <main class="main-content">
       <header class="header">
-        <div class="search-bar glass-panel" v-if="activeTab !== 'settings'">
+        <div class="search-bar glass-panel" v-if="$route.name !== 'settings'">
           <Search :size="18" class="search-icon" />
           <input type="text" v-model="searchQuery" placeholder="Search for movies, series..." />
         </div>
@@ -44,354 +44,34 @@
         </div>
       </header>
       
-      <!-- Settings Panel -->
-      <div v-if="activeTab === 'settings'" class="settings-container">
-        <h1>System Settings</h1>
-        
-        <div class="settings-grid">
-          <!-- Connection Status Card -->
-          <div class="glass-panel settings-card">
-            <h3>Connection Status</h3>
-            <div class="status-item">
-              <span class="label">Jellyfin URL:</span>
-              <span class="value">{{ jellyfinUrl }}</span>
-            </div>
-            <div class="status-item">
-              <span class="label">Jellyfin Auth:</span>
-              <span class="value success-text" v-if="jellyfinItems.length > 0">Authenticated</span>
-              <span class="value error-text" v-else>Disconnected / Missing Token</span>
-            </div>
-            <div class="status-item">
-              <span class="label">Backend API URL:</span>
-              <span class="value">{{ backendUrl }}</span>
-            </div>
-            <div class="status-item">
-              <span class="label">Telegram Bot Username:</span>
-              <span class="value">@BibliotecaKachopinesBot</span>
-            </div>
-          </div>
-          
-          <!-- Library Statistics Card -->
-          <div class="glass-panel settings-card">
-            <h3>Library Statistics</h3>
-            <div class="status-item">
-              <span class="label">Movies in Telegram:</span>
-              <span class="value">{{ telegramMovies.length }}</span>
-            </div>
-            <div class="status-item">
-              <span class="label">Series in Telegram:</span>
-              <span class="value">{{ telegramSeries.length }}</span>
-            </div>
-            <div class="status-item">
-              <span class="label">Total Jellyfin Items:</span>
-              <span class="value">{{ jellyfinItems.length }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Media Content Views -->
-      <div v-else>
-        <div class="content-header">
-          <h1>{{ activeTab === 'telegram' ? 'Telegram Library' : 'Discover Media' }}</h1>
-          <div class="filters">
-            <button class="glass-button" :class="{ active: sortBy === 'latest_added' }" @click="sortBy = 'latest_added'">Últimos añadidos</button>
-            <button class="glass-button" :class="{ active: sortBy === 'popular' }" @click="sortBy = 'popular'">Más popular</button>
-            <button class="glass-button" :class="{ active: sortBy === 'alphabetical' }" @click="sortBy = 'alphabetical'">Orden alfabético</button>
-            <button class="glass-button primary" @click="fetchItems" :disabled="loading">
-              <RefreshCw :size="16" :class="{ spinning: loading }" />
-              Sync Jellyfin
-            </button>
-          </div>
-        </div>
-        
-        <!-- Local Errors (graceful, non-blocking) -->
-        <div v-if="activeError" class="local-warning glass-panel">
-          <AlertCircle :size="18" />
-          <span>{{ activeError }}</span>
-        </div>
-
-        <div v-if="loading && computedItems.length === 0" class="state-message">
-          <div class="spinner"></div>
-          <p>Loading media...</p>
-        </div>
-
-        <div v-else-if="computedItems.length === 0" class="state-message">
-          <p>No media found matching the filters or search query.</p>
-        </div>
-
-        <div v-else class="media-grid">
-          <MediaCard 
-            v-for="item in computedItems" 
-            :key="item.id" 
-            :media="item" 
-            @delete="handleDelete"
-            @download-all="handleDownloadAll"
-            @download-season="handleDownloadSeason"
-            @download-episode="handleDownloadEpisode"
-            @upload="handleUpload"
-          />
-        </div>
-      </div>
+      <router-view 
+        :searchQuery="searchQuery"
+        :jellyfinItems="jellyfinItems"
+        :telegramMovies="telegramMovies"
+        :telegramSeries="telegramSeries"
+        :loading="loading"
+        :jellyfinError="jellyfinError"
+        :backendError="backendError"
+        @refresh="fetchItems"
+      />
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { Film, Tv, Send, Settings, Search, User, RefreshCw, AlertCircle } from 'lucide-vue-next';
-import MediaCard from './components/MediaCard.vue';
-import { onMounted, ref, computed, watch } from 'vue';
+import { Film, Tv, Send, Settings, Search, User } from 'lucide-vue-next';
+import { onMounted, ref, computed } from 'vue';
+import { useRoute } from 'vue-router';
 import { useJellyfin } from './api/jellyfin';
 import { useBackend } from './api/backend';
 
-// Tab selection from pathname (no hash, clean URL!)
-const getTabFromPath = (): 'movies' | 'series' | 'telegram' | 'settings' => {
-  const path = window.location.pathname.replace(/^\/+/, '');
-  if (['movies', 'series', 'telegram', 'settings'].includes(path)) {
-    return path as any;
-  }
-  return 'movies';
-};
-
-const activeTab = ref(getTabFromPath());
-
-// Redirect "/" to "/movies"
-if (window.location.pathname === '/') {
-  window.history.replaceState({}, '', '/movies');
-}
-
-watch(activeTab, (newTab) => {
-  const newPath = '/' + newTab;
-  if (window.location.pathname !== newPath) {
-    window.history.pushState({}, '', newPath);
-  }
-});
-
-window.addEventListener('popstate', () => {
-  activeTab.value = getTabFromPath();
-});
-
+const route = useRoute();
 const searchQuery = ref('');
-const sortBy = ref<'latest_added' | 'popular' | 'alphabetical'>('latest_added');
 
 const { items: jellyfinItems, loading: jellyfinLoading, error: jellyfinError, fetchItems: fetchJellyfin } = useJellyfin();
 const { telegramMovies, telegramSeries, loading: backendLoading, error: backendError, fetchTelegramMovies, fetchTelegramSeries } = useBackend();
 
-const jellyfinUrl = import.meta.env.VITE_JELLYFIN_URL || 'http://192.168.1.15:8096';
-const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:8005`;
 const loading = computed(() => jellyfinLoading.value || backendLoading.value);
-
-// Graceful, tab-specific warnings instead of breaking the entire app
-const activeError = computed(() => {
-  if (activeTab.value === 'telegram') {
-    return backendError.value;
-  } else {
-    return jellyfinError.value;
-  }
-});
-
-// Cross-reference Jellyfin and Telegram movies/series
-const computedItems = computed(() => {
-  let list: any[] = [];
-
-  if (activeTab.value === 'telegram') {
-    // Show only what's on Telegram (Movies & Series)
-    const moviesList = telegramMovies.value.map(tm => {
-      const jItem = jellyfinItems.value.find(ji => ji.tmdbId === tm.tmdb_id);
-      return {
-        id: `tg-movie-${tm.id}`,
-        rawId: tm.id,
-        title: tm.title,
-        year: tm.release_year,
-        type: 'movie' as const,
-        synopsis: tm.overview || 'No synopsis available.',
-        coverUrl: tm.poster_path ? `https://image.tmdb.org/t/p/w500${tm.poster_path}` : '',
-        resolutions: tm.collections.map(c => c.quality).filter(Boolean),
-        tags: [],
-        tmdbId: tm.tmdb_id,
-        isOnTelegram: true,
-        isInJellyfin: !!jItem,
-        collections: tm.collections,
-        dateCreated: jItem ? jItem.dateCreated : `tg-${tm.id}`,
-        rating: jItem ? (jItem.rating || 0) : 0
-      };
-    });
-
-    const seriesList = telegramSeries.value.map(ts => {
-      const collections: any[] = [];
-      ts.seasons.forEach(s => {
-        collections.push(...s.collections);
-        s.episodes.forEach(e => {
-          collections.push(...e.collections);
-        });
-      });
-      const jItem = jellyfinItems.value.find(ji => ji.tmdbId === ts.tmdb_id);
-      return {
-        id: `tg-series-${ts.id}`,
-        rawId: ts.id,
-        title: ts.manual_title,
-        year: ts.release_year,
-        type: 'series' as const,
-        synopsis: ts.overview || 'TV Show backed up on Telegram.',
-        coverUrl: ts.poster_path ? `https://image.tmdb.org/t/p/w500${ts.poster_path}` : '',
-        resolutions: [...new Set(collections.map(c => c.quality).filter(Boolean))],
-        tags: [],
-        tmdbId: ts.tmdb_id,
-        isOnTelegram: true,
-        isInJellyfin: !!jItem,
-        seasons: ts.seasons,
-        dateCreated: jItem ? jItem.dateCreated : `tg-${ts.id}`,
-        rating: jItem ? (jItem.rating || 0) : 0
-      };
-    });
-
-    list = [...moviesList, ...seriesList];
-  } else {
-    // Filter Jellyfin items by type
-    const filteredJellyfin = jellyfinItems.value.filter(item => {
-      if (activeTab.value === 'movies') return item.type === 'movie';
-      if (activeTab.value === 'series') return item.type === 'series';
-      return true;
-    });
-
-    list = filteredJellyfin.map(item => {
-      const isTelegramMatch = item.type === 'movie'
-        ? telegramMovies.value.some(tm => tm.tmdb_id === item.tmdbId)
-        : telegramSeries.value.some(ts => ts.tmdb_id === item.tmdbId);
-      const tmMatch = item.type === 'movie' ? telegramMovies.value.find(tm => tm.tmdb_id === item.tmdbId) : undefined;
-      const tsMatch = item.type === 'series' ? telegramSeries.value.find(ts => ts.tmdb_id === item.tmdbId) : undefined;
-      return {
-        ...item,
-        rawId: tmMatch ? tmMatch.id : (tsMatch ? tsMatch.id : undefined),
-        collections: tmMatch ? tmMatch.collections : undefined,
-        seasons: tsMatch ? tsMatch.seasons : undefined,
-        isOnTelegram: isTelegramMatch,
-        isInJellyfin: true
-      };
-    });
-  }
-
-  // 1. Search Query Filter
-  if (searchQuery.value.trim() !== '') {
-    const q = searchQuery.value.toLowerCase().trim();
-    list = list.filter(item => item.title && item.title.toLowerCase().includes(q));
-  }
-
-  // 2. Sorting
-  if (sortBy.value === 'latest_added') {
-    list.sort((a, b) => {
-      if (activeTab.value === 'telegram' && a.rawId && b.rawId) {
-        return b.rawId - a.rawId;
-      }
-      const dateA = a.dateCreated || '';
-      const dateB = b.dateCreated || '';
-      if (dateA && dateB) {
-        return dateB.localeCompare(dateA);
-      }
-      return (b.year || 0) - (a.year || 0);
-    });
-  } else if (sortBy.value === 'popular') {
-    list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-  } else if (sortBy.value === 'alphabetical') {
-    list.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-  }
-
-  return list;
-});
-
-const handleDelete = async (item: any) => {
-  if (!confirm(`Are you sure you want to delete "${item.title}" from Telegram backups (database records)?`)) {
-    return;
-  }
-  try {
-    const rawId = item.rawId;
-    const type = item.type;
-    const url = type === 'series' 
-      ? `${backendUrl}/series/${rawId}`
-      : `${backendUrl}/movies/${rawId}`;
-      
-    const res = await fetch(url, { method: 'DELETE' });
-    if (!res.ok) {
-      throw new Error(`Failed to delete: ${res.statusText}`);
-    }
-    fetchItems();
-  } catch (e: any) {
-    console.error(e);
-    alert(e.message || 'Error deleting backup');
-  }
-};
-
-const handleDownloadAll = async (media: any) => {
-  try {
-    let url = '';
-    if (media.type === 'series') {
-      url = `${backendUrl}/downloads/enqueue/series/${media.rawId}`;
-    } else {
-      if (!media.collections || media.collections.length === 0) {
-        throw new Error('No files found for this movie.');
-      }
-      url = `${backendUrl}/downloads/enqueue/collection/${media.collections[0].id}`;
-    }
-    const res = await fetch(url, { method: 'POST' });
-    if (!res.ok) throw new Error('Error enqueuing download.');
-    alert(`Descarga encolada para: ${media.title}`);
-  } catch (e: any) {
-    console.error(e);
-    alert(e.message || 'Error enqueuing download');
-  }
-};
-
-const handleDownloadSeason = async (event: { seriesId: number, seasonNumber: number, title: string }) => {
-  try {
-    const url = `${backendUrl}/downloads/enqueue/series/${event.seriesId}/season/${event.seasonNumber}`;
-    const res = await fetch(url, { method: 'POST' });
-    if (!res.ok) throw new Error('Error enqueuing download.');
-    alert(`Descarga encolada para Temporada ${event.seasonNumber} de ${event.title}`);
-  } catch (e: any) {
-    console.error(e);
-    alert(e.message || 'Error enqueuing download');
-  }
-};
-
-const handleDownloadEpisode = async (event: { seriesId: number, seasonNumber: number, episodeNumber: number, title: string }) => {
-  try {
-    const url = `${backendUrl}/downloads/enqueue/series/${event.seriesId}/season/${event.seasonNumber}/episode/${event.episodeNumber}`;
-    const res = await fetch(url, { method: 'POST' });
-    if (!res.ok) throw new Error('Error enqueuing download.');
-    alert(`Descarga encolada para S${event.seasonNumber.toString().padStart(2, '0')}E${event.episodeNumber.toString().padStart(2, '0')} de ${event.title}`);
-  } catch (e: any) {
-    console.error(e);
-    alert(e.message || 'Error enqueuing download');
-  }
-};
-
-const handleUpload = async (media: any) => {
-  if (!media.path) {
-    alert('No se pudo encontrar la ruta local del archivo en Jellyfin.');
-    return;
-  }
-  try {
-    const url = `${backendUrl}/uploads/enqueue`;
-    const payload = {
-      jellyfin_id: media.id,
-      tmdb_id: media.tmdbId,
-      media_type: media.type,
-      path: media.path,
-      title: media.title,
-      year: media.year
-    };
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-    if (!res.ok) throw new Error('Error al encolar la subida.');
-    alert(`Subida encolada para: ${media.title}`);
-  } catch (e: any) {
-    console.error(e);
-    alert(e.message || 'Error enqueuing upload');
-  }
-};
 
 const fetchItems = () => {
   fetchJellyfin();
@@ -404,7 +84,7 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
+<style>
 .dashboard {
   display: flex;
   width: 100%;
@@ -567,7 +247,7 @@ onMounted(() => {
 
 .filters {
   display: flex;
-  gap: 12px;
+  gap: 24px;
 }
 
 .media-grid {
@@ -762,11 +442,12 @@ onMounted(() => {
     overflow-x: auto;
     padding-bottom: 8px;
     white-space: nowrap;
+    gap: 16px;
   }
   
   .media-grid {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(105px, 1fr));
+    gap: 12px;
   }
 }
 
