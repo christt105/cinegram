@@ -35,6 +35,12 @@ const router = createRouter({
       props: true
     },
     {
+      path: '/jellyfin/:type/:id',
+      name: 'jellyfin-detail',
+      component: () => import('../views/JellyfinItemDetailView.vue'),
+      props: true
+    },
+    {
       path: '/queue',
       name: 'queue',
       component: QueueView

@@ -61,7 +61,11 @@ const router = useRouter();
 
 const goToDetail = () => {
   const typeParam = props.media.type === 'movie' ? 'movies' : 'series';
-  router.push(`/item/${typeParam}/${props.media.rawId}`);
+  if (props.media.id.startsWith('tg-')) {
+    router.push(`/item/${typeParam}/${props.media.rawId}`);
+  } else {
+    router.push(`/jellyfin/${typeParam}/${props.media.id}`);
+  }
 };
 
 const showEpisodes = ref(false);

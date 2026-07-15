@@ -137,3 +137,34 @@ export function useJellyfin() {
         fetchItems
     };
 }
+
+export const fetchItemDetails = async (id: string, type: 'movie' | 'series') => {
+    if (!token) throw new Error('No API token configured');
+    const usersRes = await userApi.getUsers();
+    if (!usersRes.data || usersRes.data.length === 0) throw new Error("No users found.");
+    const adminUser = usersRes.data.find(u => u.Policy?.IsAdministrator) || usersRes.data[0];
+    const currentUserId = adminUser.Id as string;
+
+    const res = await fetch(`${serverUrl}/Users/${currentUserId}/Items/${id}?Fields=Path,Overview,ProviderIds`, {
+        headers: { 'Authorization': `MediaBrowser Token="${token}"` }
+    });
+    const item = await res.json();
+
+    if (type === 'series') {
+        const seasonsRes = await fetch(`${serverUrl}/Shows/${id}/Seasons?userId=${currentUserId}`, {
+            headers: { 'Authorization': `MediaBrowser Token="${token}"` }
+        });
+        const seasonsData = await seasonsRes.json();
+        item.seasons = seasonsData.Items || [];
+
+        for (const s of item.seasons) {
+            const epsRes = await fetch(`${serverUrl}/Shows/${id}/Episodes?seasonId=${s.Id}&userId=${currentUserId}&Fields=Path,Overview`, {
+                headers: { 'Authorization': `MediaBrowser Token="${token}"` }
+            });
+            const epsData = await epsRes.json();
+            s.episodes = epsData.Items || [];
+        }
+    }
+
+    return item;
+};
