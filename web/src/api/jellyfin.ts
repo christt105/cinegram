@@ -79,7 +79,7 @@ export function useJellyfin() {
                 userId: currentUserId,
                 recursive: true,
                 includeItemTypes: [BaseItemKind.Movie, BaseItemKind.Series] as BaseItemKind[],
-                fields: [ItemFields.Overview, ItemFields.ProductionYear, ItemFields.Tags, ItemFields.MediaSources, ItemFields.ProviderIds, ItemFields.Path, ItemFields.DateCreated, ItemFields.CommunityRating] as ItemFields[]
+                fields: [ItemFields.Overview, ItemFields.Tags, ItemFields.MediaSources, ItemFields.ProviderIds, ItemFields.Path, ItemFields.DateCreated] as ItemFields[]
             });
 
             const jellyfinItems = (res.data.Items || []) as any[];

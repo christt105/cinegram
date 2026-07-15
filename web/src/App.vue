@@ -8,19 +8,19 @@
       
       <nav class="nav-menu">
         <a href="/movies" class="nav-item" :class="{ active: activeTab === 'movies' }" @click.prevent="activeTab = 'movies'">
-          <Film size="20" />
+          <Film :size="20" />
           <span>Movies</span>
         </a>
         <a href="/series" class="nav-item" :class="{ active: activeTab === 'series' }" @click.prevent="activeTab = 'series'">
-          <Tv size="20" />
+          <Tv :size="20" />
           <span>Series</span>
         </a>
         <a href="/telegram" class="nav-item" :class="{ active: activeTab === 'telegram' }" @click.prevent="activeTab = 'telegram'">
-          <Send size="20" />
+          <Send :size="20" />
           <span>Telegram Library</span>
         </a>
         <a href="/settings" class="nav-item" :class="{ active: activeTab === 'settings' }" @click.prevent="activeTab = 'settings'">
-          <Settings size="20" />
+          <Settings :size="20" />
           <span>Settings</span>
         </a>
       </nav>
@@ -33,51 +33,105 @@
     
     <main class="main-content">
       <header class="header">
-        <div class="search-bar glass-panel">
-          <Search size="18" class="search-icon" />
+        <div class="search-bar glass-panel" v-if="activeTab !== 'settings'">
+          <Search :size="18" class="search-icon" />
           <input type="text" v-model="searchQuery" placeholder="Search for movies, series..." />
         </div>
+        <div v-else style="flex-grow: 1;"></div>
         
         <div class="user-profile glass-panel">
-          <User size="18" />
+          <User :size="18" />
         </div>
       </header>
       
-      <div class="content-header">
-        <h1>Discover Media</h1>
-        <div class="filters">
-          <button class="glass-button" :class="{ active: sortBy === 'latest_added' }" @click="sortBy = 'latest_added'">Últimos añadidos</button>
-          <button class="glass-button" :class="{ active: sortBy === 'popular' }" @click="sortBy = 'popular'">Más popular</button>
-          <button class="glass-button" :class="{ active: sortBy === 'alphabetical' }" @click="sortBy = 'alphabetical'">Orden alfabético</button>
-          <button class="glass-button primary" @click="fetchItems" :disabled="loading">
-            <RefreshCw size="16" :class="{ spinning: loading }" />
-            Sync Jellyfin
-          </button>
+      <!-- Settings Panel -->
+      <div v-if="activeTab === 'settings'" class="settings-container">
+        <h1>System Settings</h1>
+        
+        <div class="settings-grid">
+          <!-- Connection Status Card -->
+          <div class="glass-panel settings-card">
+            <h3>Connection Status</h3>
+            <div class="status-item">
+              <span class="label">Jellyfin URL:</span>
+              <span class="value">{{ jellyfinUrl }}</span>
+            </div>
+            <div class="status-item">
+              <span class="label">Jellyfin Auth:</span>
+              <span class="value success-text" v-if="jellyfinItems.length > 0">Authenticated</span>
+              <span class="value error-text" v-else>Disconnected / Missing Token</span>
+            </div>
+            <div class="status-item">
+              <span class="label">Backend API URL:</span>
+              <span class="value">{{ backendUrl }}</span>
+            </div>
+            <div class="status-item">
+              <span class="label">Telegram Bot Username:</span>
+              <span class="value">@BibliotecaKachopinesBot</span>
+            </div>
+          </div>
+          
+          <!-- Library Statistics Card -->
+          <div class="glass-panel settings-card">
+            <h3>Library Statistics</h3>
+            <div class="status-item">
+              <span class="label">Movies in Telegram:</span>
+              <span class="value">{{ telegramMovies.length }}</span>
+            </div>
+            <div class="status-item">
+              <span class="label">Series in Telegram:</span>
+              <span class="value">{{ telegramSeries.length }}</span>
+            </div>
+            <div class="status-item">
+              <span class="label">Total Jellyfin Items:</span>
+              <span class="value">{{ jellyfinItems.length }}</span>
+            </div>
+          </div>
         </div>
       </div>
-      
-      <div v-if="loading" class="state-message">
-        <div class="spinner"></div>
-        <p>Connecting to Jellyfin...</p>
-      </div>
 
-      <div v-else-if="error" class="state-message error">
-        <AlertCircle size="32" />
-        <p>{{ error }}</p>
-        <button class="glass-button" @click="fetchItems">Try Again</button>
-      </div>
+      <!-- Media Content Views -->
+      <div v-else>
+        <div class="content-header">
+          <h1>{{ activeTab === 'telegram' ? 'Telegram Library' : 'Discover Media' }}</h1>
+          <div class="filters">
+            <button class="glass-button" :class="{ active: sortBy === 'latest_added' }" @click="sortBy = 'latest_added'">Últimos añadidos</button>
+            <button class="glass-button" :class="{ active: sortBy === 'popular' }" @click="sortBy = 'popular'">Más popular</button>
+            <button class="glass-button" :class="{ active: sortBy === 'alphabetical' }" @click="sortBy = 'alphabetical'">Orden alfabético</button>
+            <button class="glass-button primary" @click="fetchItems" :disabled="loading">
+              <RefreshCw :size="16" :class="{ spinning: loading }" />
+              Sync Jellyfin
+            </button>
+          </div>
+        </div>
+        
+        <!-- Local Errors (graceful, non-blocking) -->
+        <div v-if="activeError" class="local-warning glass-panel">
+          <AlertCircle :size="18" />
+          <span>{{ activeError }}</span>
+        </div>
 
-      <div v-else class="media-grid">
-        <MediaCard 
-          v-for="item in computedItems" 
-          :key="item.id" 
-          :media="item" 
-          @delete="handleDelete"
-          @download-all="handleDownloadAll"
-          @download-season="handleDownloadSeason"
-          @download-episode="handleDownloadEpisode"
-          @upload="handleUpload"
-        />
+        <div v-if="loading && computedItems.length === 0" class="state-message">
+          <div class="spinner"></div>
+          <p>Loading media...</p>
+        </div>
+
+        <div v-else-if="computedItems.length === 0" class="state-message">
+          <p>No media found matching the filters or search query.</p>
+        </div>
+
+        <div v-else class="media-grid">
+          <MediaCard 
+            v-for="item in computedItems" 
+            :key="item.id" 
+            :media="item" 
+            @delete="handleDelete"
+            @download-all="handleDownloadAll"
+            @download-season="handleDownloadSeason"
+            @download-episode="handleDownloadEpisode"
+            @upload="handleUpload"
+          />
+        </div>
       </div>
     </main>
   </div>
@@ -123,9 +177,18 @@ const sortBy = ref<'latest_added' | 'popular' | 'alphabetical'>('latest_added');
 const { items: jellyfinItems, loading: jellyfinLoading, error: jellyfinError, fetchItems: fetchJellyfin } = useJellyfin();
 const { telegramMovies, telegramSeries, loading: backendLoading, error: backendError, fetchTelegramMovies, fetchTelegramSeries } = useBackend();
 
+const jellyfinUrl = import.meta.env.VITE_JELLYFIN_URL || 'http://192.168.1.15:8096';
 const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:8005`;
 const loading = computed(() => jellyfinLoading.value || backendLoading.value);
-const error = computed(() => jellyfinError.value || backendError.value);
+
+// Graceful, tab-specific warnings instead of breaking the entire app
+const activeError = computed(() => {
+  if (activeTab.value === 'telegram') {
+    return backendError.value;
+  } else {
+    return jellyfinError.value;
+  }
+});
 
 // Cross-reference Jellyfin and Telegram movies/series
 const computedItems = computed(() => {
@@ -133,23 +196,26 @@ const computedItems = computed(() => {
 
   if (activeTab.value === 'telegram') {
     // Show only what's on Telegram (Movies & Series)
-    const moviesList = telegramMovies.value.map(tm => ({
-      id: `tg-movie-${tm.id}`,
-      rawId: tm.id,
-      title: tm.title,
-      year: tm.release_year,
-      type: 'movie' as const,
-      synopsis: tm.overview || 'No synopsis available.',
-      coverUrl: tm.poster_path ? `https://image.tmdb.org/t/p/w500${tm.poster_path}` : '',
-      resolutions: tm.collections.map(c => c.quality).filter(Boolean),
-      tags: [],
-      tmdbId: tm.tmdb_id,
-      isOnTelegram: true,
-      isInJellyfin: jellyfinItems.value.some(ji => ji.tmdbId === tm.tmdb_id),
-      collections: tm.collections,
-      dateCreated: `tg-${tm.id}`,
-      rating: 0
-    }));
+    const moviesList = telegramMovies.value.map(tm => {
+      const jItem = jellyfinItems.value.find(ji => ji.tmdbId === tm.tmdb_id);
+      return {
+        id: `tg-movie-${tm.id}`,
+        rawId: tm.id,
+        title: tm.title,
+        year: tm.release_year,
+        type: 'movie' as const,
+        synopsis: tm.overview || 'No synopsis available.',
+        coverUrl: tm.poster_path ? `https://image.tmdb.org/t/p/w500${tm.poster_path}` : '',
+        resolutions: tm.collections.map(c => c.quality).filter(Boolean),
+        tags: [],
+        tmdbId: tm.tmdb_id,
+        isOnTelegram: true,
+        isInJellyfin: !!jItem,
+        collections: tm.collections,
+        dateCreated: jItem ? jItem.dateCreated : `tg-${tm.id}`,
+        rating: jItem ? (jItem.rating || 0) : 0
+      };
+    });
 
     const seriesList = telegramSeries.value.map(ts => {
       const collections: any[] = [];
@@ -159,6 +225,7 @@ const computedItems = computed(() => {
           collections.push(...e.collections);
         });
       });
+      const jItem = jellyfinItems.value.find(ji => ji.tmdbId === ts.tmdb_id);
       return {
         id: `tg-series-${ts.id}`,
         rawId: ts.id,
@@ -171,10 +238,10 @@ const computedItems = computed(() => {
         tags: [],
         tmdbId: ts.tmdb_id,
         isOnTelegram: true,
-        isInJellyfin: jellyfinItems.value.some(ji => ji.tmdbId === ts.tmdb_id),
+        isInJellyfin: !!jItem,
         seasons: ts.seasons,
-        dateCreated: `tg-${ts.id}`,
-        rating: 0
+        dateCreated: jItem ? jItem.dateCreated : `tg-${ts.id}`,
+        rating: jItem ? (jItem.rating || 0) : 0
       };
     });
 
@@ -213,6 +280,9 @@ const computedItems = computed(() => {
   // 2. Sorting
   if (sortBy.value === 'latest_added') {
     list.sort((a, b) => {
+      if (activeTab.value === 'telegram' && a.rawId && b.rawId) {
+        return b.rawId - a.rawId;
+      }
       const dateA = a.dateCreated || '';
       const dateB = b.dateCreated || '';
       if (dateA && dateB) {
@@ -532,6 +602,81 @@ onMounted(() => {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+.local-warning {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 12px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  color: #f87171;
+  font-size: 0.9rem;
+}
+
+/* Settings styling */
+.settings-container {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.settings-container h1 {
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.settings-card {
+  padding: 24px;
+  border-radius: 12px;
+}
+
+.settings-card h3 {
+  margin-bottom: 20px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 12px;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.status-item:last-child {
+  border-bottom: none;
+}
+
+.status-item .label {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.status-item .value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.success-text {
+  color: #22c55e;
+}
+
+.error-text {
+  color: #ef4444;
 }
 
 /* Mobile Responsive Layout */

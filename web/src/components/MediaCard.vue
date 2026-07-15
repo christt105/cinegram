@@ -11,21 +11,21 @@
         @click.stop="emit('delete')" 
         title="Borrar respaldo"
       >
-        <Trash2 size="14" />
+        <Trash2 :size="14" />
       </button>
 
       <!-- Bottom action bar sliding up -->
       <div class="media-action-bar" :class="{ active: isHovered }">
         <button v-if="!media.isOnTelegram" class="action-bar-btn primary" @click.stop="emit('upload', media)">
-          <UploadCloud size="14" />
+          <UploadCloud :size="14" />
           <span>Respaldar en Telegram</span>
         </button>
         <button v-else-if="!media.isInJellyfin" class="action-bar-btn secondary" @click.stop="emit('download-all', media)">
-          <DownloadCloud size="14" />
+          <DownloadCloud :size="14" />
           <span>Descargar Todo</span>
         </button>
         <button v-else class="action-bar-btn success" disabled>
-          <CheckCircle size="14" />
+          <CheckCircle :size="14" />
           <span>Sincronizado</span>
         </button>
       </div>
@@ -34,7 +34,7 @@
         <span class="badge quality" v-if="media.resolutions && media.resolutions.length">{{ media.resolutions[0] }}</span>
         <span class="badge type">{{ media.type }}</span>
         <span class="badge telegram" v-if="media.isOnTelegram">
-          <SendIcon size="12" class="tg-icon" />
+          <SendIcon :size="12" class="tg-icon" />
           Telegram
         </span>
       </div>
@@ -63,7 +63,7 @@
                 @click.stop="emit('download-season', { seriesId: media.rawId, seasonNumber: season.season_number, title: media.title })"
                 title="Descargar temporada"
               >
-                <DownloadCloud size="11" />
+                <DownloadCloud :size="11" />
                 <span>Descargar Temp.</span>
               </button>
             </div>
@@ -76,7 +76,7 @@
                   @click.stop="emit('download-episode', { seriesId: media.rawId, seasonNumber: season.season_number, episodeNumber: ep.episode_number, title: media.title })"
                   title="Descargar capítulo"
                 >
-                  <DownloadCloud size="10" />
+                  <DownloadCloud :size="10" />
                 </button>
               </div>
               <!-- Packs de temporada -->
@@ -88,7 +88,7 @@
                   @click.stop="emit('download-season', { seriesId: media.rawId, seasonNumber: season.season_number, title: media.title })"
                   title="Descargar pack"
                 >
-                  <DownloadCloud size="10" />
+                  <DownloadCloud :size="10" />
                 </button>
               </div>
             </div>
@@ -110,6 +110,7 @@ interface UIMedia extends Media {
   isOnTelegram?: boolean;
   isInJellyfin?: boolean;
   seasons?: BackendSeason[];
+  rawId?: number;
 }
 
 const props = defineProps<{
