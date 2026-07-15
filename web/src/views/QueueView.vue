@@ -20,7 +20,7 @@
               <h4>{{ task.title || 'Unknown Media' }} ({{ task.year || '' }})</h4>
               <div style="display:flex; gap:0.5rem; align-items:center;">
                 <span class="badge" :class="task.status">{{ task.status }}</span>
-                <button v-if="task.status === 'pending' || task.status === 'failed'" @click="cancelUpload(task.id)" class="glass-button danger btn-sm icon-only" title="Cancel">
+                <button @click="cancelUpload(task.id)" class="glass-button danger btn-sm icon-only" title="Cancel">
                   <X :size="14" />
                 </button>
               </div>
@@ -48,7 +48,7 @@
               <h4>{{ task.title || 'Collection ID: ' + task.collection_id }}</h4>
               <div style="display:flex; gap:0.5rem; align-items:center;">
                 <span class="badge" :class="task.status">{{ task.status }}</span>
-                <button v-if="task.status === 'pending' || task.status === 'failed'" @click="cancelDownload(task.id)" class="glass-button danger btn-sm icon-only" title="Cancel">
+                <button @click="cancelDownload(task.id)" class="glass-button danger btn-sm icon-only" title="Cancel">
                   <X :size="14" />
                 </button>
               </div>

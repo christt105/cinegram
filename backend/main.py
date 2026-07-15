@@ -623,8 +623,6 @@ def delete_upload_task(task_id: int, session: Session = Depends(get_session)):
     task = session.get(UploadTask, task_id)
     if not task:
         raise HTTPException(404, "Task not found")
-    if task.status == "uploading":
-        raise HTTPException(400, "Cannot delete a running task")
     session.delete(task)
     session.commit()
     return {"status": "ok"}
@@ -693,8 +691,6 @@ def delete_download_task(task_id: int, session: Session = Depends(get_session)):
     task = session.get(DownloadTask, task_id)
     if not task:
         raise HTTPException(404, "Task not found")
-    if task.status == "downloading":
-        raise HTTPException(400, "Cannot delete a running task")
     session.delete(task)
     session.commit()
     return {"status": "ok"}
