@@ -535,33 +535,6 @@ const sortedSeasons = computed(() => {
 }
 
 @media (max-width: 768px) {
-  .media-title {
-    font-size: 1rem;
-  }
-  
-  .media-year {
-    font-size: 0.8rem;
-  }
-  
-  .media-synopsis {
-    display: none; /* Hide synopsis on small screens to keep cards compact */
-  }
-  
-  .media-content {
-    padding: 12px;
-  }
-  
-  /* On mobile, show the bottom action bar by default */
-  .media-action-bar {
-    transform: translateY(0);
-    background: linear-gradient(to top, rgba(15, 17, 21, 0.95) 0%, rgba(15, 17, 21, 0.7) 100%);
-  }
-  
-  .circle-btn {
-    opacity: 0.95;
-    transform: scale(0.9);
-  }
-@media (max-width: 768px) {
   .media-content {
     padding: 12px;
   }
@@ -582,6 +555,17 @@ const sortedSeasons = computed(() => {
   
   .media-synopsis {
     display: none;
+  }
+  
+  /* On mobile, show the bottom action bar by default */
+  .media-action-bar {
+    transform: translateY(0);
+    background: linear-gradient(to top, rgba(15, 17, 21, 0.95) 0%, rgba(15, 17, 21, 0.7) 100%);
+  }
+  
+  .circle-btn {
+    opacity: 0.95;
+    transform: scale(0.9);
   }
 }
 </style>
