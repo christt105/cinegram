@@ -145,7 +145,7 @@ export const fetchItemDetails = async (id: string, type: 'movie' | 'series') => 
     const adminUser = usersRes.data.find(u => u.Policy?.IsAdministrator) || usersRes.data[0];
     const currentUserId = adminUser.Id as string;
 
-    const res = await fetch(`${serverUrl}/Users/${currentUserId}/Items/${id}?Fields=Path,Overview,ProviderIds`, {
+    const res = await fetch(`${serverUrl}/Users/${currentUserId}/Items/${id}?Fields=Path,Overview,ProviderIds,MediaSources`, {
         headers: { 'Authorization': `MediaBrowser Token="${token}"` }
     });
     const item = await res.json();
@@ -158,7 +158,7 @@ export const fetchItemDetails = async (id: string, type: 'movie' | 'series') => 
         item.seasons = seasonsData.Items || [];
 
         for (const s of item.seasons) {
-            const epsRes = await fetch(`${serverUrl}/Shows/${id}/Episodes?seasonId=${s.Id}&userId=${currentUserId}&Fields=Path,Overview`, {
+            const epsRes = await fetch(`${serverUrl}/Shows/${id}/Episodes?seasonId=${s.Id}&userId=${currentUserId}&Fields=Path,Overview,MediaSources`, {
                 headers: { 'Authorization': `MediaBrowser Token="${token}"` }
             });
             const epsData = await epsRes.json();

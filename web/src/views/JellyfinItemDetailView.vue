@@ -18,9 +18,20 @@
           <p class="overview">{{ item.Overview }}</p>
           
           <div style="margin-top: 1rem;" v-if="type === 'movies'">
-            <button @click="uploadItem(item, 'movie')" class="glass-button primary">
-              <UploadCloud :size="16" /> Subir a Telegram
-            </button>
+            <div v-if="item.MediaSources && item.MediaSources.length > 1" style="display:flex; flex-direction:column; gap:0.5rem;">
+              <h3 style="font-size: 1.1rem; color: #a1a1aa; margin: 0;">Versiones disponibles:</h3>
+              <div v-for="ms in item.MediaSources" :key="ms.Id" style="display:flex; justify-content:space-between; align-items:center; background: rgba(0,0,0,0.2); padding: 0.5rem 1rem; border-radius: 8px;">
+                <span style="font-size: 0.9rem;">{{ ms.Name || 'Versión alternativa' }}</span>
+                <button @click="uploadItem(item, 'movie', ms.Path)" class="glass-button primary btn-sm">
+                  <UploadCloud :size="14" style="margin-right:0.25rem;" /> Subir
+                </button>
+              </div>
+            </div>
+            <div v-else>
+              <button @click="uploadItem(item, 'movie')" class="glass-button primary">
+                <UploadCloud :size="16" /> Subir a Telegram
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -51,10 +62,20 @@
                   <span style="font-weight: 500;">{{ ep.Name }}</span>
                 </div>
                 
-                <div class="ep-actions">
-                  <button @click="uploadItem(ep, 'series')" class="glass-button primary btn-sm icon-only" title="Subir Episodio">
-                    <UploadCloud :size="16" />
-                  </button>
+                <div class="ep-actions" style="display:flex; flex-direction:column; gap:0.5rem;">
+                  <div v-if="ep.MediaSources && ep.MediaSources.length > 1" style="display:flex; flex-direction:column; gap:0.5rem; align-items:flex-end;">
+                    <div v-for="ms in ep.MediaSources" :key="ms.Id" style="display:flex; gap:0.5rem; align-items:center;">
+                      <span style="font-size:0.75rem; color:#a1a1aa; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="ms.Name">{{ ms.Name || 'Versión' }}</span>
+                      <button @click="uploadItem(ep, 'series', ms.Path)" class="glass-button primary btn-sm icon-only" title="Subir Versión">
+                        <UploadCloud :size="14" />
+                      </button>
+                    </div>
+                  </div>
+                  <div v-else>
+                    <button @click="uploadItem(ep, 'series')" class="glass-button primary btn-sm icon-only" title="Subir Episodio">
+                      <UploadCloud :size="16" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -107,13 +128,13 @@ const fetchItem = async () => {
   }
 }
 
-const uploadItem = async (target: any, mediaType: string) => {
+const uploadItem = async (target: any, mediaType: string, forcePath?: string) => {
     try {
         const payload = {
             jellyfin_id: target.Id,
             tmdb_id: item.value.ProviderIds?.Tmdb ? parseInt(item.value.ProviderIds.Tmdb) : null,
             media_type: mediaType,
-            path: target.Path || item.value.Path,
+            path: forcePath || target.Path || item.value.Path,
             title: target.Name || item.value.Name,
             year: item.value.ProductionYear
         };
