@@ -222,45 +222,72 @@ public class UploadService
 
                         Log.Info($"[Uploader] Uploading part {partIndex + 1}/{parts.Count}: {partInfo.Name}");
                         
-                        await using (var fileStream = partInfo.OpenRead())
+                        int maxRetries = 3;
+                        int attempt = 0;
+                        bool uploadSuccess = false;
+                        TL.Message? sent = null;
+
+                        while (attempt < maxRetries && !uploadSuccess)
                         {
+                            attempt++;
                             long lastBytes = 0;
-                            var progressStream = new ProgressStream(fileStream, (transmitted) =>
+                            try
                             {
-                                var delta = transmitted - lastBytes;
-                                lastBytes = transmitted;
-                                Interlocked.Add(ref totalUploadedBytes, delta);
-
-                                var nowTicks = DateTime.UtcNow.Ticks;
-                                var elapsedSeconds = (nowTicks - lastReportedTime) / (double)TimeSpan.TicksPerSecond;
-
-                                if (elapsedSeconds >= 3 || totalUploadedBytes == totalBytesToUpload)
+                                await using (var fileStream = partInfo.OpenRead())
                                 {
-                                    lastReportedTime = nowTicks;
-                                    var percent = (int)(totalUploadedBytes * 100 / totalBytesToUpload);
-                                    _ = _apiClient.UpdateUploadStatusAsync(task.Id, "uploading", percent);
+                                    var progressStream = new ProgressStream(fileStream, (transmitted) =>
+                                    {
+                                        var delta = transmitted - lastBytes;
+                                        lastBytes = transmitted;
+                                        Interlocked.Add(ref totalUploadedBytes, delta);
+
+                                        var nowTicks = DateTime.UtcNow.Ticks;
+                                        var elapsedSeconds = (nowTicks - lastReportedTime) / (double)TimeSpan.TicksPerSecond;
+
+                                        if (elapsedSeconds >= 3 || totalUploadedBytes == totalBytesToUpload)
+                                        {
+                                            lastReportedTime = nowTicks;
+                                            var percent = (int)(totalUploadedBytes * 100 / totalBytesToUpload);
+                                            _ = _apiClient.UpdateUploadStatusAsync(task.Id, "uploading", percent);
+                                        }
+                                    });
+
+                                    sent = await _bot.SendDocument(
+                                        _allowedUser,
+                                        new InputFileStream(progressStream, partInfo.Name),
+                                        caption: partInfo.Name
+                                    );
                                 }
-                            });
-
-                            var sent = await _bot.SendDocument(
-                                _allowedUser,
-                                new InputFileStream(progressStream, partInfo.Name),
-                                caption: partInfo.Name
-                            );
-
-                            // Register part in DB
-                            var uploadFile = new UploadFile
+                                uploadSuccess = true;
+                            }
+                            catch (Exception ex)
                             {
-                                MessageId = sent.MessageId,
-                                FileName = partInfo.Name,
-                                FileSize = partInfo.Length,
-                                MimeType = "application/zip",
-                                UploadDate = DateTime.UtcNow.ToString("O"),
-                                TmdbId = task.TmdbId,
-                                TechnicalMetadata = partIndex == 0 ? technicalMetadata : null // Only attach to first part
-                            };
-                            await _apiClient.UploadAsync(uploadFile);
+                                Log.Error($"[Uploader] Attempt {attempt}/{maxRetries} failed to upload part {partInfo.Name}: {ex.Message}");
+                                Interlocked.Add(ref totalUploadedBytes, -lastBytes);
+
+                                if (attempt >= maxRetries)
+                                {
+                                    throw;
+                                }
+
+                                var delayMs = (int)Math.Pow(2, attempt) * 1000;
+                                Log.Info($"[Uploader] Waiting {delayMs}ms before retrying...");
+                                await Task.Delay(delayMs);
+                            }
                         }
+
+                        // Register part in DB
+                        var uploadFile = new UploadFile
+                        {
+                            MessageId = sent!.MessageId,
+                            FileName = partInfo.Name,
+                            FileSize = partInfo.Length,
+                            MimeType = "application/zip",
+                            UploadDate = DateTime.UtcNow.ToString("O"),
+                            TmdbId = task.TmdbId,
+                            TechnicalMetadata = partIndex == 0 ? technicalMetadata : null // Only attach to first part
+                        };
+                        await _apiClient.UploadAsync(uploadFile);
                     }
                 }
                 else
@@ -268,45 +295,72 @@ public class UploadService
                     // Upload file directly
                     Log.Info($"[Uploader] File is under 4GB. Uploading directly...");
                     
-                    await using (var fileStream = fileInfo.OpenRead())
+                    int maxRetries = 3;
+                    int attempt = 0;
+                    bool uploadSuccess = false;
+                    TL.Message? sent = null;
+
+                    while (attempt < maxRetries && !uploadSuccess)
                     {
+                        attempt++;
                         long lastBytes = 0;
-                        var progressStream = new ProgressStream(fileStream, (transmitted) =>
+                        try
                         {
-                            var delta = transmitted - lastBytes;
-                            lastBytes = transmitted;
-                            Interlocked.Add(ref totalUploadedBytes, delta);
-
-                            var nowTicks = DateTime.UtcNow.Ticks;
-                            var elapsedSeconds = (nowTicks - lastReportedTime) / (double)TimeSpan.TicksPerSecond;
-
-                            if (elapsedSeconds >= 3 || totalUploadedBytes == totalBytesToUpload)
+                            await using (var fileStream = fileInfo.OpenRead())
                             {
-                                lastReportedTime = nowTicks;
-                                var percent = (int)(totalUploadedBytes * 100 / totalBytesToUpload);
-                                _ = _apiClient.UpdateUploadStatusAsync(task.Id, "uploading", percent);
+                                var progressStream = new ProgressStream(fileStream, (transmitted) =>
+                                {
+                                    var delta = transmitted - lastBytes;
+                                    lastBytes = transmitted;
+                                    Interlocked.Add(ref totalUploadedBytes, delta);
+
+                                    var nowTicks = DateTime.UtcNow.Ticks;
+                                    var elapsedSeconds = (nowTicks - lastReportedTime) / (double)TimeSpan.TicksPerSecond;
+
+                                    if (elapsedSeconds >= 3 || totalUploadedBytes == totalBytesToUpload)
+                                    {
+                                        lastReportedTime = nowTicks;
+                                        var percent = (int)(totalUploadedBytes * 100 / totalBytesToUpload);
+                                        _ = _apiClient.UpdateUploadStatusAsync(task.Id, "uploading", percent);
+                                    }
+                                });
+
+                                sent = await _bot.SendDocument(
+                                    _allowedUser,
+                                    new InputFileStream(progressStream, fileInfo.Name),
+                                    caption: fileInfo.Name
+                                );
                             }
-                        });
-
-                        var sent = await _bot.SendDocument(
-                            _allowedUser,
-                            new InputFileStream(progressStream, fileInfo.Name),
-                            caption: fileInfo.Name
-                        );
-
-                        // Register in DB
-                        var uploadFile = new UploadFile
+                            uploadSuccess = true;
+                        }
+                        catch (Exception ex)
                         {
-                            MessageId = sent.MessageId,
-                            FileName = fileInfo.Name,
-                            FileSize = fileInfo.Length,
-                            MimeType = GuessMime(videoFile),
-                            UploadDate = DateTime.UtcNow.ToString("O"),
-                            TmdbId = task.TmdbId,
-                            TechnicalMetadata = technicalMetadata
-                        };
-                        await _apiClient.UploadAsync(uploadFile);
+                            Log.Error($"[Uploader] Attempt {attempt}/{maxRetries} failed to upload {fileInfo.Name}: {ex.Message}");
+                            Interlocked.Add(ref totalUploadedBytes, -lastBytes);
+
+                            if (attempt >= maxRetries)
+                            {
+                                throw;
+                            }
+
+                            var delayMs = (int)Math.Pow(2, attempt) * 1000;
+                            Log.Info($"[Uploader] Waiting {delayMs}ms before retrying...");
+                            await Task.Delay(delayMs);
+                        }
                     }
+
+                    // Register in DB
+                    var uploadFile = new UploadFile
+                    {
+                        MessageId = sent!.MessageId,
+                        FileName = fileInfo.Name,
+                        FileSize = fileInfo.Length,
+                        MimeType = GuessMime(videoFile),
+                        UploadDate = DateTime.UtcNow.ToString("O"),
+                        TmdbId = task.TmdbId,
+                        TechnicalMetadata = technicalMetadata
+                    };
+                    await _apiClient.UploadAsync(uploadFile);
                 }
             }
 

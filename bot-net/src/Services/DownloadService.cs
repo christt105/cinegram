@@ -87,25 +87,51 @@ public class DownloadService
                 var filePath = Path.Combine(tempDir, file.Filename);
                 Log.Info($"[Downloader] Downloading {file.Filename} ({file.Filesize} bytes) to {filePath}");
 
-                await using (var fileStream = System.IO.File.Create(filePath))
+                int maxRetries = 3;
+                int attempt = 0;
+                bool downloadSuccess = false;
+
+                while (attempt < maxRetries && !downloadSuccess)
                 {
+                    attempt++;
                     long lastBytes = 0;
-                    await _bot.Client.DownloadFileAsync(doc, fileStream, null, (transmitted, size) =>
+                    try
                     {
-                        var delta = transmitted - lastBytes;
-                        lastBytes = transmitted;
-                        Interlocked.Add(ref totalDownloaded, delta);
-
-                        var nowTicks = DateTime.UtcNow.Ticks;
-                        var elapsedSeconds = (nowTicks - lastReportedTime) / (double)TimeSpan.TicksPerSecond;
-
-                        if (elapsedSeconds >= 3 || totalDownloaded == totalSize)
+                        await using (var fileStream = System.IO.File.Create(filePath))
                         {
-                            lastReportedTime = nowTicks;
-                            var percent = (int)(totalDownloaded * 100 / totalSize);
-                            _ = _apiClient.UpdateDownloadStatusAsync(task.TaskId, "downloading", percent);
+                            await _bot.Client.DownloadFileAsync(doc, fileStream, null, (transmitted, size) =>
+                            {
+                                var delta = transmitted - lastBytes;
+                                lastBytes = transmitted;
+                                Interlocked.Add(ref totalDownloaded, delta);
+
+                                var nowTicks = DateTime.UtcNow.Ticks;
+                                var elapsedSeconds = (nowTicks - lastReportedTime) / (double)TimeSpan.TicksPerSecond;
+
+                                if (elapsedSeconds >= 3 || totalDownloaded == totalSize)
+                                {
+                                    lastReportedTime = nowTicks;
+                                    var percent = (int)(totalDownloaded * 100 / totalSize);
+                                    _ = _apiClient.UpdateDownloadStatusAsync(task.TaskId, "downloading", percent);
+                                }
+                            });
                         }
-                    });
+                        downloadSuccess = true;
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error($"[Downloader] Attempt {attempt}/{maxRetries} failed to download {file.Filename}: {ex.Message}");
+                        Interlocked.Add(ref totalDownloaded, -lastBytes);
+
+                        if (attempt >= maxRetries)
+                        {
+                            throw;
+                        }
+
+                        var delayMs = (int)Math.Pow(2, attempt) * 1000;
+                        Log.Info($"[Downloader] Waiting {delayMs}ms before retrying...");
+                        await Task.Delay(delayMs);
+                    }
                 }
                 Log.Info($"[Downloader] Finished downloading {file.Filename}");
             }
