@@ -89,6 +89,30 @@ public class ApiClient : IDisposable
         return true;
     }
 
+    public async Task<bool> ReidentifySeriesAsync(int seriesId, int tmdbId)
+    {
+        var response = await _httpClient.PostAsync($"/series/{seriesId}/reidentify?new_tmdb_id={tmdbId}", null);
+        if (!response.IsSuccessStatusCode)
+        {
+            var text = await response.Content.ReadAsStringAsync();
+            Log.Error($"ReidentifySeries failed: {response.StatusCode} {text}");
+            return false;
+        }
+        return true;
+    }
+
+    public async Task<bool> ReidentifyMovieAsync(int movieId, int tmdbId)
+    {
+        var response = await _httpClient.PostAsync($"/movies/{movieId}/reidentify?new_tmdb_id={tmdbId}", null);
+        if (!response.IsSuccessStatusCode)
+        {
+            var text = await response.Content.ReadAsStringAsync();
+            Log.Error($"ReidentifyMovie failed: {response.StatusCode} {text}");
+            return false;
+        }
+        return true;
+    }
+
     private async Task<T?> GetSafeAsync<T>(string url)
     {
         try
@@ -109,6 +133,11 @@ public class ApiClient : IDisposable
     public async Task<List<Series>?> GetSeriesAsync()
     {
         return await GetSafeAsync<List<Series>>("/series");
+    }
+
+    public async Task<Series?> GetSeriesAsync(int localId)
+    {
+        return await GetSafeAsync<Series>($"/series/{localId}");
     }
 
     public async Task<Movie?> GetMovieAsync(int localId)
@@ -172,6 +201,18 @@ public class ApiClient : IDisposable
     public async Task<bool> DeleteCollectionAsync(int collectionId)
     {
         var resp = await _httpClient.DeleteAsync($"/collections/{collectionId}");
+        return resp.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DeleteSeriesAsync(int seriesId)
+    {
+        var resp = await _httpClient.DeleteAsync($"/series/{seriesId}");
+        return resp.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> DeleteMovieAsync(int movieId)
+    {
+        var resp = await _httpClient.DeleteAsync($"/movies/{movieId}");
         return resp.IsSuccessStatusCode;
     }
 

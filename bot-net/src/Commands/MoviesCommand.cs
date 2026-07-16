@@ -1,5 +1,6 @@
-﻿using Bot.Services;
+using Bot.Services;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 using Message = WTelegram.Types.Message;
 
 namespace Bot.Commands;
@@ -19,20 +20,27 @@ public class MoviesCommand : ICommand
     {
         var movies = await _apiClient.GetMoviesAsync();
 
-        var message = "📭 No movies found.";
-        if (movies != null && movies.Count > 0)
+        if (movies == null || movies.Count == 0)
         {
-            message = "🎬 Movies:\n";
-            for (var i = 0; i < Math.Min(movies.Count, 10); i++)
-            {
-                var movie = movies[i];
-                message += $"- {movie.Id}: {movie.Title} ({movie.ReleaseYear}) [tmdbid-{movie.TmdbId}]\n";
-            }
-
-            if (movies.Count > 10) message += $"\n... and {movies.Count - 10} more";
+            await _bot.SendMessage(msg.Chat.Id, "📭 No movies found.",
+                replyParameters: new ReplyParameters { MessageId = msg.MessageId });
+            return;
         }
 
-        await _bot.SendMessage(msg.Chat.Id, message,
+        var buttons = new List<InlineKeyboardButton[]>();
+        foreach (var m in movies.Take(20))
+        {
+            buttons.Add(new[]
+            {
+                InlineKeyboardButton.WithCallbackData($"🎬 {m.Title} ({m.ReleaseYear})", Bot.CallbackQueries.Callbacks.Movie.ShowMovieCallback.Pack(m.Id))
+            });
+        }
+
+        var replyMarkup = new InlineKeyboardMarkup(buttons);
+        var text = $"🎬 Movies (showing top {Math.Min(movies.Count, 20)}):";
+        
+        await _bot.SendMessage(msg.Chat.Id, text,
+            replyMarkup: replyMarkup,
             replyParameters: new ReplyParameters { MessageId = msg.MessageId });
     }
 

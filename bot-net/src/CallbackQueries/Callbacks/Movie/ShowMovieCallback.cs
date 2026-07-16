@@ -1,4 +1,4 @@
-﻿using Bot.Services;
+using Bot.Services;
 using Bot.Utils;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -26,13 +26,25 @@ public class ShowMovieCallback : ICallbackQuery
 
         var text = movie != null ? Beautify.FormatMovie(movie) : $"Movie with ID: {_movieId} not found";
 
-        await _bot.EditMessageText(
-            message!.Chat.Id,
-            message.MessageId,
-            text,
-            ParseMode.MarkdownV2,
-            linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
-            replyMarkup: MessageBuilder.GetMovieButtons(_movieId));
+        if (movie?.PosterPath != null)
+        {
+            await _bot.DeleteMessages(message!.Chat.Id, new[] { message.MessageId });
+            await _bot.SendPhoto(message.Chat.Id, MessageBuilder.FormatTmdbImageUrl(movie.PosterPath), Beautify.FormatMovieHeader(movie));
+            await _bot.SendMessage(message.Chat.Id, text,
+                parseMode: ParseMode.Html,
+                linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
+                replyMarkup: MessageBuilder.GetMovieButtons(_movieId));
+        }
+        else
+        {
+            await _bot.EditMessageText(
+                message!.Chat.Id,
+                message.MessageId,
+                text,
+                ParseMode.Html,
+                linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
+                replyMarkup: MessageBuilder.GetMovieButtons(_movieId));
+        }
     }
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)

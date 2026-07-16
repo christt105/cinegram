@@ -1,4 +1,4 @@
-﻿using Bot.Models;
+using Bot.Models;
 
 namespace Bot.Utils;
 
@@ -26,11 +26,22 @@ public static class Beautify
     {
         return $"""
                 
-                Title: {movie.Title}
-                Release Year: {movie.ReleaseYear}
-                ID: {movie.Id}
-                TMDB ID: [{movie.TmdbId}](https://www.themoviedb.org/movie/{movie.TmdbId})
-                Collections: {movie.Collections!.Length}
+                <b>Title:</b> {movie.Title}
+                <b>Release Year:</b> {movie.ReleaseYear}
+                <b>ID:</b> {movie.Id}
+                <b>TMDB ID:</b> <a href="https://www.themoviedb.org/movie/{movie.TmdbId}">{movie.TmdbId}</a>
+                <b>Collections:</b> {movie.Collections!.Length}
+                """;
+    }
+    public static string FormatSeries(Series series)
+    {
+        return $"""
+                
+                <b>Title:</b> {series.ManualTitle}
+                <b>Release Year:</b> {series.ReleaseYear?.ToString() ?? "-"}
+                <b>ID:</b> {series.Id}
+                <b>TMDB ID:</b> <a href="https://www.themoviedb.org/tv/{series.TmdbId}">{series.TmdbId}</a>
+                <b>Seasons:</b> {series.Seasons?.Length ?? 0}
                 """;
     }
 

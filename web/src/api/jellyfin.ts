@@ -168,3 +168,32 @@ export const fetchItemDetails = async (id: string, type: 'movie' | 'series') => 
 
     return item;
 };
+
+export const findJellyfinItemByTmdbId = async (tmdbId: number, type: 'movie' | 'series') => {
+    if (!token) return null;
+    try {
+        const usersRes = await userApi.getUsers();
+        if (!usersRes.data || usersRes.data.length === 0) return null;
+        const adminUser = usersRes.data.find(u => u.Policy?.IsAdministrator) || usersRes.data[0];
+        const currentUserId = adminUser.Id as string;
+
+        const itemType = type === 'movie' ? BaseItemKind.Movie : BaseItemKind.Series;
+        
+        const res = await itemsApi.getItems({
+            userId: currentUserId,
+            recursive: true,
+            includeItemTypes: [itemType] as BaseItemKind[],
+            fields: [ItemFields.ProviderIds] as ItemFields[]
+        });
+        
+        const matching = (res.data.Items || []).find((item: any) => {
+            const itemTmdb = item.ProviderIds?.Tmdb ? parseInt(item.ProviderIds.Tmdb) : null;
+            return itemTmdb === tmdbId;
+        });
+        
+        return matching ? (matching.Id as string) : null;
+    } catch (e) {
+        console.error("Error finding Jellyfin item by TMDB ID:", e);
+        return null;
+    }
+};

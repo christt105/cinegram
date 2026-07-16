@@ -196,6 +196,10 @@ public class UploadService
                     // Split file using 7z store-only (mx0)
                     Log.Info($"[Uploader] File is larger than 4GB. Splitting with 7z store-only...");
                     var partsDir = Path.Combine(tempDir, $"file_{fileIndex}");
+                    if (Directory.Exists(partsDir))
+                    {
+                        Directory.Delete(partsDir, true);
+                    }
                     Directory.CreateDirectory(partsDir);
 
                     var archiveBaseName = Path.GetFileNameWithoutExtension(videoFile) + ".zip";
@@ -204,6 +208,7 @@ public class UploadService
                     await SplitAndPackage(videoFile, archivePath);
 
                     var parts = Directory.GetFiles(partsDir, "*.*")
+                        .Where(f => !f.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
                         .OrderBy(f => f)
                         .ToList();
 

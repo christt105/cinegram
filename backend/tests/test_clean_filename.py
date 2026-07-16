@@ -57,6 +57,27 @@ from tmdb import TMDB
         "type": "tv",
         "season": 3,
         "episode": None
+    }),
+    ("01x01 Mi otra yo.mp4", {
+        "tmdbid": None,
+        "clean_name": "Mi otra yo",
+        "type": "tv",
+        "season": 1,
+        "episode": 1
+    }),
+    ("Dorohedoro - 01.mp4", {
+        "tmdbid": None,
+        "clean_name": "Dorohedoro",
+        "type": "tv",
+        "season": 1,
+        "episode": 1
+    }),
+    ("Dorohedoro S2 - 01.mp4", {
+        "tmdbid": None,
+        "clean_name": "Dorohedoro",
+        "type": "tv",
+        "season": 2,
+        "episode": 1
     })
 ])
 def test_clean_filename(filename, expected):

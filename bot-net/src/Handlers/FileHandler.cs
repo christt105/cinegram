@@ -26,13 +26,35 @@ public class FileHandler
 
     public async Task Handle(Message msg, UpdateType type)
     {
+        string? fileName = null;
+        long fileSize = 0;
+        string? mimeType = null;
+
+        if (msg.Document != null)
+        {
+            fileName = msg.Document.FileName;
+            fileSize = msg.Document.FileSize ?? 0;
+            mimeType = msg.Document.MimeType;
+        }
+        else if (msg.Video != null)
+        {
+            fileName = msg.Video.FileName;
+            fileSize = msg.Video.FileSize ?? 0;
+            mimeType = msg.Video.MimeType;
+        }
+
+        if (string.IsNullOrEmpty(fileName))
+        {
+            fileName = $"video_{msg.MessageId}.mp4";
+        }
+
         var uploadFile = new UploadFile
         {
             MessageId = msg.MessageId,
-            FileName = msg.Document.FileName,
-            FileSize = msg.Document.FileSize,
+            FileName = fileName,
+            FileSize = fileSize,
             UploadDate = msg.Date.ToString("O"),
-            MimeType = msg.Document.MimeType
+            MimeType = mimeType ?? "video/mp4"
         };
 
         var message = @$"📥 New file received:

@@ -21,7 +21,9 @@ public class CommandHandler
             new HealthCommand(bot.Bot, bot.ApiClient),
             new MoviesCommand(bot.Bot, bot.ApiClient),
             new SeriesCommand(bot.Bot, bot.ApiClient),
+            new SerieCommand(bot.Bot, bot.ApiClient),
             new MovieCommand(bot.Bot, bot.ApiClient),
+            new SearchCommand(bot.Bot, bot.ApiClient),
             new ImportCommand(bot)
         };
 

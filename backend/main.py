@@ -10,6 +10,7 @@ from tmdb import TMDB
 from models import Movie, File, Collection, Series, Season, Episode, DownloadTask, UploadTask
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import tmdbsimple as tmdb_simple
 
 app = FastAPI(title="jellygram-backend")
 
@@ -217,6 +218,152 @@ def delete_series(series_id: int, session: Session = Depends(get_session)):
     prune_orphaned_media(session)
     return {"status": "ok", "message": f"Series {series_id} deleted"}
 
+@app.post("/series/{series_id}/reidentify")
+def reidentify_series(series_id: int, new_tmdb_id: int, session: Session = Depends(get_session)):
+    import tmdbsimple as tmdb_simple
+    from crud import get_or_create_season, get_or_create_episode, propagate_identification
+    
+    series = session.get(Series, series_id)
+    if not series:
+        raise HTTPException(status_code=404, detail="Series not found")
+        
+    tmdb_result = tmdb.identify_by_tmdbid(new_tmdb_id, "tv")
+    if not tmdb_result:
+        raise HTTPException(status_code=404, detail="New TMDB ID not found on TMDB")
+        
+    # Check if a series with this TMDB ID already exists
+    existing_series = session.exec(select(Series).where(Series.tmdb_id == new_tmdb_id)).first()
+    
+    collections_to_remap = []
+    for season in series.seasons:
+        for collection in season.collections:
+            collections_to_remap.append({
+                "collection_id": collection.id,
+                "season_num": season.season_number,
+                "episode_num": None
+            })
+        for episode in season.episodes:
+            for collection in episode.collections:
+                collections_to_remap.append({
+                    "collection_id": collection.id,
+                    "season_num": season.season_number,
+                    "episode_num": episode.episode_number
+                })
+                
+    if existing_series:
+        target_series_id = existing_series.id
+    else:
+        first_air = tmdb_result.get("first_air_date")
+        release_year = int(first_air.split("-")[0]) if first_air else None
+        
+        tvdb_id = None
+        try:
+            external_ids = tmdb_simple.TV(new_tmdb_id).external_ids()
+            tvdb_id = external_ids.get("tvdb_id")
+        except Exception as e:
+            logger.error(f"Error fetching TVDB ID: {e}")
+            
+        series.tmdb_id = new_tmdb_id
+        series.manual_title = tmdb_result.get("name") or tmdb_result.get("original_name")
+        series.poster_path = tmdb_result.get("poster_path")
+        series.overview = tmdb_result.get("overview")
+        series.release_year = release_year
+        if tvdb_id:
+            series.tvdb_id = tvdb_id
+            
+        session.add(series)
+        session.commit()
+        session.refresh(series)
+        
+        target_series_id = series.id
+
+    if existing_series:
+        for season in series.seasons:
+            for episode in season.episodes:
+                session.delete(episode)
+            session.delete(season)
+        session.delete(series)
+    else:
+        for season in series.seasons:
+            for episode in season.episodes:
+                session.delete(episode)
+            session.delete(season)
+            
+    session.commit()
+    
+    for item in collections_to_remap:
+        collection = session.get(Collection, item["collection_id"])
+        if not collection:
+            continue
+        season_num = item["season_num"]
+        episode_num = item["episode_num"]
+        
+        season_obj = get_or_create_season(session, target_series_id, season_num)
+        if episode_num is not None:
+            episode_obj = get_or_create_episode(session, season_obj.id, episode_num)
+            collection.episode_id = episode_obj.id
+            collection.season_id = None
+        else:
+            collection.season_id = season_obj.id
+            collection.episode_id = None
+        session.add(collection)
+        
+    session.commit()
+    
+    for item in collections_to_remap:
+        collection = session.get(Collection, item["collection_id"])
+        if collection:
+            parsed = TMDB.clean_filename(collection.name)
+            propagate_identification(session, parsed["clean_name"], tmdb)
+            
+    prune_orphaned_media(session)
+    series_name = existing_series.manual_title if existing_series else series.manual_title
+    return {"status": "ok", "message": f"Series re-identified to {series_name}"}
+
+@app.post("/movies/{movie_id}/reidentify")
+def reidentify_movie(movie_id: int, new_tmdb_id: int, session: Session = Depends(get_session)):
+    from crud import propagate_identification
+    
+    movie = session.get(Movie, movie_id)
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
+        
+    tmdb_result = tmdb.identify_by_tmdbid(new_tmdb_id, "movie")
+    if not tmdb_result:
+        raise HTTPException(status_code=404, detail="New TMDB ID not found on TMDB")
+        
+    existing_movie = session.exec(select(Movie).where(Movie.tmdb_id == new_tmdb_id)).first()
+    
+    if existing_movie:
+        for collection in movie.collections:
+            collection.movie_id = existing_movie.id
+            session.add(collection)
+        session.delete(movie)
+        session.commit()
+        target_movie = existing_movie
+    else:
+        release_date = tmdb_result.get("release_date")
+        release_year = int(release_date.split("-")[0]) if release_date else None
+        
+        movie.tmdb_id = new_tmdb_id
+        movie.title = tmdb_result.get("title") or tmdb_result.get("original_title")
+        movie.poster_path = tmdb_result.get("poster_path")
+        movie.overview = tmdb_result.get("overview")
+        movie.release_year = release_year
+        
+        session.add(movie)
+        session.commit()
+        session.refresh(movie)
+        target_movie = movie
+        
+    for collection in target_movie.collections:
+        parsed = TMDB.clean_filename(collection.name)
+        propagate_identification(session, parsed["clean_name"], tmdb)
+        
+    prune_orphaned_media(session)
+    return {"status": "ok", "message": f"Movie re-identified to {target_movie.title}"}
+
+
 @app.delete("/collections/{collection_id}")
 def delete_collection(collection_id: int, session: Session = Depends(get_session)):
     """Delete a collection and all associated files from DB"""
@@ -229,6 +376,25 @@ def delete_collection(collection_id: int, session: Session = Depends(get_session
     session.commit()
     prune_orphaned_media(session)
     return {"status": "ok", "message": f"Collection {collection_id} deleted"}
+
+@app.get("/maintenance/orphans")
+def get_orphans(session: Session = Depends(get_session)):
+    orphaned_cols = session.exec(select(Collection).where(
+        Collection.movie_id == None,
+        Collection.season_id == None,
+        Collection.episode_id == None
+    )).all()
+    
+    result = []
+    for col in orphaned_cols:
+        result.append({
+            "id": col.id,
+            "name": col.name,
+            "quality": col.quality,
+            "files_count": len(col.files),
+            "files": [{"id": f.id, "filename": f.filename, "filesize": f.filesize} for f in col.files]
+        })
+    return result
 
 @app.get("/movies/{movie_id}", response_model=MovieOut)
 def get_movie(movie_id: int, session: Session = Depends(get_session)):
@@ -243,7 +409,74 @@ def get_series(series_id: int, session: Session = Depends(get_session)):
     if not series:
         raise HTTPException(status_code=404, detail="Series not found")
     return series
+
+class MovieUpdate(BaseModel):
+    title: Optional[str] = None
+    poster_path: Optional[str] = None
+    overview: Optional[str] = None
+    release_year: Optional[int] = None
+
+class SeriesUpdate(BaseModel):
+    manual_title: Optional[str] = None
+    poster_path: Optional[str] = None
+    overview: Optional[str] = None
+    release_year: Optional[int] = None
+
+@app.patch("/movies/{movie_id}")
+def update_movie(movie_id: int, request: MovieUpdate, session: Session = Depends(get_session)):
+    movie = session.get(Movie, movie_id)
+    if not movie:
+        raise HTTPException(status_code=404, detail="Movie not found")
     
+    update_data = request.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(movie, key, value)
+        
+    session.add(movie)
+    session.commit()
+    session.refresh(movie)
+    return movie
+
+@app.patch("/series/{series_id}")
+def update_series(series_id: int, request: SeriesUpdate, session: Session = Depends(get_session)):
+    series = session.get(Series, series_id)
+    if not series:
+        raise HTTPException(status_code=404, detail="Series not found")
+        
+    update_data = request.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(series, key, value)
+        
+    session.add(series)
+    session.commit()
+    session.refresh(series)
+    return series
+
+@app.get("/movies/{movie_id}/posters")
+def get_movie_posters(movie_id: int, session: Session = Depends(get_session)):
+    movie = session.get(Movie, movie_id)
+    if not movie or not movie.tmdb_id:
+        return []
+    try:
+        images = tmdb_simple.Movies(movie.tmdb_id).images()
+        posters = [p["file_path"] for p in images.get("posters", []) if "file_path" in p]
+        return posters
+    except Exception as e:
+        print(f"Error fetching movie posters: {e}")
+        return []
+
+@app.get("/series/{series_id}/posters")
+def get_series_posters(series_id: int, session: Session = Depends(get_session)):
+    series = session.get(Series, series_id)
+    if not series or not series.tmdb_id:
+        return []
+    try:
+        images = tmdb_simple.TV(series.tmdb_id).images()
+        posters = [p["file_path"] for p in images.get("posters", []) if "file_path" in p]
+        return posters
+    except Exception as e:
+        print(f"Error fetching series posters: {e}")
+        return []
 @app.get("/movies/tmdb/{tmdb_id}", response_model=Optional[MovieOut])
 def get_movie_by_tmdb(tmdb_id: int, session: Session = Depends(get_session)):
     """Return a single movie by TMDB ID with its collections and files"""
@@ -251,6 +484,14 @@ def get_movie_by_tmdb(tmdb_id: int, session: Session = Depends(get_session)):
     if not movie:
         return None
     return movie
+
+@app.get("/series/tmdb/{tmdb_id}", response_model=Optional[SeriesOut])
+def get_series_by_tmdb(tmdb_id: int, session: Session = Depends(get_session)):
+    """Return a single series by TMDB ID with its seasons and episodes"""
+    series = session.exec(select(Series).where(Series.tmdb_id == tmdb_id)).first()
+    if not series:
+        return None
+    return series
 
 @app.get("/movies/{movie_id}/collections", response_model=List[CollectionOut])
 def get_collections(movie_id: int, session: Session = Depends(get_session)):
@@ -306,6 +547,11 @@ class CollectionUpdate(BaseModel):
     subtitle_languages: Optional[str] = None
     tags: Optional[str] = None
     notes: Optional[str] = None
+    
+    # New fields to change season/episode association within the series
+    season_number: Optional[int] = None
+    episode_number: Optional[int] = None
+    clear_episode: Optional[bool] = None
 
 @app.patch("/collections/{collection_id}", response_model=Collection)
 def update_collection(
@@ -317,12 +563,73 @@ def update_collection(
     if not db_collection:
         raise HTTPException(status_code=404, detail="Collection not found")
 
+    # Handle season_number / episode_number changes if the collection is part of a series
+    series_id = None
+    if db_collection.season_id:
+        season = session.get(Season, db_collection.season_id)
+        if season:
+            series_id = season.series_id
+    elif db_collection.episode_id:
+        episode = session.get(Episode, db_collection.episode_id)
+        if episode and episode.season:
+            series_id = episode.season.series_id
+
+    if series_id is not None and collection_update.season_number is not None:
+        # Resolve target season
+        target_season = session.exec(select(Season).where(
+            Season.series_id == series_id,
+            Season.season_number == collection_update.season_number
+        )).first()
+        if not target_season:
+            target_season = Season(series_id=series_id, season_number=collection_update.season_number)
+            session.add(target_season)
+            session.commit()
+            session.refresh(target_season)
+            
+        db_collection.season_id = target_season.id
+        
+        # Decide episode
+        if collection_update.clear_episode:
+            db_collection.episode_id = None
+        elif collection_update.episode_number is not None:
+            # Find or create episode
+            target_ep = session.exec(select(Episode).where(
+                Episode.season_id == target_season.id,
+                Episode.episode_number == collection_update.episode_number
+            )).first()
+            if not target_ep:
+                target_ep = Episode(season_id=target_season.id, episode_number=collection_update.episode_number)
+                session.add(target_ep)
+                session.commit()
+                session.refresh(target_ep)
+            db_collection.episode_id = target_ep.id
+        else:
+            # If they just changed the season, we can keep the same episode number if they had one
+            if db_collection.episode_id:
+                old_ep = session.get(Episode, db_collection.episode_id)
+                if old_ep:
+                    target_ep = session.exec(select(Episode).where(
+                        Episode.season_id == target_season.id,
+                        Episode.episode_number == old_ep.episode_number
+                    )).first()
+                    if not target_ep:
+                        target_ep = Episode(season_id=target_season.id, episode_number=old_ep.episode_number)
+                        session.add(target_ep)
+                        session.commit()
+                        session.refresh(target_ep)
+                    db_collection.episode_id = target_ep.id
+
     update_data = collection_update.dict(exclude_unset=True)
+    # Exclude the virtual parameters from model fields assignment
+    for virtual_field in ["season_number", "episode_number", "clear_episode"]:
+        update_data.pop(virtual_field, None)
+
     for key, value in update_data.items():
         setattr(db_collection, key, value)
 
     session.add(db_collection)
     session.commit()
+    prune_orphaned_media(session)
     session.refresh(db_collection)
     return db_collection
 
@@ -343,6 +650,39 @@ def identify_collection_endpoint(
     session.refresh(db_collection)
     
     return db_collection
+
+class BatchIdentifyRequest(BaseModel):
+    collection_ids: List[int]
+    tmdb_id: int
+
+@app.post("/maintenance/identify-batch")
+def identify_batch(request: BatchIdentifyRequest, session: Session = Depends(get_session)):
+    from crud import identify_collection
+    results = []
+    for col_id in request.collection_ids:
+        try:
+            identify_collection(session, col_id, tmdb, forced_tmdb_id=request.tmdb_id)
+            results.append({"collection_id": col_id, "status": "success"})
+        except Exception as e:
+            logger.error(f"Failed to identify collection {col_id} in batch: {e}")
+            results.append({"collection_id": col_id, "status": "error", "error": str(e)})
+    session.commit()
+    return {"status": "ok", "results": results}
+
+class BatchDeleteRequest(BaseModel):
+    collection_ids: List[int]
+
+@app.post("/maintenance/delete-batch")
+def delete_batch(request: BatchDeleteRequest, session: Session = Depends(get_session)):
+    for col_id in request.collection_ids:
+        col = session.get(Collection, col_id)
+        if col:
+            for file in col.files:
+                session.delete(file)
+            session.delete(col)
+    session.commit()
+    prune_orphaned_media(session)
+    return {"status": "ok"}
 
 class CollectionCreate(BaseModel):
     name: str

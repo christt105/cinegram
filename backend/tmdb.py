@@ -20,9 +20,11 @@ class TMDB:
         # Detect type (movie or tv show)
         def detect_hint_type(n: str) -> str:
             if (re.search(r"[Ss]\d{1,2}[Ee]\d{1,3}", n) or 
-                re.search(r"\d{1,2}x\d{1,3}", n) or
-                re.search(r"\bTemporada\s+\d+\b", n, re.IGNORECASE) or
-                re.search(r"\bSeason\s+\d+\b", n, re.IGNORECASE)):
+                re.search(r"(?<!\d)\d{1,2}x\d{1,3}(?!\d)", n) or
+                re.search(r"(?<![a-zA-Z0-9])[Ss](\d{1,2})\s*[-_]\s*(\d{1,3})(?!\d)", n, re.IGNORECASE) or
+                re.search(r"\s+[-_]\s+(\d{1,3})(?!\d)$", n) or
+                re.search(r"(?<![a-zA-Z0-9])Temporada\s+\d+(?![a-zA-Z0-9])", n, re.IGNORECASE) or
+                re.search(r"(?<![a-zA-Z0-9])Season\s+\d+(?![a-zA-Z0-9])", n, re.IGNORECASE)):
                 return "tv"
             return "movie"
         
@@ -74,24 +76,51 @@ class TMDB:
             episode = int(match_sxe.group(2))
         else:
             # Try xxNxx (e.g. 5x08)
-            match_cross = re.search(r"\b(\d{1,2})x(\d{1,3})\b", name)
+            match_cross = re.search(r"(?<!\d)(\d{1,2})x(\d{1,3})(?!\d)", name)
             if match_cross:
                 season = int(match_cross.group(1))
                 episode = int(match_cross.group(2))
             else:
-                # Try "Temporada X" or "Season X"
-                match_season = re.search(r"\b(?:Temporada|Season)\s+(\d+)\b", name, re.IGNORECASE)
-                if match_season:
-                    season = int(match_season.group(1))
+                # Try Sxx - xx or Sxx_xx
+                match_s_dash = re.search(r"(?<![a-zA-Z0-9])[Ss](\d{1,2})\s*[-_]\s*(\d{1,3})(?!\d)", name)
+                if match_s_dash:
+                    season = int(match_s_dash.group(1))
+                    episode = int(match_s_dash.group(2))
+                else:
+                    # Try - xx at the end of name
+                    match_dash = re.search(r"\s+[-_]\s+(\d{1,3})(?!\d)$", name)
+                    if match_dash:
+                        season = 1
+                        episode = int(match_dash.group(1))
+                    else:
+                        # Try "Temporada X" or "Season X"
+                        match_season = re.search(r"(?<![a-zA-Z0-9])(?:Temporada|Season)\s+(\d+)(?![a-zA-Z0-9])", name, re.IGNORECASE)
+                        if match_season:
+                            season = int(match_season.group(1))
 
         content_type = detect_hint_type(name)
 
         # Remove episode markers (e.g. "1x125", "S05E10") from the clean name
         if content_type == "tv":
-            # Cut after SxxExx or Nxx
-            name = re.split(r"[Ss]\d{1,2}[Ee]\d{1,3}", name)[0]
-            name = re.split(r"\d{1,2}x\d{1,3}", name)[0]
-            # Also cut after " - "
+            marker_pattern = (
+                r"[Ss]\d{1,2}[Ee]\d{1,3}"
+                r"|(?<!\d)\d{1,2}x\d{1,3}(?!\d)"
+                r"|(?<![a-zA-Z0-9])[Ss]\d{1,2}\s*[-_]\s*\d{1,3}(?!\d)"
+                r"|\s+[-_]\s+\d{1,3}(?!\d)$"
+            )
+            parts = re.split(marker_pattern, name, flags=re.IGNORECASE)
+            if parts:
+                before = parts[0].strip(" -_")
+                if before:
+                    name = before
+                elif len(parts) > 1:
+                    after = parts[1].strip(" -_")
+                    if " - " in after:
+                        name = after.split(" - ")[0].strip()
+                    else:
+                        name = after
+            
+            # Finally discard any trailing " - " text (e.g. "Vikingos - Temporada 3")
             name = re.split(r" - ", name)[0]
 
         name = re.sub(r"\.(mkv|avi|mp4)$", "", name, flags=re.IGNORECASE)

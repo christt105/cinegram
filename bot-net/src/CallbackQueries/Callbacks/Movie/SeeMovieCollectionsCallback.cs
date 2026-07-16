@@ -1,4 +1,4 @@
-﻿using Bot.CallbackQueries.Callbacks.Collection;
+using Bot.CallbackQueries.Callbacks.Collection;
 using Bot.Services;
 using Telegram.Bot.Types.ReplyMarkups;
 using Message = Telegram.Bot.Types.Message;
@@ -32,7 +32,8 @@ public class SeeMovieCollectionsCallback : ICallbackQuery
             for (var i = 0; i < collections.Count; i++)
             {
                 var c = collections[i];
-                text += $"{i + 1}. \"{c.Name}\" (ID {c.Id}) - Quality {c.Quality} - Files {c.Files!.Length}\n";
+                var qualityStr = string.IsNullOrWhiteSpace(c.Quality) ? "" : $" - Quality {c.Quality}";
+                text += $"{i + 1}. \"{c.Name}\" (ID {c.Id}){qualityStr} - Files {c.Files!.Length}\n";
                 buttons.Add([
                     InlineKeyboardButton.WithCallbackData((i + 1).ToString(), ShowCollectionCallback.Pack(c.Id))
                 ]);

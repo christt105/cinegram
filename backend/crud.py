@@ -49,17 +49,61 @@ def try_subtract_quality(filename: str):
     return resolution, hdr
 
 
+def extract_quality_from_metadata(technical_metadata: str) -> Optional[str]:
+    import json
+    try:
+        data = json.loads(technical_metadata)
+        streams = data.get("streams", [])
+        video_stream = next((s for s in streams if s.get("codec_type") == "video"), None)
+        if not video_stream:
+            return None
+        
+        width = video_stream.get("width")
+        height = video_stream.get("height")
+        if not width or not height:
+            return None
+            
+        resolution = None
+        if width >= 3840 or height >= 2160:
+            resolution = "4K"
+        elif width >= 2560 or height >= 1440:
+            resolution = "2K"
+        elif width >= 1920 or height >= 1080:
+            resolution = "1080p"
+        elif width >= 1280 or height >= 720:
+            resolution = "720p"
+        elif width >= 848 or height >= 480:
+            resolution = "480p"
+            
+        if not resolution:
+            return None
+            
+        # Detect HDR
+        color_transfer = video_stream.get("color_transfer", "")
+        # smpte2084 (PQ), arib-std-b67 (HLG)
+        is_hdr = color_transfer in ["smpte2084", "arib-std-b67"]
+        
+        if is_hdr:
+            return f"{resolution} HDR"
+        return resolution
+    except Exception as e:
+        logger.error(f"Failed to parse technical metadata for quality: {e}")
+        return None
+
+
 def get_or_create_collection(session: Session, filename: str, mime_type: str, technical_metadata: Optional[str] = None):
 
     collection_name = filename.split('.')[0] # TODO: Improve collection name extraction logic (?)
 
-    resolution, hdr = try_subtract_quality(filename)
-    
+    quality = None
+    if technical_metadata:
+        quality = extract_quality_from_metadata(technical_metadata)
 
-    quality = f"{resolution}" if resolution else None
-
-    if quality and hdr and hdr != "SDR":
-        quality += f" {hdr}"
+    if not quality:
+        resolution, hdr = try_subtract_quality(filename)
+        quality = f"{resolution}" if resolution else None
+        if quality and hdr and hdr != "SDR":
+            quality += f" {hdr}"
 
     if mime_type.startswith("video/"):
         # if it is a video, we can assume that it is a file on its own
@@ -79,8 +123,28 @@ def get_or_create_collection(session: Session, filename: str, mime_type: str, te
     ).first()
 
     if collection:
+        updated = False
         if technical_metadata and not collection.technical_metadata:
             collection.technical_metadata = technical_metadata
+            updated = True
+        
+        # Prioritize technical metadata quality
+        if collection.technical_metadata:
+            extracted_quality = extract_quality_from_metadata(collection.technical_metadata)
+            if extracted_quality and collection.quality != extracted_quality:
+                collection.quality = extracted_quality
+                updated = True
+        elif not collection.quality:
+            # Fallback to filename
+            resolution, hdr = try_subtract_quality(filename)
+            quality_fn = f"{resolution}" if resolution else None
+            if quality_fn and hdr and hdr != "SDR":
+                quality_fn += f" {hdr}"
+            if quality_fn:
+                collection.quality = quality_fn
+                updated = True
+                
+        if updated:
             session.add(collection)
             session.commit()
             session.refresh(collection)

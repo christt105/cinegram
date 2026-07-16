@@ -1,4 +1,4 @@
-﻿using Bot.Services;
+using Bot.Services;
 using Bot.Utils;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -60,7 +60,7 @@ public class MovieCommand : ICommand
         var infoMessage = await _bot.SendMessage(
             msg.Chat.Id,
             infoText,
-            ParseMode.MarkdownV2,
+            ParseMode.Html,
             linkPreviewOptions: new LinkPreviewOptions { IsDisabled = true },
             replyMarkup: MessageBuilder.GetMovieButtons(movie.Id));
     }

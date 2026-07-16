@@ -1,5 +1,6 @@
 using Bot.Services;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 using Message = WTelegram.Types.Message;
 
 namespace Bot.Commands;
@@ -19,20 +20,27 @@ public class SeriesCommand : ICommand
     {
         var series = await _apiClient.GetSeriesAsync();
 
-        var message = "📭 No series found.";
-        if (series != null && series.Count > 0)
+        if (series == null || series.Count == 0)
         {
-            message = "📺 Series:\n";
-            for (var i = 0; i < Math.Min(series.Count, 10); i++)
-            {
-                var s = series[i];
-                message += $"- {s.Id}: {s.ManualTitle} [tmdbid-{s.TmdbId}]\n";
-            }
-
-            if (series.Count > 10) message += $"\n... and {series.Count - 10} more";
+            await _bot.SendMessage(msg.Chat.Id, "📭 No series found.",
+                replyParameters: new ReplyParameters { MessageId = msg.MessageId });
+            return;
         }
 
-        await _bot.SendMessage(msg.Chat.Id, message,
+        var buttons = new List<InlineKeyboardButton[]>();
+        foreach (var s in series.Take(20))
+        {
+            buttons.Add(new[]
+            {
+                InlineKeyboardButton.WithCallbackData($"📺 {s.ManualTitle} ({s.ReleaseYear})", Bot.CallbackQueries.Callbacks.Series.ShowSeriesCallback.Pack(s.Id))
+            });
+        }
+
+        var replyMarkup = new InlineKeyboardMarkup(buttons);
+        var text = $"📺 Series (showing top {Math.Min(series.Count, 20)}):";
+        
+        await _bot.SendMessage(msg.Chat.Id, text,
+            replyMarkup: replyMarkup,
             replyParameters: new ReplyParameters { MessageId = msg.MessageId });
     }
 

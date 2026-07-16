@@ -13,9 +13,34 @@
       <div class="item-hero glass-panel" style="padding: 1.5rem; border-radius: 16px;">
         <img v-if="item.poster_path" :src="item.poster_path.startsWith('/') ? 'https://image.tmdb.org/t/p/w500' + item.poster_path : item.poster_path" class="hero-poster" />
         <div class="hero-info">
-          <h1>{{ item.title || item.manual_title || 'Unknown Title' }}</h1>
-          <p class="year">{{ item.release_year }}</p>
-          <p class="overview">{{ item.overview }}</p>
+          <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <h1 style="margin: 0; font-size: 2.2rem; font-weight: 700;">{{ item.title || item.manual_title || 'Unknown Title' }}</h1>
+            <span class="year-badge" style="background: rgba(255,255,255,0.1); padding: 0.25rem 0.6rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.15);">{{ item.release_year }}</span>
+            <div v-if="item.tmdb_id" style="display: inline-flex; align-items: center; gap: 0.35rem;">
+              <a :href="type === 'movies' ? 'https://www.themoviedb.org/movie/' + item.tmdb_id : 'https://www.themoviedb.org/tv/' + item.tmdb_id" target="_blank" rel="noopener noreferrer" class="tmdb-link" style="display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(13, 37, 63, 0.65); border: 1px solid rgba(1, 180, 228, 0.4); padding: 0.25rem 0.6rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #90cea1; text-decoration: none; transition: all 0.2s; height: 30px;">
+                <span style="color: #01b4e4; font-weight: 800;">TMDB:</span> {{ item.tmdb_id }}
+              </a>
+              <button @click="copyTmdbId" class="glass-button" style="padding: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; height: 30px; width: 30px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); cursor: pointer;" title="Copiar ID de TMDB">
+                <Check v-if="copied" :size="13" style="color: #4ade80;" />
+                <Copy v-else :size="13" style="color: #a1a1aa;" />
+              </button>
+            </div>
+          </div>
+          <p class="overview" style="margin-top: 1rem; color: #d1d5db; line-height: 1.6;">{{ item.overview }}</p>
+          <div class="admin-actions" style="margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <router-link v-if="jellyfinItemId" :to="'/jellyfin/' + type + '/' + jellyfinItemId" class="glass-button" style="background: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.35); color: #e9d5ff; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; padding: 6px 12px; font-size: 0.9rem; border-radius: 8px;">
+              📂 Ver Tarjeta Jellyfin
+            </router-link>
+            <button @click="reidentifyItem" class="glass-button" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd;">
+              🔍 Re-identificar (TMDB ID)
+            </button>
+            <button @click="changePoster" class="glass-button" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #a7f3d0;">
+              🖼️ Cambiar Portada
+            </button>
+            <button @click="deleteItem" class="glass-button danger" style="background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.35); color: #fca5a5;">
+              🗑️ Borrar Todo
+            </button>
+          </div>
         </div>
       </div>
 
@@ -31,9 +56,12 @@
                 <span v-if="getTechMeta(col)" style="font-size: 0.8rem; color: #a1a1aa; max-width: 100%;">{{ getTechMeta(col) }}</span>
                 <span v-else-if="col.technical_metadata" class="meta-badge">Info. Técnica Disponible</span>
               </div>
-              <div class="col-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end;">
+              <div class="col-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; align-items: center;">
                 <button @click="downloadCollection(col.id)" class="glass-button primary">
                   <DownloadCloud :size="16" /> Descargar
+                </button>
+                <button @click="openEditModal(col, null, null)" class="glass-button" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;">
+                  <Edit3 :size="16" /> Editar
                 </button>
                 <button @click="deleteCollection(col.id)" class="glass-button danger">
                   <Trash2 :size="16" /> Borrar
@@ -55,6 +83,33 @@
                 <DownloadCloud :size="16" /> Descargar Temp.
               </button>
             </div>
+
+            <!-- Season Packs (Collections linked directly to Season) -->
+            <div v-if="season.collections && season.collections.length > 0" class="season-packs-section" style="margin-bottom: 1.5rem;">
+              <h4 style="margin: 0 0 0.75rem 0; font-size: 1rem; color: #4ade80; display: flex; align-items: center; gap: 0.5rem;">
+                📦 Packs de Temporada Completa
+              </h4>
+              <div class="season-packs-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <div v-for="col in season.collections" :key="col.id" class="collection-item glass-panel" style="padding: 1rem; background: rgba(0, 0, 0, 0.25); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(74, 222, 128, 0.15);">
+                  <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <strong style="color: #4ade80; font-size: 1.05rem;">{{ col.name || col.quality || 'Temporada Completa' }}</strong>
+                    <span v-if="col.audio_languages" style="font-size: 0.85rem; color: #a1a1aa;">Audio: {{ col.audio_languages }}</span>
+                    <span v-if="getTechMeta(col)" style="font-size: 0.8rem; color: #888;">{{ getTechMeta(col) }}</span>
+                  </div>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm">
+                      <DownloadCloud :size="14" /> Descargar Pack
+                    </button>
+                    <button @click="openEditModal(col, season.season_number, null)" class="glass-button btn-sm" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;">
+                      <Edit3 :size="14" /> Editar
+                    </button>
+                    <button @click="deleteCollection(col.id)" class="glass-button danger btn-sm">
+                      <Trash2 :size="14" /> Borrar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
             
             <div class="episode-list">
               <div v-for="ep in season.episodes" :key="ep.id" class="episode-item glass-panel" style="flex-direction: column; align-items: stretch; gap: 0;">
@@ -64,14 +119,17 @@
                 </div>
                 
                 <div v-if="ep.collections && ep.collections.length > 0" class="ep-collections" style="width: 100%;">
-                  <div v-for="col in ep.collections" :key="col.id" class="collection-item" style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 8px; margin-bottom: 0.5rem;">
+                  <div v-for="col in ep.collections" :key="col.id" class="collection-item" style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 8px; margin-bottom: 0.5rem; border: 1px solid rgba(255,255,255,0.03);">
                     <div style="display: flex; flex-direction: column;">
-                      <span style="font-size: 0.85rem; color: #a1a1aa;">{{ col.quality || 'Auto' }}</span>
-                      <span style="font-size: 0.75rem; color: #666;">{{ col.files?.length || 0 }} archivos</span>
+                      <span style="font-size: 0.85rem; color: #d1d5db; font-weight: 500;">{{ col.name || col.quality || 'Auto' }}</span>
+                      <span style="font-size: 0.75rem; color: #888;">{{ col.files?.length || 0 }} archivos</span>
                     </div>
                     <div style="display: flex; gap: 0.25rem;">
                       <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm icon-only" title="Descargar">
                         <DownloadCloud :size="14" />
+                      </button>
+                      <button @click="openEditModal(col, season.season_number, ep.episode_number)" class="glass-button btn-sm icon-only" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;" title="Editar">
+                        <Edit3 :size="14" />
                       </button>
                       <button @click="deleteCollection(col.id)" class="glass-button danger btn-sm icon-only" title="Borrar">
                         <Trash2 :size="14" />
@@ -87,12 +145,109 @@
         
       </div>
     </div>
+
+    <!-- Edit Collection Modal -->
+    <div v-if="editingCollection" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px);">
+      <div class="glass-panel" style="width: 100%; max-width: 500px; padding: 2rem; border-radius: 16px; background: rgba(17, 24, 39, 0.9); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; gap: 1.25rem; border: 1px solid rgba(255,255,255,0.1);">
+        <h3 style="margin-top: 0; font-size: 1.5rem; margin-bottom: 0.5rem; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem;">Editar Colección</h3>
+        
+        <div style="display: flex; flex-direction: column; gap: 1rem; max-height: 70vh; overflow-y: auto; padding-right: 0.25rem;">
+          <div>
+            <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Nombre / Versión (ej. Versión Extendida)</label>
+            <input v-model="editForm.name" type="text" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
+          </div>
+          
+          <div>
+            <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Calidad (e.g. 1080p, 4K, HDR)</label>
+            <input v-model="editForm.quality" type="text" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+              <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Audios (e.g. es, en)</label>
+              <input v-model="editForm.audio_languages" type="text" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Subtítulos</label>
+              <input v-model="editForm.subtitle_languages" type="text" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
+            </div>
+          </div>
+
+          <!-- Series season/episode change controls -->
+          <div v-if="type === 'series'" class="glass-panel" style="padding: 1rem; background: rgba(255, 255, 255, 0.02); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 0.75rem;">
+            <h4 style="margin: 0; font-size: 0.95rem; color: var(--jellyfin-blue); font-weight: 600;">Ubicación dentro de la Serie</h4>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div>
+                <label style="display: block; font-size: 0.8rem; color: #a1a1aa; margin-bottom: 0.25rem;">Temporada</label>
+                <input v-model.number="editForm.season_number" type="number" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
+              </div>
+              
+              <div v-if="!editForm.is_season_pack">
+                <label style="display: block; font-size: 0.8rem; color: #a1a1aa; margin-bottom: 0.25rem;">Episodio</label>
+                <input v-model.number="editForm.episode_number" type="number" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
+              </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
+              <input type="checkbox" id="is_season_pack" v-model="editForm.is_season_pack" style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--jellyfin-blue);" />
+              <label for="is_season_pack" style="font-size: 0.85rem; color: #d1d5db; cursor: pointer;">Es un Pack de Temporada Completa</label>
+            </div>
+          </div>
+
+          <div>
+            <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Notas</label>
+            <textarea v-model="editForm.notes" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; min-height: 60px; font-family: sans-serif; resize: vertical;"></textarea>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1rem; margin-top: 0.5rem;">
+          <button @click="editingCollection = null" class="glass-button">Cancelar</button>
+          <button @click="saveCollectionChanges" class="glass-button primary">Guardar Cambios</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Choose Poster Modal -->
+    <div v-if="showingPosterModal" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px);">
+      <div class="glass-panel" style="width: 100%; max-width: 600px; padding: 2rem; border-radius: 16px; background: rgba(17, 24, 39, 0.9); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; gap: 1.25rem; border: 1px solid rgba(255,255,255,0.1);">
+        <h3 style="margin-top: 0; font-size: 1.5rem; margin-bottom: 0.5rem; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem;">Elegir Portada de TMDB</h3>
+        
+        <!-- List of TMDB posters -->
+        <div v-if="loadingPosters" style="color: #a1a1aa; text-align: center; padding: 2rem;">
+          Cargando portadas disponibles de TMDB...
+        </div>
+        <div v-else-if="availablePosters.length === 0" style="color: #a1a1aa; text-align: center; padding: 1.5rem;">
+          No se han encontrado portadas de TMDB para este elemento.
+        </div>
+        <div v-else class="posters-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.75rem; max-height: 45vh; overflow-y: auto; padding-right: 0.5rem;">
+          <div v-for="path in availablePosters" :key="path" @click="selectPoster(path)" class="poster-option" style="cursor: pointer; border-radius: 8px; overflow: hidden; border: 3px solid transparent; transition: all 0.2s; position: relative;" :style="{ borderColor: item.poster_path === path ? 'var(--jellyfin-blue)' : 'transparent' }">
+            <img :src="'https://image.tmdb.org/t/p/w185' + path" style="width: 100%; display: block;" />
+            <div v-if="item.poster_path === path" style="position: absolute; top: 4px; right: 4px; background: var(--jellyfin-blue); color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold;">✓</div>
+          </div>
+        </div>
+
+        <!-- Manual custom URL fallback -->
+        <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+          <label style="font-size: 0.85rem; color: #a1a1aa;">O introduce una URL de portada manualmente:</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input v-model="manualPosterUrl" type="text" placeholder="https://... o /path.jpg" style="flex-grow: 1; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
+            <button @click="selectPoster(manualPosterUrl)" class="glass-button primary">Aplicar</button>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1rem; margin-top: 0.5rem;">
+          <button @click="showingPosterModal = false" class="glass-button">Cerrar</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { DownloadCloud, Trash2 } from 'lucide-vue-next'
+import { DownloadCloud, Trash2, Edit3, Copy, Check } from 'lucide-vue-next'
+import { findJellyfinItemByTmdbId } from '../api/jellyfin'
 
 const props = defineProps<{
   type: string
@@ -103,6 +258,62 @@ const item = ref<any>(null)
 const isLoading = ref(true)
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://192.168.1.15:8005'
+
+const editingCollection = ref<any>(null)
+const editForm = ref({
+  id: 0,
+  name: '',
+  quality: '',
+  audio_languages: '',
+  subtitle_languages: '',
+  notes: '',
+  season_number: 1,
+  episode_number: null as number | null,
+  is_season_pack: false
+})
+
+const showingPosterModal = ref(false)
+const loadingPosters = ref(false)
+const availablePosters = ref<string[]>([])
+const manualPosterUrl = ref('')
+
+const copied = ref(false)
+const copyTmdbId = () => {
+  if (!item.value?.tmdb_id) return
+  const text = item.value.tmdb_id.toString()
+  
+  let success = false
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text)
+    success = true
+  } else {
+    // Fallback using textarea for non-secure HTTP local network contexts
+    const textArea = document.createElement("textarea")
+    textArea.value = text
+    textArea.style.position = "fixed"
+    textArea.style.left = "-999999px"
+    textArea.style.top = "-999999px"
+    document.body.appendChild(textArea)
+    textArea.focus()
+    textArea.select()
+    try {
+      document.execCommand('copy')
+      success = true
+    } catch (err) {
+      console.error('Fallback copy failed', err)
+    }
+    textArea.remove()
+  }
+  
+  if (success) {
+    copied.value = true
+    setTimeout(() => {
+      copied.value = false
+    }, 2000)
+  } else {
+    alert("No se pudo copiar. Por favor, cópialo manualmente.")
+  }
+}
 
 const fetchItem = async () => {
   isLoading.value = true
@@ -120,11 +331,81 @@ const fetchItem = async () => {
         })
       }
       item.value = data
+      if (data.tmdb_id) {
+        checkJellyfinItem(data.tmdb_id)
+      }
     }
   } catch (err) {
     console.error(err)
   } finally {
     isLoading.value = false
+  }
+}
+
+const jellyfinItemId = ref<string | null>(null)
+const checkJellyfinItem = async (tmdbId: number) => {
+  try {
+    const jfId = await findJellyfinItemByTmdbId(tmdbId, props.type === 'movies' ? 'movie' : 'series')
+    if (jfId) {
+      jellyfinItemId.value = jfId
+    }
+  } catch (err) {
+    console.error("Error finding Jellyfin item:", err)
+  }
+}
+
+const openEditModal = (col: any, currentSeason: number | null, currentEpisode: number | null) => {
+  editingCollection.value = col
+  editForm.value = {
+    id: col.id,
+    name: col.name || '',
+    quality: col.quality || '',
+    audio_languages: col.audio_languages || '',
+    subtitle_languages: col.subtitle_languages || '',
+    notes: col.notes || '',
+    season_number: currentSeason !== null ? currentSeason : 1,
+    episode_number: currentEpisode,
+    is_season_pack: currentEpisode === null && currentSeason !== null
+  }
+}
+
+const saveCollectionChanges = async () => {
+  try {
+    const payload: any = {
+      name: editForm.value.name,
+      quality: editForm.value.quality,
+      audio_languages: editForm.value.audio_languages,
+      subtitle_languages: editForm.value.subtitle_languages,
+      notes: editForm.value.notes
+    }
+
+    if (props.type === 'series') {
+      payload.season_number = editForm.value.season_number
+      if (editForm.value.is_season_pack) {
+        payload.clear_episode = true
+        payload.episode_number = null
+      } else {
+        payload.episode_number = editForm.value.episode_number
+        payload.clear_episode = false
+      }
+    }
+
+    const res = await fetch(`${backendUrl}/collections/${editForm.value.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+
+    if (res.ok) {
+      alert("Colección actualizada correctamente.")
+      editingCollection.value = null
+      fetchItem() // refresh to reload layout and locations
+    } else {
+      alert("Error al guardar los cambios.")
+    }
+  } catch (err) {
+    console.error(err)
+    alert("Error de conexión.")
   }
 }
 
@@ -200,6 +481,97 @@ const deleteCollection = async (collectionId: number) => {
       fetchItem() // refresh
     } else {
       alert("Failed to delete collection.")
+    }
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+const changePoster = async () => {
+  showingPosterModal.value = true
+  loadingPosters.value = true
+  manualPosterUrl.value = item.value.poster_path || ''
+  availablePosters.value = []
+  try {
+    const endpoint = props.type === 'movies' ? `/movies/${props.id}/posters` : `/series/${props.id}/posters`
+    const res = await fetch(`${backendUrl}${endpoint}`)
+    if (res.ok) {
+      availablePosters.value = await res.json()
+    }
+  } catch (err) {
+    console.error(err)
+  } finally {
+    loadingPosters.value = false
+  }
+}
+
+const selectPoster = async (path: string) => {
+  if (!path.trim()) return
+  
+  try {
+    const endpoint = props.type === 'movies' ? `/movies/${props.id}` : `/series/${props.id}`
+    const res = await fetch(`${backendUrl}${endpoint}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ poster_path: path.trim() })
+    })
+    if (res.ok) {
+      alert("Portada actualizada con éxito.")
+      showingPosterModal.value = false
+      fetchItem()
+    } else {
+      alert("Error al actualizar la portada.")
+    }
+  } catch (err) {
+    console.error(err)
+    alert("Error de conexión.")
+  }
+}
+
+const reidentifyItem = async () => {
+  const newTmdbIdStr = prompt("Introduce el nuevo ID de TMDB para re-identificar:")
+  if (!newTmdbIdStr) return
+  const newTmdbId = parseInt(newTmdbIdStr.trim())
+  if (isNaN(newTmdbId)) {
+    alert("El ID debe ser un número válido.")
+    return
+  }
+  
+  isLoading.value = true
+  try {
+    const endpoint = props.type === 'movies' 
+      ? `/movies/${props.id}/reidentify?new_tmdb_id=${newTmdbId}` 
+      : `/series/${props.id}/reidentify?new_tmdb_id=${newTmdbId}`
+    const res = await fetch(`${backendUrl}${endpoint}`, { method: 'POST' })
+    if (res.ok) {
+      alert("Elemento re-identificado correctamente. Se ha actualizado la info y re-mapeado los archivos.")
+      fetchItem() // refresh
+    } else {
+      const errText = await res.text()
+      alert("Error al re-identificar: " + errText)
+    }
+  } catch (err) {
+    console.error(err)
+    alert("Error de conexión.")
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const deleteItem = async () => {
+  const confirmMsg = props.type === 'movies'
+    ? "¿Estás seguro de que quieres borrar esta película? Se desvincularán todas las colecciones."
+    : "¿Estás seguro de que quieres borrar esta serie? Se desvincularán todas las temporadas y episodios."
+  if (!confirm(confirmMsg)) return
+  
+  try {
+    const endpoint = props.type === 'movies' ? `/movies/${props.id}` : `/series/${props.id}`
+    const res = await fetch(`${backendUrl}${endpoint}`, { method: 'DELETE' })
+    if (res.ok) {
+      alert("Borrado correctamente.")
+      window.history.back()
+    } else {
+      alert("Error al borrar.")
     }
   } catch (err) {
     console.error(err)
@@ -303,6 +675,17 @@ onMounted(() => {
 }
 .icon-only {
   padding: 4px 6px;
+}
+.poster-option:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.tmdb-link:hover {
+  background: rgba(13, 37, 63, 0.9) !important;
+  border-color: rgba(1, 180, 228, 0.8) !important;
+  box-shadow: 0 0 10px rgba(1, 180, 228, 0.3);
+  transform: translateY(-1px);
 }
 
 @media (max-width: 768px) {

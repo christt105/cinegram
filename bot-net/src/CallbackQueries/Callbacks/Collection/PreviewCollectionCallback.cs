@@ -1,4 +1,4 @@
-﻿using Bot.Services;
+using Bot.Services;
 using Bot.Utils;
 using Telegram.Bot.Types;
 
@@ -46,11 +46,25 @@ public class PreviewCollectionCallback : ICallbackQuery
 
             if (movie != null)
             {
-                var coverMessage = movie.PosterPath != null
-                    ? await _bot.SendPhoto(message.Chat.Id,
+                var text = $"🎬 <b>{movie.Title}</b> ({movie.ReleaseYear})\n";
+                text += $"<b>Collection:</b> {collection.Name}";
+                if (!string.IsNullOrWhiteSpace(collection.Quality))
+                {
+                    text += $" - Quality {collection.Quality}";
+                }
+                text += "\n";
+                text += $"<b>Files:</b> {collection.Files.Length}";
+
+                if (movie.PosterPath != null)
+                {
+                    await _bot.SendPhoto(message.Chat.Id,
                         MessageBuilder.FormatTmdbImageUrl(movie.PosterPath),
-                        Beautify.FormatMovieHeader(movie))
-                    : await _bot.SendMessage(message.Chat.Id, Beautify.FormatMovieHeader(movie));
+                        text, parseMode: Telegram.Bot.Types.Enums.ParseMode.Html);
+                }
+                else
+                {
+                    await _bot.SendMessage(message.Chat.Id, text, parseMode: Telegram.Bot.Types.Enums.ParseMode.Html);
+                }
             }
         }
 
@@ -63,7 +77,7 @@ public class PreviewCollectionCallback : ICallbackQuery
     {
         const int maxPerGroup = 10;
 
-        var validFiles = files.Where(f => f.Document != null).ToList();
+        var validFiles = files.Where(f => f.Document != null || f.Video != null).ToList();
         if (validFiles.Count == 0)
         {
             await _bot.SendMessage(chatId, "No valid files to send.");
@@ -77,7 +91,14 @@ public class PreviewCollectionCallback : ICallbackQuery
             var mediaGroup = new List<IAlbumInputMedia>();
             foreach (var file in group)
             {
-                mediaGroup.Add(new InputMediaDocument(new InputFileId(file.Document!.FileId)));
+                if (file.Document != null)
+                {
+                    mediaGroup.Add(new InputMediaDocument(new InputFileId(file.Document.FileId)));
+                }
+                else if (file.Video != null)
+                {
+                    mediaGroup.Add(new InputMediaVideo(new InputFileId(file.Video.FileId)));
+                }
             }
 
             await _bot.SendMediaGroup(chatId, mediaGroup);

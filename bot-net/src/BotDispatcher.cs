@@ -68,7 +68,7 @@ public class BotDispatcher
             return;
         }
 
-        if (msg.Document != null) await _fileHandler.Handle(msg, type);
+        if (msg.Document != null || msg.Video != null) await _fileHandler.Handle(msg, type);
 
         if (!string.IsNullOrEmpty(msg.Text))
         {

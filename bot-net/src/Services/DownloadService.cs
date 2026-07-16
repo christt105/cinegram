@@ -66,12 +66,23 @@ public class DownloadService
                 Log.Info($"[Downloader] Fetching message {file.MessageId} for file {file.Filename}");
                 var messages = await _bot.GetMessagesById(_allowedUser, new[] { file.MessageId });
                 var msg = messages.FirstOrDefault();
-                if (msg == null || msg.Document == null)
-                    throw new Exception($"Message {file.MessageId} not found or has no document.");
+                if (msg == null || (msg.Document == null && msg.Video == null))
+                    throw new Exception($"Message {file.MessageId} not found or has no document/video.");
 
                 var tlMessage = msg.TLMessage as TL.Message;
-                var mmd = tlMessage.media as MessageMediaDocument;
-                var doc = mmd.document as TL.Document;
+                if (tlMessage?.media == null)
+                    throw new Exception($"Message {file.MessageId} has no media in TLMessage.");
+
+                TL.Document? doc = null;
+                if (tlMessage.media is MessageMediaDocument mmd)
+                {
+                    doc = mmd.document as TL.Document;
+                }
+
+                if (doc == null)
+                {
+                    throw new Exception($"Message {file.MessageId} media document is null.");
+                }
 
                 var filePath = Path.Combine(tempDir, file.Filename);
                 Log.Info($"[Downloader] Downloading {file.Filename} ({file.Filesize} bytes) to {filePath}");
@@ -152,6 +163,10 @@ public class DownloadService
                 if (task.TvdbId != null)
                 {
                     dirName = $"{task.Title} [tvdbid-{task.TvdbId}]";
+                }
+                else if (task.TmdbId != null)
+                {
+                    dirName = $"{task.Title} [tmdbid-{task.TmdbId}]";
                 }
                 else
                 {

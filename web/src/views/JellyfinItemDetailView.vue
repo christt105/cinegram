@@ -13,13 +13,27 @@
       <div class="item-hero glass-panel" style="padding: 1.5rem; border-radius: 16px;">
         <img v-if="item.poster_path" :src="item.poster_path" class="hero-poster" />
         <div class="hero-info">
-          <h1>{{ item.Name || 'Unknown Title' }}</h1>
-          <p class="year">{{ item.ProductionYear }}</p>
-          <p class="overview">{{ item.Overview }}</p>
+          <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+            <h1 style="margin: 0; font-size: 2.2rem; font-weight: 700;">{{ item.Name || 'Unknown Title' }}</h1>
+            <span class="year-badge" style="background: rgba(255,255,255,0.1); padding: 0.25rem 0.6rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.15);">{{ item.ProductionYear }}</span>
+          </div>
+          <p class="overview" style="margin-top: 1rem; color: #d1d5db; line-height: 1.6;">{{ item.Overview }}</p>
           
-          <div style="margin-top: 1rem;" v-if="type === 'movies'">
-            <div v-if="item.MediaSources && item.MediaSources.length > 1" style="display:flex; flex-direction:column; gap:0.5rem;">
-              <h3 style="font-size: 1.1rem; color: #a1a1aa; margin: 0;">Versiones disponibles:</h3>
+          <div class="actions-row" style="margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
+            <router-link v-if="localDbItem" :to="'/item/' + type + '/' + localDbItem.id" class="glass-button" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #a7f3d0; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; padding: 6px 12px; font-size: 0.9rem; border-radius: 8px;">
+              📂 Ver Tarjeta Telegram
+            </router-link>
+            
+            <div v-if="type === 'movies' && !(item.MediaSources && item.MediaSources.length > 1)">
+              <button @click="uploadItem(item, 'movie')" class="glass-button primary">
+                <UploadCloud :size="16" /> Subir a Telegram
+              </button>
+            </div>
+          </div>
+
+          <div style="margin-top: 1.5rem;" v-if="type === 'movies' && item.MediaSources && item.MediaSources.length > 1">
+            <h3 style="font-size: 1.1rem; color: #a1a1aa; margin: 0 0 0.5rem 0;">Versiones disponibles:</h3>
+            <div style="display:flex; flex-direction:column; gap:0.5rem;">
               <div v-for="ms in item.MediaSources" :key="ms.Id" style="display:flex; justify-content:space-between; align-items:center; background: rgba(0,0,0,0.2); padding: 0.5rem 1rem; border-radius: 8px;">
                 <div style="display: flex; flex-direction: column;">
                   <span style="font-size: 0.9rem; font-weight: bold;">{{ ms.Name || 'Versión alternativa' }}</span>
@@ -29,11 +43,6 @@
                   <UploadCloud :size="14" style="margin-right:0.25rem;" /> Subir
                 </button>
               </div>
-            </div>
-            <div v-else>
-              <button @click="uploadItem(item, 'movie')" class="glass-button primary">
-                <UploadCloud :size="16" /> Subir a Telegram
-              </button>
             </div>
           </div>
         </div>
@@ -137,10 +146,30 @@ const fetchItem = async () => {
     }
     
     item.value = data
+    if (data.ProviderIds?.Tmdb) {
+      checkLocalDatabase(data.ProviderIds.Tmdb)
+    }
   } catch (err) {
     console.error(err)
   } finally {
     isLoading.value = false
+  }
+}
+
+const localDbItem = ref<any>(null)
+const checkLocalDatabase = async (tmdbId: string) => {
+  if (!tmdbId) return
+  try {
+    const typePath = props.type === 'movies' ? 'movies' : 'series'
+    const res = await fetch(`${backendUrl}/${typePath}/tmdb/${tmdbId}`)
+    if (res.ok) {
+      const data = await res.json()
+      if (data && data.id) {
+        localDbItem.value = data
+      }
+    }
+  } catch (err) {
+    console.error("Error checking local DB:", err)
   }
 }
 

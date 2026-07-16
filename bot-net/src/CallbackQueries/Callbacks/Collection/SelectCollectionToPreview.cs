@@ -1,4 +1,4 @@
-﻿using Bot.CallbackQueries.Callbacks.Movie;
+using Bot.CallbackQueries.Callbacks.Movie;
 using Bot.Services;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -52,7 +52,8 @@ public class SelectCollectionToPreview : ICallbackQuery
         for (var i = 0; i < collections.Length; i++)
         {
             var c = collections[i];
-            text += $"{i + 1}. \"{c.Name}\" (ID {c.Id}) - Quality {c.Quality} - Files {c.Files!.Length}\n";
+            var qualityStr = string.IsNullOrWhiteSpace(c.Quality) ? "" : $" - Quality {c.Quality}";
+            text += $"{i + 1}. \"{c.Name}\" (ID {c.Id}){qualityStr} - Files {c.Files!.Length}\n";
             buttons.Add([
                 InlineKeyboardButton.WithCallbackData((i + 1).ToString(), PreviewCollectionCallback.Pack(c.Id))
             ]);
