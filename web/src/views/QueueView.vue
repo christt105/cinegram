@@ -94,7 +94,7 @@ const uploads = ref<UploadTask[]>([]);
 const downloads = ref<DownloadTask[]>([]);
 const isLoading = ref(false);
 let pollInterval: any = null;
-const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://192.168.1.15:8005';
+const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:8005`;
 
 const fetchQueues = async () => {
   isLoading.value = true;
