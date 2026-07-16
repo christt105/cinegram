@@ -11,6 +11,11 @@ public class Worker : BackgroundService
     {
         try
         {
+            if (!Bot.Utils.DependencyChecker.CheckExecutables(out var missing))
+            {
+                Log.Warning($"[Startup] Required system dependencies are missing: {string.Join(", ", missing)}. Make sure they are installed and available in the PATH.");
+            }
+
             var apiId = int.Parse(Environment.GetEnvironmentVariable("TELEGRAM_API_ID")!);
             var apiHash = Environment.GetEnvironmentVariable("TELEGRAM_API_HASH")!;
             var botToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN")!;
