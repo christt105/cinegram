@@ -241,6 +241,60 @@
         </div>
       </div>
     </div>
+
+    <!-- TMDB Reidentify Modal -->
+    <div v-if="showingReidentifyModal" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px); padding: 1rem;">
+      <div class="glass-panel" style="width: 100%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
+        
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
+          <h3 style="margin: 0; font-size: 1.2rem; color: #fff;">Re-identificar en TMDB</h3>
+          <button @click="showingReidentifyModal = false" class="glass-button icon-only" style="padding: 0; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px;">✕</button>
+        </div>
+        
+        <!-- Search Bar -->
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+          <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Escribe el nombre de la serie o película..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
+          <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Buscar</button>
+        </div>
+
+        <!-- Results List -->
+        <div style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 0.25rem; min-height: 200px;">
+          <div v-if="isSearchingTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">
+            Buscando en TMDB...
+          </div>
+          <div v-else-if="searchResultsTMDB.length === 0 && searchQueryTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">
+            No se han encontrado resultados.
+          </div>
+          <div v-else-if="searchResultsTMDB.length === 0" style="text-align: center; padding: 2rem; color: #a1a1aa;">
+            Escribe un título arriba y pulsa Buscar.
+          </div>
+          
+          <div v-else v-for="result in searchResultsTMDB" :key="result.id" class="result-card" style="display: flex; gap: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; transition: background 0.2s;">
+            <img v-if="result.poster_path" :src="'https://image.tmdb.org/t/p/w92' + result.poster_path" style="width: 50px; height: 75px; object-fit: cover; border-radius: 6px; flex-shrink: 0;" />
+            <div v-else style="width: 50px; height: 75px; background: rgba(255,255,255,0.05); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #4b5563; flex-shrink: 0;">🎬</div>
+            
+            <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 0.25rem; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <strong style="color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 250px;">{{ result.title }}</strong>
+                <span style="font-size: 0.75rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; color: #d1d5db;">{{ result.year }}</span>
+                <span :style="{ background: result.media_type === 'movie' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(168, 85, 247, 0.15)', color: result.media_type === 'movie' ? '#93c5fd' : '#e9d5ff' }" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">
+                  {{ result.media_type === 'movie' ? 'Película' : 'Serie' }}
+                </span>
+              </div>
+              <p style="margin: 0; font-size: 0.8rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">{{ result.overview }}</p>
+            </div>
+            
+            <button @click="selectTMDBReidentify(result.id)" class="glass-button" style="align-self: center; background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
+              Seleccionar
+            </button>
+          </div>
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem;">
+          <button @click="showingReidentifyModal = false" class="glass-button" style="padding: 6px 16px;">Cerrar</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -276,6 +330,11 @@ const showingPosterModal = ref(false)
 const loadingPosters = ref(false)
 const availablePosters = ref<string[]>([])
 const manualPosterUrl = ref('')
+
+const showingReidentifyModal = ref(false)
+const searchQueryTMDB = ref('')
+const searchResultsTMDB = ref<any[]>([])
+const isSearchingTMDB = ref(false)
 
 const copied = ref(false)
 const copyTmdbId = () => {
@@ -528,15 +587,30 @@ const selectPoster = async (path: string) => {
   }
 }
 
-const reidentifyItem = async () => {
-  const newTmdbIdStr = prompt("Introduce el nuevo ID de TMDB para re-identificar:")
-  if (!newTmdbIdStr) return
-  const newTmdbId = parseInt(newTmdbIdStr.trim())
-  if (isNaN(newTmdbId)) {
-    alert("El ID debe ser un número válido.")
-    return
+const reidentifyItem = () => {
+  searchQueryTMDB.value = item.value?.title || item.value?.manual_title || ''
+  searchResultsTMDB.value = []
+  showingReidentifyModal.value = true
+}
+
+const searchTMDB = async () => {
+  if (!searchQueryTMDB.value.trim()) return
+  isSearchingTMDB.value = true
+  searchResultsTMDB.value = []
+  try {
+    const res = await fetch(`${backendUrl}/tmdb/search?query=${encodeURIComponent(searchQueryTMDB.value.trim())}`)
+    if (res.ok) {
+      searchResultsTMDB.value = await res.json()
+    }
+  } catch (err) {
+    console.error(err)
+  } finally {
+    isSearchingTMDB.value = false
   }
-  
+}
+
+const selectTMDBReidentify = async (newTmdbId: number) => {
+  showingReidentifyModal.value = false
   isLoading.value = true
   try {
     const endpoint = props.type === 'movies' 
