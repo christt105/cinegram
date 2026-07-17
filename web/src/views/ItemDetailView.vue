@@ -57,6 +57,11 @@
                 <span v-else-if="col.technical_metadata" class="meta-badge">Technical Info Available</span>
               </div>
               <div class="col-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; align-items: center;">
+                <button @click="sendCollectionPreview(col.id)" class="glass-button" style="background: rgba(0, 176, 237, 0.15); border-color: rgba(0, 176, 237, 0.35); color: #7dd3fc;" :disabled="sendingPreview === col.id" :title="'Send Info & Files to Telegram'">
+                  <span v-if="sendingPreview === col.id">⏳</span>
+                  <span v-else>📨</span>
+                  <span style="margin-left: 4px;">{{ sendingPreview === col.id ? 'Sending...' : 'Send' }}</span>
+                </button>
                 <button @click="downloadCollection(col.id)" class="glass-button primary">
                   <DownloadCloud :size="16" /> Download
                 </button>
@@ -82,9 +87,16 @@
             
             <div class="season-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap; gap: 1rem;">
               <h3 style="font-size: 1.5rem; margin: 0;">Season {{ season.season_number }}</h3>
-              <button @click="downloadSeason(season.season_number)" class="glass-button primary">
-                <DownloadCloud :size="16" /> Download Season
-              </button>
+              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                <button @click="sendSeasonPreview(season.season_number)" class="glass-button" style="background: rgba(0, 176, 237, 0.15); border-color: rgba(0, 176, 237, 0.35); color: #7dd3fc;" :disabled="sendingSeasonPreview === season.season_number" :title="'Send season Info & Files to Telegram'">
+                  <span v-if="sendingSeasonPreview === season.season_number">⏳</span>
+                  <span v-else>📨</span>
+                  <span style="margin-left: 4px;">{{ sendingSeasonPreview === season.season_number ? 'Sending...' : 'Send' }}</span>
+                </button>
+                <button @click="downloadSeason(season.season_number)" class="glass-button primary">
+                  <DownloadCloud :size="16" /> Download Season
+                </button>
+              </div>
             </div>
 
             <!-- Season Packs (Collections linked directly to Season) -->
@@ -100,6 +112,9 @@
                     <span v-if="getTechMeta(col)" style="font-size: 0.8rem; color: #888;">{{ getTechMeta(col) }}</span>
                   </div>
                   <div style="display: flex; gap: 0.5rem;">
+                    <button @click="sendCollectionPreview(col.id)" class="glass-button btn-sm" style="background: rgba(0,176,237,0.15); border-color: rgba(0,176,237,0.35); color: #7dd3fc;" :disabled="sendingPreview === col.id" title="Send to Telegram">
+                      <span>{{ sendingPreview === col.id ? '⏳' : '📨' }}</span>
+                    </button>
                     <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm">
                       <DownloadCloud :size="14" /> Download Pack
                     </button>
@@ -549,6 +564,45 @@ const downloadSeason = async (seasonNumber: number) => {
     }
   } catch (err) {
     console.error(err)
+  }
+}
+
+const sendingPreview = ref<number | null>(null)
+const sendingSeasonPreview = ref<number | null>(null)
+
+const sendCollectionPreview = async (collectionId: number) => {
+  sendingPreview.value = collectionId
+  try {
+    const res = await fetch(`${backendUrl}/collections/${collectionId}/send-preview`, { method: 'POST' })
+    if (res.ok) {
+      alert('✅ Preview sent to Telegram!')
+    } else {
+      const err = await res.text()
+      alert('❌ Error sending preview: ' + err)
+    }
+  } catch (err) {
+    console.error(err)
+    alert('❌ Connection error.')
+  } finally {
+    sendingPreview.value = null
+  }
+}
+
+const sendSeasonPreview = async (seasonNumber: number) => {
+  sendingSeasonPreview.value = seasonNumber
+  try {
+    const res = await fetch(`${backendUrl}/series/${props.id}/season/${seasonNumber}/send-preview`, { method: 'POST' })
+    if (res.ok) {
+      alert('✅ Season preview sent to Telegram!')
+    } else {
+      const err = await res.text()
+      alert('❌ Error sending season preview: ' + err)
+    }
+  } catch (err) {
+    console.error(err)
+    alert('❌ Connection error.')
+  } finally {
+    sendingSeasonPreview.value = null
   }
 }
 

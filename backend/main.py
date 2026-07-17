@@ -1103,3 +1103,190 @@ def retry_upload_task(task_id: int, session: Session = Depends(get_session)):
     return {"status": "ok"}
 
 
+# ========================
+# Telegram preview helpers
+# ========================
+
+def _format_size(bytes_val: Optional[int]) -> str:
+    if bytes_val is None:
+        return "?"
+    if bytes_val > 1024 ** 3:
+        return f"{bytes_val / 1024**3:.2f} GB"
+    if bytes_val > 1024 ** 2:
+        return f"{bytes_val / 1024**2:.2f} MB"
+    if bytes_val > 1024:
+        return f"{bytes_val / 1024:.2f} KB"
+    return f"{bytes_val} B"
+
+
+def _build_collection_preview_text(collection: Collection, media_title: str, tmdb_url: Optional[str] = None) -> str:
+    """Build a rich HTML preview message for a collection."""
+    title_line = f"<b>{media_title}</b>"
+    if tmdb_url:
+        title_line += f'  •  <a href="{tmdb_url}">TMDB</a>'
+
+    lines = [title_line, f"<b>Collection:</b> {collection.name or '-'}"]
+
+    quality_parts = []
+    if collection.quality:
+        quality_parts.append(f"🎞 {collection.quality}")
+    if collection.audio_languages:
+        quality_parts.append(f"🔊 {collection.audio_languages}")
+    if collection.subtitle_languages:
+        quality_parts.append(f"💬 {collection.subtitle_languages}")
+    if quality_parts:
+        lines.append("  |  ".join(quality_parts))
+
+    if collection.tags:
+        lines.append(f"<b>Tags:</b> {collection.tags}")
+    if collection.notes:
+        lines.append(f"<b>Notes:</b> {collection.notes}")
+    if collection.technical_metadata:
+        lines.append(f"<b>Technical:</b> <code>{collection.technical_metadata}</code>")
+
+    lines.append("")
+    lines.append(f"<b>Files: {len(collection.files)}</b>")
+    for i, f in enumerate(collection.files, 1):
+        lines.append(f"{i}. {f.filename}  <i>({_format_size(f.filesize)})</i>")
+
+    return "\n".join(lines)
+
+
+def _send_telegram_message(bot_token: str, chat_id: str, text: str, photo_url: Optional[str] = None):
+    """Send a message (optionally with photo) via the Telegram Bot API."""
+    import urllib.request
+    import urllib.parse
+    import json
+
+    base = f"https://api.telegram.org/bot{bot_token}"
+
+    if photo_url:
+        params = urllib.parse.urlencode({
+            "chat_id": chat_id,
+            "photo": photo_url,
+            "caption": text,
+            "parse_mode": "HTML"
+        }).encode()
+        req = urllib.request.Request(f"{base}/sendPhoto", data=params)
+    else:
+        params = urllib.parse.urlencode({
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": "HTML",
+            "disable_web_page_preview": "true"
+        }).encode()
+        req = urllib.request.Request(f"{base}/sendMessage", data=params)
+
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read())
+
+
+@app.post("/collections/{collection_id}/send-preview")
+def send_collection_preview(collection_id: int, session: Session = Depends(get_session)):
+    """Send a Telegram preview message for a movie collection."""
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_AUTH_USER_ID")
+    if not bot_token or not chat_id:
+        raise HTTPException(status_code=500, detail="Telegram credentials not configured")
+
+    collection = session.get(Collection, collection_id)
+    if not collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    # Determine media title and poster
+    media_title = collection.name or "Unknown"
+    poster_url = None
+    tmdb_url = None
+
+    if collection.movie_id:
+        movie = session.get(Movie, collection.movie_id)
+        if movie:
+            media_title = f"🎬 {movie.title} ({movie.release_year})"
+            if movie.tmdb_id:
+                tmdb_url = f"https://www.themoviedb.org/movie/{movie.tmdb_id}"
+            if movie.poster_path:
+                poster_url = f"https://image.tmdb.org/t/p/w500{movie.poster_path}"
+    elif collection.season_id:
+        season = session.get(Season, collection.season_id)
+        if season:
+            series = session.get(Series, season.series_id)
+            if series:
+                media_title = f"📺 {series.manual_title} ({series.release_year}) — Season {season.season_number}"
+                if series.tmdb_id:
+                    tmdb_url = f"https://www.themoviedb.org/tv/{series.tmdb_id}"
+                if series.poster_path:
+                    poster_url = f"https://image.tmdb.org/t/p/w500{series.poster_path}"
+
+    text = _build_collection_preview_text(collection, media_title, tmdb_url)
+
+    try:
+        _send_telegram_message(bot_token, chat_id, text, poster_url)
+        return {"status": "ok", "message": "Preview sent to Telegram"}
+    except Exception as e:
+        logger.error(f"Failed to send Telegram preview: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send: {str(e)}")
+
+
+@app.post("/series/{series_id}/season/{season_number}/send-preview")
+def send_season_preview(series_id: int, season_number: int, session: Session = Depends(get_session)):
+    """Send a Telegram preview message for all files in a season."""
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_AUTH_USER_ID")
+    if not bot_token or not chat_id:
+        raise HTTPException(status_code=500, detail="Telegram credentials not configured")
+
+    series = session.get(Series, series_id)
+    if not series:
+        raise HTTPException(status_code=404, detail="Series not found")
+
+    season = session.exec(
+        select(Season).where(Season.series_id == series_id).where(Season.season_number == season_number)
+    ).first()
+    if not season:
+        raise HTTPException(status_code=404, detail="Season not found")
+
+    # Gather all collections for this season
+    all_collections = list(season.collections or [])
+    for ep in (season.episodes or []):
+        all_collections.extend(ep.collections or [])
+
+    if not all_collections:
+        raise HTTPException(status_code=404, detail="No collections found for this season")
+
+    title = f"📺 {series.manual_title} ({series.release_year}) — Season {season.season_number}"
+    tmdb_url = f"https://www.themoviedb.org/tv/{series.tmdb_id}" if series.tmdb_id else None
+    poster_url = f"https://image.tmdb.org/t/p/w500{series.poster_path}" if series.poster_path else None
+
+    title_line = f"<b>{title}</b>"
+    if tmdb_url:
+        title_line += f'  •  <a href="{tmdb_url}">TMDB</a>'
+
+    # Gather all file counts and unique qualities
+    total_files = sum(len(c.files) for c in all_collections)
+    quality_parts_set = set()
+    for c in all_collections:
+        parts = []
+        if c.quality: parts.append(f"🎞 {c.quality}")
+        if c.audio_languages: parts.append(f"🔊 {c.audio_languages}")
+        if c.subtitle_languages: parts.append(f"💬 {c.subtitle_languages}")
+        if parts:
+            quality_parts_set.add("  |  ".join(parts))
+
+    lines = [title_line, f"<b>Total files:</b> {total_files}"]
+    for q in sorted(quality_parts_set):
+        lines.append(q)
+
+    for c in all_collections:
+        lines.append("")
+        lines.append(f"<b>{c.name or 'Collection'}</b>")
+        for i, f in enumerate(c.files, 1):
+            lines.append(f"  {i}. {f.filename}  <i>({_format_size(f.filesize)})</i>")
+
+    text = "\n".join(lines)
+
+    try:
+        _send_telegram_message(bot_token, chat_id, text, poster_url)
+        return {"status": "ok", "message": "Season preview sent to Telegram"}
+    except Exception as e:
+        logger.error(f"Failed to send Telegram season preview: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to send: {str(e)}")
