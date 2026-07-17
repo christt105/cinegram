@@ -22,6 +22,12 @@ def init_db():
             session.commit()
         except Exception:
             pass
+        try:
+            # Clear duplicate season_id mappings for episode collections
+            session.execute(text("UPDATE collection SET season_id = NULL WHERE episode_id IS NOT NULL;"))
+            session.commit()
+        except Exception:
+            pass
 
 def get_session():
     with Session(engine) as session:

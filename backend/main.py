@@ -586,10 +586,9 @@ def update_collection(
             session.commit()
             session.refresh(target_season)
             
-        db_collection.season_id = target_season.id
-        
-        # Decide episode
+        # Decide episode and season association
         if collection_update.clear_episode:
+            db_collection.season_id = target_season.id
             db_collection.episode_id = None
         elif collection_update.episode_number is not None:
             # Find or create episode
@@ -603,6 +602,7 @@ def update_collection(
                 session.commit()
                 session.refresh(target_ep)
             db_collection.episode_id = target_ep.id
+            db_collection.season_id = None  # Clear season pack association since it's an episode collection
         else:
             # If they just changed the season, we can keep the same episode number if they had one
             if db_collection.episode_id:
@@ -618,6 +618,9 @@ def update_collection(
                         session.commit()
                         session.refresh(target_ep)
                     db_collection.episode_id = target_ep.id
+                    db_collection.season_id = None  # Clear season pack association since it's an episode collection
+            else:
+                db_collection.season_id = target_season.id
 
     update_data = collection_update.dict(exclude_unset=True)
     # Exclude the virtual parameters from model fields assignment
