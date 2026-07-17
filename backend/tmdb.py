@@ -1,6 +1,7 @@
 import requests
 import os
 import re
+import difflib
 import tmdbsimple as tmdb
 
 from config import TMDB_API_KEY
@@ -128,9 +129,11 @@ class TMDB:
 
         name = re.sub(r"\.(mkv|avi|mp4)$", "", name, flags=re.IGNORECASE)
 
-        # Final cleanup: remove extra spaces, dashes, underscores
+        # Final cleanup: collapse whitespace and underscores, but preserve
+        # hyphens that join word characters (e.g. "Spider-Man").
+        name = re.sub(r"_+", " ", name)          # underscores → spaces
+        name = re.sub(r"(?<![\w])-+|-+(?![\w])", " ", name)  # leading/trailing dashes → spaces
         name = re.sub(r"\s+", " ", name)
-        name = re.sub(r"[-_]+", " ", name)
         name = name.strip()
 
         return {
@@ -191,31 +194,58 @@ class TMDB:
             print(f"Invalid TMDB ID for movie: {tmdbid}. Error: {e}")
         return try_movie
             
+    @staticmethod
+    def _best_match(results: list, clean_name: str, media_type: str) -> dict | None:
+        """Return the result whose title most closely matches clean_name.
+
+        Scoring combines title similarity (primary) with popularity (tiebreaker).
+        A minimum similarity of 0.4 is required to accept any match.
+        """
+        if not results:
+            return None
+
+        query_lower = clean_name.lower()
+
+        def score(r: dict) -> tuple:
+            title = (r.get("title") or r.get("name") or "").lower()
+            sim = difflib.SequenceMatcher(None, query_lower, title).ratio()
+            pop = float(r.get("popularity") or 0)
+            return (sim, pop)
+
+        ranked = sorted(results, key=score, reverse=True)
+        best = ranked[0]
+        best_sim = score(best)[0]
+
+        if best_sim < 0.4:
+            return None
+
+        best["media_type"] = media_type
+        return best
+
     def identify_by_filename(self, filename: str) -> dict:
         """Identify a movie or series by its filename."""
         file = self.clean_filename(filename)
         response = None
         if file["tmdbid"]:
             response = self.identify_by_tmdbid(file["tmdbid"], file["type"])
-        
-        if not response:    
+
+        if not response:
             search = tmdb.Search()
-            
+
             if file["type"] == "movie":
                 search.movie(query=file["clean_name"], language='es-ES')
-                if search.results:
-                    search.results[0]["media_type"] = "movie"
+                response = self._best_match(search.results, file["clean_name"], "movie")
             elif file["type"] == "tv":
                 search.tv(query=file["clean_name"], language='es-ES')
-                if search.results:
-                    search.results[0]["media_type"] = "tv"
-            
-            if not search.results:
+                response = self._best_match(search.results, file["clean_name"], "tv")
+
+            if not response:
                 search.multi(query=file["clean_name"], language='es-ES')
-            
-            response = search.results[0] if search.results else {}
-            
-        return response
+                response = self._best_match(search.results, file["clean_name"],
+                                            search.results[0].get("media_type", "movie")
+                                            if search.results else "movie")
+
+        return response or {}
 
     def search(self, query: str, media_type: str = "multi") -> list:
         """Search movies/series on TMDB."""
