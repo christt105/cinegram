@@ -65,6 +65,9 @@ class TMDB:
         # Remove extra stacked extensions (e.g. .mkv.zip.001)
         name = re.sub(r"\.(zip|7z|rar|mkv|avi|mp4)$", "", name, flags=re.IGNORECASE)
 
+        # Strip whitespace left by noise patterns before parsing
+        name = name.strip()
+
         # Extract season and episode if TV type
         season = None
         episode = None
@@ -158,8 +161,8 @@ class TMDB:
             if try_series:
                 return try_series
         
-        if not content_type:
-            # If no type is specified, try both
+        # Fallback: if type-specific search yielded nothing, try both types
+        if not try_movie and not try_series:
             try_movie = self.get_movie(tmdbid)
             try_series = self.get_tv(tmdbid)
         
