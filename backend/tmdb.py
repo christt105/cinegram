@@ -4,7 +4,7 @@ import re
 import difflib
 import tmdbsimple as tmdb
 
-from config import TMDB_API_KEY
+from config import TMDB_API_KEY, TMDB_CONTENT_LANGUAGE
 
 tmdb.REQUESTS_TIMEOUT = 15
 
@@ -179,7 +179,7 @@ class TMDB:
     def get_tv(self, tmdbid):
         try_series = None
         try:
-            try_series = tmdb.TV(tmdbid).info(language='es-ES')
+            try_series = tmdb.TV(tmdbid).info(language=TMDB_CONTENT_LANGUAGE)
             try_series["media_type"] = "tv"
         except Exception as e:
             print(f"Invalid TMDB ID for series: {tmdbid}. Error: {e}")
@@ -188,7 +188,7 @@ class TMDB:
     def get_movie(self, tmdbid):
         try_movie = None
         try:
-            try_movie = tmdb.Movies(tmdbid).info(language='es-ES')
+            try_movie = tmdb.Movies(tmdbid).info(language=TMDB_CONTENT_LANGUAGE)
             try_movie["media_type"] = "movie"
         except Exception as e:
             print(f"Invalid TMDB ID for movie: {tmdbid}. Error: {e}")
@@ -233,14 +233,14 @@ class TMDB:
             search = tmdb.Search()
 
             if file["type"] == "movie":
-                search.movie(query=file["clean_name"], language='es-ES')
+                search.movie(query=file["clean_name"], language=TMDB_CONTENT_LANGUAGE)
                 response = self._best_match(search.results, file["clean_name"], "movie")
             elif file["type"] == "tv":
-                search.tv(query=file["clean_name"], language='es-ES')
+                search.tv(query=file["clean_name"], language=TMDB_CONTENT_LANGUAGE)
                 response = self._best_match(search.results, file["clean_name"], "tv")
 
             if not response:
-                search.multi(query=file["clean_name"], language='es-ES')
+                search.multi(query=file["clean_name"], language=TMDB_CONTENT_LANGUAGE)
                 response = self._best_match(search.results, file["clean_name"],
                                             search.results[0].get("media_type", "movie")
                                             if search.results else "movie")
@@ -252,17 +252,17 @@ class TMDB:
         search = tmdb.Search()
         results = []
         if media_type == "movie":
-            search.movie(query=query, language='es-ES')
+            search.movie(query=query, language=TMDB_CONTENT_LANGUAGE)
             results = getattr(search, 'results', [])
             for r in results:
                 r["media_type"] = "movie"
         elif media_type == "tv":
-            search.tv(query=query, language='es-ES')
+            search.tv(query=query, language=TMDB_CONTENT_LANGUAGE)
             results = getattr(search, 'results', [])
             for r in results:
                 r["media_type"] = "tv"
         else:
-            search.multi(query=query, language='es-ES')
+            search.multi(query=query, language=TMDB_CONTENT_LANGUAGE)
             results = getattr(search, 'results', [])
             
         formatted = []
