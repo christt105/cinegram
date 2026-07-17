@@ -317,23 +317,6 @@
           <button @click="reidentifyCollectionModal.open = false" class="glass-button icon-only" style="padding: 0; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">✕</button>
         </div>
 
-        <!-- Auto-detect button -->
-        <div style="display: flex; gap: 0.75rem; align-items: center; padding: 0.75rem; background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.15); border-radius: 10px;">
-          <div style="flex-grow: 1;">
-            <div style="font-size: 0.9rem; font-weight: 600; color: #e2e8f0;">🤖 Auto-detectar</div>
-            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.15rem;">Usa el nombre de la colección para buscar en TMDB automáticamente.</div>
-          </div>
-          <button @click="autoReidentifyCollection" :disabled="reidentifyCollectionModal.loading" class="glass-button" style="background: rgba(59,130,246,0.2); border-color: rgba(59,130,246,0.4); color: #93c5fd; flex-shrink: 0;">
-            {{ reidentifyCollectionModal.loading ? 'Procesando...' : 'Auto-detectar' }}
-          </button>
-        </div>
-
-        <div style="display: flex; align-items: center; gap: 0.75rem;">
-          <div style="flex-grow: 1; height: 1px; background: rgba(255,255,255,0.08);"></div>
-          <span style="font-size: 0.8rem; color: #64748b;">o busca manualmente</span>
-          <div style="flex-grow: 1; height: 1px; background: rgba(255,255,255,0.08);"></div>
-        </div>
-
         <!-- Search Bar -->
         <div style="display: flex; gap: 0.5rem;">
           <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Escribe el nombre de la película o serie..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
@@ -681,29 +664,6 @@ const openReidentifyCollection = (col: any) => {
   searchResultsTMDB.value = []
 }
 
-const autoReidentifyCollection = async () => {
-  reidentifyCollectionModal.value.loading = true
-  try {
-    const res = await fetch(`${backendUrl}/collections/${reidentifyCollectionModal.value.collectionId}/reidentify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({})
-    })
-    if (res.ok) {
-      reidentifyCollectionModal.value.open = false
-      alert('✅ Colección re-identificada correctamente.')
-      fetchItem()
-    } else {
-      const errText = await res.text()
-      alert('❌ Error al auto-identificar: ' + errText)
-    }
-  } catch (err) {
-    console.error(err)
-    alert('Error de conexión.')
-  } finally {
-    reidentifyCollectionModal.value.loading = false
-  }
-}
 
 const selectCollectionTMDB = async (tmdbId: number) => {
   reidentifyCollectionModal.value.loading = true
