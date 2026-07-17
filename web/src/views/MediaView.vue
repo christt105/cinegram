@@ -172,7 +172,7 @@ const computedItems = computed(() => {
           isOnTelegram: true,
           isInJellyfin: !!jItem,
           collections: tm.collections,
-          dateCreated: jItem ? jItem.dateCreated : `tg-${tm.id}`,
+          dateCreated: jItem ? jItem.dateCreated : (tm.created_at || ''),
           rating: jItem ? (jItem.rating || 0) : 0
         };
       });
@@ -203,7 +203,7 @@ const computedItems = computed(() => {
           isOnTelegram: true,
           isInJellyfin: !!jItem,
           seasons: ts.seasons,
-          dateCreated: jItem ? jItem.dateCreated : `tg-${ts.id}`,
+          dateCreated: jItem ? jItem.dateCreated : (ts.created_at || ''),
           rating: jItem ? (jItem.rating || 0) : 0
         };
       });
@@ -244,9 +244,6 @@ const computedItems = computed(() => {
   // 2. Sorting
   if (sortBy.value === 'latest_added') {
     list.sort((a, b) => {
-      if (props.type === 'telegram' && a.rawId && b.rawId) {
-        return b.rawId - a.rawId;
-      }
       const dateA = a.dateCreated || '';
       const dateB = b.dateCreated || '';
       if (dateA && dateB) {

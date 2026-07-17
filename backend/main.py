@@ -138,6 +138,7 @@ class SeriesOut(BaseModel):
     overview: Optional[str]
     release_year: Optional[int]
     seasons: List[SeasonOut] = []
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -153,6 +154,7 @@ class MovieOut(BaseModel):
     overview: Optional[str]
     tags: Optional[str]
     notes: Optional[str]
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -160,28 +162,13 @@ class MovieOut(BaseModel):
 
 @app.get("/movies", response_model=list[MovieOut])
 def list_movies(session: Session = Depends(get_session)):
-    """Return all movies stored in DB with collections and files, filtering out empty ones"""
-    movies = session.exec(select(Movie)).all()
-    return [m for m in movies if len(m.collections) > 0]
+    """Return all movies stored in DB"""
+    return session.exec(select(Movie)).all()
 
 @app.get("/series", response_model=list[SeriesOut])
 def list_series(session: Session = Depends(get_session)):
-    """Return all series stored in DB with seasons, episodes, and collections, filtering out empty ones"""
-    series = session.exec(select(Series)).all()
-    result = []
-    for s in series:
-        has_files = False
-        for season in s.seasons:
-            if len(season.collections) > 0:
-                has_files = True
-                break
-            for ep in season.episodes:
-                if len(ep.collections) > 0:
-                    has_files = True
-                    break
-        if has_files:
-            result.append(s)
-    return result
+    """Return all series stored in DB"""
+    return session.exec(select(Series)).all()
 
 @app.delete("/movies/{movie_id}")
 def delete_movie(movie_id: int, session: Session = Depends(get_session)):

@@ -28,6 +28,26 @@ def init_db():
             session.commit()
         except Exception:
             pass
+        try:
+            session.execute(text("ALTER TABLE movie ADD COLUMN created_at TIMESTAMP;"))
+            session.commit()
+        except Exception:
+            pass
+        try:
+            session.execute(text("ALTER TABLE series ADD COLUMN created_at TIMESTAMP;"))
+            session.commit()
+        except Exception:
+            pass
+        try:
+            session.execute(text("UPDATE movie SET created_at = datetime('now') WHERE created_at IS NULL;"))
+            session.commit()
+        except Exception:
+            pass
+        try:
+            session.execute(text("UPDATE series SET created_at = datetime('now') WHERE created_at IS NULL;"))
+            session.commit()
+        except Exception:
+            pass
 
 def get_session():
     with Session(engine) as session:
