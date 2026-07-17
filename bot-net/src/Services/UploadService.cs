@@ -225,7 +225,7 @@ public class UploadService
                         int maxRetries = 3;
                         int attempt = 0;
                         bool uploadSuccess = false;
-                        TL.Message? sent = null;
+                        WTelegram.Types.Message? sent = null;
 
                         while (attempt < maxRetries && !uploadSuccess)
                         {
@@ -298,7 +298,7 @@ public class UploadService
                     int maxRetries = 3;
                     int attempt = 0;
                     bool uploadSuccess = false;
-                    TL.Message? sent = null;
+                    WTelegram.Types.Message? sent = null;
 
                     while (attempt < maxRetries && !uploadSuccess)
                     {
