@@ -567,13 +567,15 @@ const downloadSeason = async (seasonNumber: number) => {
   }
 }
 
+const botNetUrl = import.meta.env.VITE_BOT_NET_URL || `${window.location.protocol}//${window.location.hostname}:8088`
+
 const sendingPreview = ref<number | null>(null)
 const sendingSeasonPreview = ref<number | null>(null)
 
 const sendCollectionPreview = async (collectionId: number) => {
   sendingPreview.value = collectionId
   try {
-    const res = await fetch(`${backendUrl}/collections/${collectionId}/send-preview`, { method: 'POST' })
+    const res = await fetch(`${botNetUrl}/preview/collection/${collectionId}`, { method: 'POST' })
     if (res.ok) {
       alert('✅ Preview sent to Telegram!')
     } else {
@@ -591,7 +593,7 @@ const sendCollectionPreview = async (collectionId: number) => {
 const sendSeasonPreview = async (seasonNumber: number) => {
   sendingSeasonPreview.value = seasonNumber
   try {
-    const res = await fetch(`${backendUrl}/series/${props.id}/season/${seasonNumber}/send-preview`, { method: 'POST' })
+    const res = await fetch(`${botNetUrl}/preview/series/${props.id}/season/${seasonNumber}`, { method: 'POST' })
     if (res.ok) {
       alert('✅ Season preview sent to Telegram!')
     } else {

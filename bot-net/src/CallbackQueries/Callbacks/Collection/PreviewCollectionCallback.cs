@@ -70,14 +70,17 @@ public class PreviewCollectionCallback : ICallbackQuery
         await SendCollectionFilesAsGroup(message.Chat.Id, files);
     }
     
-    public async Task SendCollectionFilesAsGroup(long chatId, List<WTelegram.Types.Message> files)
+    public Task SendCollectionFilesAsGroup(long chatId, List<WTelegram.Types.Message> files)
+        => SendFilesAsGroup(_bot, chatId, files);
+
+    public static async Task SendFilesAsGroup(WTelegram.Bot bot, long chatId, List<WTelegram.Types.Message> files)
     {
         const int maxPerGroup = 10;
 
         var validFiles = files.Where(f => f.Document != null || f.Video != null).ToList();
         if (validFiles.Count == 0)
         {
-            await _bot.SendMessage(chatId, "No valid files to send.");
+            await bot.SendMessage(chatId, "No valid files to send.");
             return;
         }
 
@@ -89,16 +92,12 @@ public class PreviewCollectionCallback : ICallbackQuery
             foreach (var file in group)
             {
                 if (file.Document != null)
-                {
                     mediaGroup.Add(new InputMediaDocument(new InputFileId(file.Document.FileId)));
-                }
                 else if (file.Video != null)
-                {
                     mediaGroup.Add(new InputMediaVideo(new InputFileId(file.Video.FileId)));
-                }
             }
 
-            await _bot.SendMediaGroup(chatId, mediaGroup);
+            await bot.SendMediaGroup(chatId, mediaGroup);
         }
     }
 

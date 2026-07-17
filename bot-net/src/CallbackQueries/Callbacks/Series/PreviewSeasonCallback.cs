@@ -111,11 +111,9 @@ public class PreviewSeasonCallback : ICallbackQuery
             await _bot.SendMessage(message!.Chat.Id, text, parseMode: Telegram.Bot.Types.Enums.ParseMode.Html);
         }
 
-        // Forward files using PreviewCollectionCallback logic
+        // Forward files using static helper
         var wtelegramFiles = await _bot.GetMessagesById(message!.Chat.Id, allFiles.Select(f => f.MessageId));
-        
-        var previewer = new Bot.CallbackQueries.Callbacks.Collection.PreviewCollectionCallback(0, _bot, _apiClient);
-        await previewer.SendCollectionFilesAsGroup(message!.Chat.Id, wtelegramFiles);
+        await PreviewCollectionCallback.SendFilesAsGroup(_bot, message!.Chat.Id, wtelegramFiles);
     }
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)

@@ -6,6 +6,12 @@ namespace Bot;
 public class Worker : BackgroundService
 {
     private readonly TaskQueue _queue = new();
+    private readonly BotHolder _botHolder;
+
+    public Worker(BotHolder botHolder)
+    {
+        _botHolder = botHolder;
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -19,6 +25,7 @@ public class Worker : BackgroundService
             var apiId = int.Parse(Environment.GetEnvironmentVariable("TELEGRAM_API_ID")!);
             var apiHash = Environment.GetEnvironmentVariable("TELEGRAM_API_HASH")!;
             var botToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN")!;
+            var authUserId = long.Parse(Environment.GetEnvironmentVariable("TELEGRAM_AUTH_USER_ID")!);
 
             var backendUrl = Environment.GetEnvironmentVariable("BACKEND_URL") ?? "http://backend:8000";
 
@@ -26,6 +33,9 @@ public class Worker : BackgroundService
             using var apiClient = new ApiClient(backendUrl);
 
             var bot = new WTelegram.Bot(botToken, apiId, apiHash, connection);
+
+            // Register so PreviewService and HTTP endpoints can use the live bot instance
+            _botHolder.Register(bot, apiClient, authUserId);
 
             var botDispatcher = new BotDispatcher(bot, apiClient, _queue);
 
