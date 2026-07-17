@@ -20,6 +20,9 @@
               <h4>{{ task.title || 'Unknown Media' }} ({{ task.year || '' }})</h4>
               <div style="display:flex; gap:0.5rem; align-items:center;">
                 <span class="badge" :class="task.status">{{ task.status }}</span>
+                <button v-if="task.status === 'failed'" @click="retryUpload(task.id)" class="glass-button success btn-sm icon-only" title="Retry" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #a7f3d0; display: inline-flex; align-items: center; justify-content: center; padding: 4px;">
+                  <RefreshCw :size="14" />
+                </button>
                 <button @click="cancelUpload(task.id)" class="glass-button danger btn-sm icon-only" title="Cancel">
                   <X :size="14" />
                 </button>
@@ -48,6 +51,9 @@
               <h4>{{ task.title || 'Collection ID: ' + task.collection_id }}</h4>
               <div style="display:flex; gap:0.5rem; align-items:center;">
                 <span class="badge" :class="task.status">{{ task.status }}</span>
+                <button v-if="task.status === 'failed'" @click="retryDownload(task.id)" class="glass-button success btn-sm icon-only" title="Retry" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #a7f3d0; display: inline-flex; align-items: center; justify-content: center; padding: 4px;">
+                  <RefreshCw :size="14" />
+                </button>
                 <button @click="cancelDownload(task.id)" class="glass-button danger btn-sm icon-only" title="Cancel">
                   <X :size="14" />
                 </button>
@@ -123,11 +129,33 @@ const cancelUpload = async (id: number) => {
   }
 };
 
+const retryUpload = async (id: number) => {
+  try {
+    const res = await fetch(`${backendUrl}/uploads/${id}/retry`, { method: 'POST' });
+    if (res.ok) {
+      fetchQueues();
+    }
+  } catch (err) {
+    console.error(err);
+  }
+};
+
 const cancelDownload = async (id: number) => {
   if (!confirm("Cancel this download task?")) return;
   try {
     await fetch(`${backendUrl}/downloads/${id}`, { method: 'DELETE' });
     fetchQueues();
+  } catch (err) {
+    console.error(err);
+  }
+};
+
+const retryDownload = async (id: number) => {
+  try {
+    const res = await fetch(`${backendUrl}/downloads/${id}/retry`, { method: 'POST' });
+    if (res.ok) {
+      fetchQueues();
+    }
   } catch (err) {
     console.error(err);
   }

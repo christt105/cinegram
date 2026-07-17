@@ -216,4 +216,40 @@ class TMDB:
             response = search.results[0] if search.results else {}
             
         return response
+
+    def search(self, query: str, media_type: str = "multi") -> list:
+        """Search movies/series on TMDB."""
+        search = tmdb.Search()
+        results = []
+        if media_type == "movie":
+            search.movie(query=query, language='es-ES')
+            results = getattr(search, 'results', [])
+            for r in results:
+                r["media_type"] = "movie"
+        elif media_type == "tv":
+            search.tv(query=query, language='es-ES')
+            results = getattr(search, 'results', [])
+            for r in results:
+                r["media_type"] = "tv"
+        else:
+            search.multi(query=query, language='es-ES')
+            results = getattr(search, 'results', [])
+            
+        formatted = []
+        for r in results:
+            m_type = r.get("media_type")
+            if not m_type or m_type not in ["movie", "tv"]:
+                continue
+            title = r.get("title") if m_type == "movie" else r.get("name")
+            release_date = r.get("release_date") if m_type == "movie" else r.get("first_air_date")
+            year = release_date.split("-")[0] if release_date else "Unknown"
+            formatted.append({
+                "id": r.get("id"),
+                "title": title,
+                "media_type": m_type,
+                "year": year,
+                "poster_path": r.get("poster_path"),
+                "overview": r.get("overview")
+            })
+        return formatted
             

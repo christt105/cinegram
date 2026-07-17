@@ -1038,4 +1038,56 @@ def delete_download_task(task_id: int, session: Session = Depends(get_session)):
     session.commit()
     return {"status": "ok"}
 
+@app.get("/tmdb/search")
+def search_tmdb_endpoint(query: str, media_type: str = "multi"):
+    if not query:
+        raise HTTPException(status_code=400, detail="Query cannot be empty")
+    return tmdb.search(query=query, media_type=media_type)
+
+class CreateManualMediaRequest(BaseModel):
+    tmdb_id: int
+    media_type: str  # "movie" or "tv"
+
+@app.post("/maintenance/create-media")
+def create_manual_media(request: CreateManualMediaRequest, session: Session = Depends(get_session)):
+    from crud import get_or_create_movie, get_or_create_series
+    
+    # Fetch TMDB details
+    tmdb_result = tmdb.identify_by_tmdbid(request.tmdb_id, request.media_type)
+    if not tmdb_result:
+        raise HTTPException(status_code=404, detail="TMDB item not found")
+        
+    if request.media_type == "movie":
+        movie = get_or_create_movie(session, tmdb_result)
+        return {"status": "success", "type": "movie", "id": movie.id}
+    elif request.media_type == "tv":
+        series = get_or_create_series(session, tmdb_result)
+        return {"status": "success", "type": "series", "id": series.id}
+    else:
+        raise HTTPException(status_code=400, detail="Invalid media type")
+
+@app.post("/downloads/{task_id}/retry")
+def retry_download_task(task_id: int, session: Session = Depends(get_session)):
+    task = session.get(DownloadTask, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Download task not found")
+    task.status = "pending"
+    task.progress = 0
+    task.error_message = None
+    session.add(task)
+    session.commit()
+    return {"status": "ok"}
+
+@app.post("/uploads/{task_id}/retry")
+def retry_upload_task(task_id: int, session: Session = Depends(get_session)):
+    task = session.get(UploadTask, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Upload task not found")
+    task.status = "pending"
+    task.progress = 0
+    task.error_message = None
+    session.add(task)
+    session.commit()
+    return {"status": "ok"}
+
 
