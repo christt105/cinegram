@@ -243,7 +243,10 @@ public class ApiClient : IDisposable
 
         return await response.Content.ReadFromJsonAsync<Collection>(_jsonOptions);
     }
-
+    public async Task<List<Collection>?> GetOrphansAsync()
+    {
+        return await GetSafeAsync<List<Collection>>("/maintenance/orphans");
+    }
     public async Task<List<DownloadTask>?> GetPendingDownloadsAsync()
     {
         return await GetSafeAsync<List<DownloadTask>>("/downloads/pending");
@@ -309,6 +312,18 @@ public class ApiClient : IDisposable
     public async Task<bool> RetryDownloadTaskAsync(int taskId)
     {
         var response = await _httpClient.PostAsync($"/downloads/{taskId}/retry", null);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<List<TmdbSearchResult>?> SearchTmdbAsync(string query)
+    {
+        return await GetSafeAsync<List<TmdbSearchResult>>($"/tmdb/search?query={Uri.EscapeDataString(query)}");
+    }
+
+    public async Task<bool> CreateManualMediaAsync(int tmdbId, string mediaType)
+    {
+        var payload = new { tmdb_id = tmdbId, media_type = mediaType };
+        var response = await _httpClient.PostAsJsonAsync("/maintenance/create-media", payload);
         return response.IsSuccessStatusCode;
     }
 }
