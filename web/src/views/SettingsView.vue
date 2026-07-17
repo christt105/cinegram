@@ -91,23 +91,25 @@
 
           <!-- Orphans List -->
           <div class="orphans-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
-            <div v-for="orphan in orphans" :key="orphan.id" class="orphan-item glass-panel" style="padding: 1rem; background: rgba(0, 0, 0, 0.2); display: flex; align-items: flex-start; gap: 1.25rem; border-radius: 12px;">
-              <div style="padding-top: 0.25rem;">
-                <input type="checkbox" :value="orphan.id" v-model="selectedOrphanIds" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--jellyfin-blue);" />
-              </div>
-              <div style="display: flex; flex-direction: column; gap: 0.25rem; flex-grow: 1;">
-                <strong style="color: #fca5a5; font-size: 1.05rem;">{{ orphan.name }}</strong>
-                <span style="font-size: 0.85rem; color: #a1a1aa;">
-                  Colección ID: {{ orphan.id }} | Calidad: {{ orphan.quality || 'Automática' }} | {{ orphan.files_count }} archivos
-                </span>
-                <ul style="margin: 0.5rem 0 0 1rem; padding: 0; font-size: 0.85rem; color: #888;">
-                  <li v-for="file in orphan.files" :key="file.id" style="list-style-type: square; margin-bottom: 0.25rem;">
-                    {{ file.filename }} <span style="color: #555;">({{ (file.filesize / (1024 * 1024)).toFixed(1) }} MB)</span>
-                  </li>
-                </ul>
+            <div v-for="orphan in orphans" :key="orphan.id" class="orphan-item glass-panel">
+              <div class="orphan-header">
+                <div class="orphan-checkbox-wrapper">
+                  <input type="checkbox" :value="orphan.id" v-model="selectedOrphanIds" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--jellyfin-blue);" />
+                </div>
+                <div class="orphan-details">
+                  <strong style="color: #fca5a5; font-size: 1.05rem;">{{ orphan.name }}</strong>
+                  <span style="font-size: 0.85rem; color: #a1a1aa;">
+                    Colección ID: {{ orphan.id }} | Calidad: {{ orphan.quality || 'Automática' }} | {{ orphan.files_count }} archivos
+                  </span>
+                  <ul style="margin: 0.5rem 0 0 1rem; padding: 0; font-size: 0.85rem; color: #888;">
+                    <li v-for="file in orphan.files" :key="file.id" style="list-style-type: square; margin-bottom: 0.25rem;">
+                      {{ file.filename }} <span style="color: #555;">({{ (file.filesize / (1024 * 1024)).toFixed(1) }} MB)</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
               
-              <div style="display: flex; gap: 0.5rem; align-self: center;">
+              <div class="orphan-actions">
                 <button @click="identifyOrphan(orphan.id)" class="glass-button" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;">
                   🔍 Identificar
                 </button>
@@ -279,3 +281,69 @@ onMounted(() => {
   fetchOrphans();
 });
 </script>
+
+<style scoped>
+.orphan-item {
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.orphan-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  width: 100%;
+}
+
+.orphan-checkbox-wrapper {
+  padding-top: 0.25rem;
+}
+
+.orphan-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex-grow: 1;
+}
+
+.orphan-actions {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  justify-content: flex-end;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 0.75rem;
+}
+
+.orphan-actions button {
+  flex: 1;
+  max-width: 150px;
+  text-align: center;
+  justify-content: center;
+}
+
+@media (min-width: 640px) {
+  .orphan-item {
+    flex-direction: row;
+    align-items: center;
+    gap: 1.25rem;
+  }
+  
+  .orphan-actions {
+    width: auto;
+    border-top: none;
+    padding-top: 0;
+    justify-content: flex-start;
+  }
+  
+  .orphan-actions button {
+    flex: none;
+  }
+}
+</style>
+
