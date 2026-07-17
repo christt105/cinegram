@@ -60,6 +60,9 @@
                 <button @click="downloadCollection(col.id)" class="glass-button primary">
                   <DownloadCloud :size="16" /> Descargar
                 </button>
+                <button @click="openReidentifyCollection(col)" class="glass-button" style="background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.35); color: #93c5fd;">
+                  <Search :size="16" /> Re-identificar
+                </button>
                 <button @click="openEditModal(col, null, null)" class="glass-button" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;">
                   <Edit3 :size="16" /> Editar
                 </button>
@@ -100,6 +103,9 @@
                     <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm">
                       <DownloadCloud :size="14" /> Descargar Pack
                     </button>
+                    <button @click="openReidentifyCollection(col)" class="glass-button btn-sm" style="background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.35); color: #93c5fd;">
+                      <Search :size="14" /> Re-id
+                    </button>
                     <button @click="openEditModal(col, season.season_number, null)" class="glass-button btn-sm" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;">
                       <Edit3 :size="14" /> Editar
                     </button>
@@ -127,6 +133,9 @@
                     <div style="display: flex; gap: 0.25rem;">
                       <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm icon-only" title="Descargar">
                         <DownloadCloud :size="14" />
+                      </button>
+                      <button @click="openReidentifyCollection(col)" class="glass-button btn-sm icon-only" style="background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.35); color: #93c5fd;" title="Re-identificar">
+                        <Search :size="14" />
                       </button>
                       <button @click="openEditModal(col, season.season_number, ep.episode_number)" class="glass-button btn-sm icon-only" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;" title="Editar">
                         <Edit3 :size="14" />
@@ -295,12 +304,78 @@
         </div>
       </div>
     </div>
+
+    <!-- Re-identify Collection Modal -->
+    <div v-if="reidentifyCollectionModal.open" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px); padding: 1rem;">
+      <div class="glass-panel" style="width: 100%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(59,130,246,0.2); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
+
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
+          <div>
+            <h3 style="margin: 0 0 0.25rem 0; font-size: 1.2rem; color: #fff;">🔍 Re-identificar Colección</h3>
+            <p style="margin: 0; font-size: 0.85rem; color: #93c5fd;">{{ reidentifyCollectionModal.name }}</p>
+          </div>
+          <button @click="reidentifyCollectionModal.open = false" class="glass-button icon-only" style="padding: 0; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">✕</button>
+        </div>
+
+        <!-- Auto-detect button -->
+        <div style="display: flex; gap: 0.75rem; align-items: center; padding: 0.75rem; background: rgba(59,130,246,0.05); border: 1px solid rgba(59,130,246,0.15); border-radius: 10px;">
+          <div style="flex-grow: 1;">
+            <div style="font-size: 0.9rem; font-weight: 600; color: #e2e8f0;">🤖 Auto-detectar</div>
+            <div style="font-size: 0.8rem; color: #94a3b8; margin-top: 0.15rem;">Usa el nombre de la colección para buscar en TMDB automáticamente.</div>
+          </div>
+          <button @click="autoReidentifyCollection" :disabled="reidentifyCollectionModal.loading" class="glass-button" style="background: rgba(59,130,246,0.2); border-color: rgba(59,130,246,0.4); color: #93c5fd; flex-shrink: 0;">
+            {{ reidentifyCollectionModal.loading ? 'Procesando...' : 'Auto-detectar' }}
+          </button>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="flex-grow: 1; height: 1px; background: rgba(255,255,255,0.08);"></div>
+          <span style="font-size: 0.8rem; color: #64748b;">o busca manualmente</span>
+          <div style="flex-grow: 1; height: 1px; background: rgba(255,255,255,0.08);"></div>
+        </div>
+
+        <!-- Search Bar -->
+        <div style="display: flex; gap: 0.5rem;">
+          <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Escribe el nombre de la película o serie..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
+          <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Buscar</button>
+        </div>
+
+        <!-- Results List -->
+        <div style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 0.25rem; min-height: 150px;">
+          <div v-if="isSearchingTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">Buscando en TMDB...</div>
+          <div v-else-if="searchResultsTMDB.length === 0 && searchQueryTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">No se han encontrado resultados.</div>
+          <div v-else-if="searchResultsTMDB.length === 0" style="text-align: center; padding: 1.5rem; color: #a1a1aa;">Escribe un título arriba y pulsa Buscar.</div>
+
+          <div v-else v-for="result in searchResultsTMDB" :key="result.id" class="result-card" style="display: flex; gap: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; transition: background 0.2s;">
+            <img v-if="result.poster_path" :src="'https://image.tmdb.org/t/p/w92' + result.poster_path" style="width: 50px; height: 75px; object-fit: cover; border-radius: 6px; flex-shrink: 0;" />
+            <div v-else style="width: 50px; height: 75px; background: rgba(255,255,255,0.05); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #4b5563; flex-shrink: 0;">🎬</div>
+
+            <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 0.25rem; min-width: 0;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                <strong style="color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 250px;">{{ result.title }}</strong>
+                <span style="font-size: 0.75rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; color: #d1d5db;">{{ result.year }}</span>
+                <span :style="{ background: result.media_type === 'movie' ? 'rgba(59,130,246,0.15)' : 'rgba(168,85,247,0.15)', color: result.media_type === 'movie' ? '#93c5fd' : '#e9d5ff' }" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">{{ result.media_type === 'movie' ? 'Película' : 'Serie' }}</span>
+              </div>
+              <p style="margin: 0; font-size: 0.8rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ result.overview }}</p>
+            </div>
+
+            <button @click="selectCollectionTMDB(result.id)" :disabled="reidentifyCollectionModal.loading" class="glass-button" style="align-self: center; background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
+              Seleccionar
+            </button>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem;">
+          <button @click="reidentifyCollectionModal.open = false" class="glass-button" style="padding: 6px 16px;">Cerrar</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { DownloadCloud, Trash2, Edit3, Copy, Check } from 'lucide-vue-next'
+import { DownloadCloud, Trash2, Edit3, Copy, Check, Search } from 'lucide-vue-next'
 import { findJellyfinItemByTmdbId } from '../api/jellyfin'
 
 const props = defineProps<{
@@ -591,6 +666,67 @@ const reidentifyItem = () => {
   searchQueryTMDB.value = item.value?.title || item.value?.manual_title || ''
   searchResultsTMDB.value = []
   showingReidentifyModal.value = true
+}
+
+const reidentifyCollectionModal = ref({
+  open: false,
+  collectionId: 0,
+  name: '',
+  loading: false
+})
+
+const openReidentifyCollection = (col: any) => {
+  reidentifyCollectionModal.value = { open: true, collectionId: col.id, name: col.name, loading: false }
+  searchQueryTMDB.value = col.name
+  searchResultsTMDB.value = []
+}
+
+const autoReidentifyCollection = async () => {
+  reidentifyCollectionModal.value.loading = true
+  try {
+    const res = await fetch(`${backendUrl}/collections/${reidentifyCollectionModal.value.collectionId}/reidentify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    })
+    if (res.ok) {
+      reidentifyCollectionModal.value.open = false
+      alert('✅ Colección re-identificada correctamente.')
+      fetchItem()
+    } else {
+      const errText = await res.text()
+      alert('❌ Error al auto-identificar: ' + errText)
+    }
+  } catch (err) {
+    console.error(err)
+    alert('Error de conexión.')
+  } finally {
+    reidentifyCollectionModal.value.loading = false
+  }
+}
+
+const selectCollectionTMDB = async (tmdbId: number) => {
+  reidentifyCollectionModal.value.loading = true
+  try {
+    const res = await fetch(`${backendUrl}/collections/${reidentifyCollectionModal.value.collectionId}/reidentify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tmdb_id: tmdbId })
+    })
+    if (res.ok) {
+      reidentifyCollectionModal.value.open = false
+      alert('✅ Colección re-identificada correctamente.')
+      fetchItem()
+    } else {
+      const errText = await res.text()
+      alert('❌ Error al re-identificar: ' + errText)
+    }
+  } catch (err) {
+    console.error(err)
+    alert('Error de conexión.')
+  } finally {
+    reidentifyCollectionModal.value.loading = false
+  }
 }
 
 const searchTMDB = async () => {
