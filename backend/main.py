@@ -641,6 +641,31 @@ def identify_collection_endpoint(
     
     return db_collection
 
+class ReidentifyCollectionRequest(BaseModel):
+    tmdb_id: int | None = None
+
+@app.post("/collections/{collection_id}/reidentify", response_model=CollectionOut)
+def reidentify_collection_endpoint(
+    collection_id: int,
+    request: ReidentifyCollectionRequest,
+    session: Session = Depends(get_session)
+):
+    db_collection = session.get(Collection, collection_id)
+    if not db_collection:
+        raise HTTPException(status_code=404, detail="Collection not found")
+
+    # Clear existing identification so the guard in identify_collection is bypassed.
+    db_collection.movie_id = None
+    db_collection.season_id = None
+    db_collection.episode_id = None
+    session.add(db_collection)
+    session.commit()
+
+    identify_collection(session, collection_id, tmdb, forced_tmdb_id=request.tmdb_id)
+    session.refresh(db_collection)
+
+    return db_collection
+
 class BatchIdentifyRequest(BaseModel):
     collection_ids: List[int]
     tmdb_id: int

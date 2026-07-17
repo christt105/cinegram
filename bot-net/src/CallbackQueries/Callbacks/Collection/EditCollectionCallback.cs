@@ -1,4 +1,4 @@
-﻿using Bot.Services;
+using Bot.Services;
 using Bot.Utils;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -43,6 +43,7 @@ public class EditCollectionCallback : ICallbackQuery
         await _bot.EditMessageText(message!.Chat.Id, message.MessageId, text,
             replyMarkup: new[]
             {
+                new[]{ InlineKeyboardButton.WithCallbackData("🔍 Re-identify Collection", ReidentifyCollectionCallback.Pack(_collectionId))},
                 new[]{ InlineKeyboardButton.WithCallbackData("Edit Name", CollectionEditFieldCallback.Pack(_collectionId, CollectionEditFieldCallback.NameField))},
                 new[]{ InlineKeyboardButton.WithCallbackData("Edit Quality", CollectionEditFieldCallback.Pack(_collectionId, CollectionEditFieldCallback.QualityField))},
                 new[]{ InlineKeyboardButton.WithCallbackData("Edit Audio", CollectionEditFieldCallback.Pack(_collectionId, CollectionEditFieldCallback.AudioField))},
@@ -51,6 +52,7 @@ public class EditCollectionCallback : ICallbackQuery
                 new[]{ InlineKeyboardButton.WithCallbackData("Edit Notes", CollectionEditFieldCallback.Pack(_collectionId, CollectionEditFieldCallback.NotesField))},
                 new[]{ InlineKeyboardButton.WithCallbackData("Cancel", ShowCollectionCallback.Pack(_collectionId))}
             });
+
     }
 
     public static string Pack(int collectionId)

@@ -89,6 +89,22 @@ public class ApiClient : IDisposable
         return true;
     }
 
+    public async Task<bool> ReidentifyCollectionAsync(int collectionId, int? tmdbId = null)
+    {
+        var payload = tmdbId.HasValue ? new { tmdb_id = (int?)tmdbId.Value } : new { tmdb_id = (int?)null };
+        var response = await _httpClient.PostAsJsonAsync($"/collections/{collectionId}/reidentify", payload);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var text = await response.Content.ReadAsStringAsync();
+            Log.Error($"ReidentifyCollection failed: {response.StatusCode} {text}");
+            return false;
+        }
+
+        return true;
+    }
+
+
     public async Task<bool> ReidentifySeriesAsync(int seriesId, int tmdbId)
     {
         var response = await _httpClient.PostAsync($"/series/{seriesId}/reidentify?new_tmdb_id={tmdbId}", null);
