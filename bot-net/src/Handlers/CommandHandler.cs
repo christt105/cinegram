@@ -24,6 +24,7 @@ public class CommandHandler
             new SerieCommand(bot.Bot, bot.ApiClient),
             new MovieCommand(bot.Bot, bot.ApiClient),
             new SearchCommand(bot.Bot, bot.ApiClient),
+            new QueueCommand(bot.Bot, bot.ApiClient),
             new ImportCommand(bot)
         };
 

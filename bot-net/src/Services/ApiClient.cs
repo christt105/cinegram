@@ -277,4 +277,38 @@ public class ApiClient : IDisposable
         var response = await _httpClient.PostAsJsonAsync($"/uploads/{taskId}/status", payload);
         return response.IsSuccessStatusCode;
     }
+
+    public async Task<List<UploadTask>?> GetUploadsQueueAsync()
+    {
+        return await GetSafeAsync<List<UploadTask>>("/uploads/queue");
+    }
+
+    public async Task<List<QueueDownloadTask>?> GetDownloadsQueueAsync()
+    {
+        return await GetSafeAsync<List<QueueDownloadTask>>("/downloads/queue");
+    }
+
+    public async Task<bool> CancelUploadTaskAsync(int taskId)
+    {
+        var response = await _httpClient.DeleteAsync($"/uploads/{taskId}");
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> CancelDownloadTaskAsync(int taskId)
+    {
+        var response = await _httpClient.DeleteAsync($"/downloads/{taskId}");
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> RetryUploadTaskAsync(int taskId)
+    {
+        var response = await _httpClient.PostAsync($"/uploads/{taskId}/retry", null);
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> RetryDownloadTaskAsync(int taskId)
+    {
+        var response = await _httpClient.PostAsync($"/downloads/{taskId}/retry", null);
+        return response.IsSuccessStatusCode;
+    }
 }
