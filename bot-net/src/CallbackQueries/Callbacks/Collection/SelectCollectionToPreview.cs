@@ -1,5 +1,6 @@
 using Bot.CallbackQueries.Callbacks.Movie;
 using Bot.Services;
+using Bot.Utils;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
@@ -52,10 +53,12 @@ public class SelectCollectionToPreview : ICallbackQuery
         for (var i = 0; i < collections.Length; i++)
         {
             var c = collections[i];
-            var qualityStr = string.IsNullOrWhiteSpace(c.Quality) ? "" : $" - Quality {c.Quality}";
-            text += $"{i + 1}. \"{c.Name}\" (ID {c.Id}){qualityStr} - Files {c.Files!.Length}\n";
+            var qualityStr = Beautify.FormatCollectionQuality(c);
+            var qualityLine = string.IsNullOrWhiteSpace(qualityStr) ? "" : $"\n    {qualityStr}";
+            var fileCount = c.Files?.Length ?? 0;
+            text += $"{i + 1}. <b>{c.Name}</b> (ID {c.Id}) — {fileCount} file(s){qualityLine}\n\n";
             buttons.Add([
-                InlineKeyboardButton.WithCallbackData((i + 1).ToString(), PreviewCollectionCallback.Pack(c.Id))
+                InlineKeyboardButton.WithCallbackData($"{i + 1}. {c.Name}", PreviewCollectionCallback.Pack(c.Id))
             ]);
         }
 
@@ -65,7 +68,7 @@ public class SelectCollectionToPreview : ICallbackQuery
             ]
         );
 
-        await _bot.EditMessageText(message.Chat.Id, message.MessageId, text, replyMarkup: buttons.ToArray());
+        await _bot.EditMessageText(message.Chat.Id, message.MessageId, text, Telegram.Bot.Types.Enums.ParseMode.Html, replyMarkup: buttons.ToArray());
     }
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)

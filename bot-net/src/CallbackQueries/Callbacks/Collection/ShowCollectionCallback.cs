@@ -1,4 +1,4 @@
-﻿using Bot.CallbackQueries.Callbacks.File;
+using Bot.CallbackQueries.Callbacks.File;
 using Bot.CallbackQueries.Callbacks.Movie;
 using Bot.Services;
 using Bot.Utils;
@@ -53,7 +53,8 @@ public class ShowCollectionCallback : ICallbackQuery
                 SeeMovieCollectionsCallback.Pack(collection.MovieId!.Value))
         ]);
 
-        await _bot.EditMessageText(message!.Chat.Id, message.MessageId, text, replyMarkup: buttons.ToArray());
+        await _bot.EditMessageText(message!.Chat.Id, message.MessageId, text,
+            Telegram.Bot.Types.Enums.ParseMode.Html, replyMarkup: buttons.ToArray());
     }
 
     public static ICallbackQuery Create(string[] packedFields, BotDispatcher dispatcher)

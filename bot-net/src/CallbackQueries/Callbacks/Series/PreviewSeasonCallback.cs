@@ -70,15 +70,40 @@ public class PreviewSeasonCallback : ICallbackQuery
             return;
         }
 
-        // Send season info
-        var text = $"📺 <b>{series.ManualTitle}</b> - Season {season.SeasonNumber}\n\n";
-        text += $"Found {allFiles.Count} file(s) for this season.";
+        // Gather quality info from all collections in the season
+        var allCollections = new List<Bot.Models.Collection>();
+        if (season.Collections != null) allCollections.AddRange(season.Collections);
+        if (season.Episodes != null)
+            foreach (var ep in season.Episodes)
+                if (ep.Collections != null) allCollections.AddRange(ep.Collections);
+
+        // Build header text
+        var seriesTitle = $"\ud83d\udcfa {series.ManualTitle} ({series.ReleaseYear?.ToString() ?? "-"}) — Season {season.SeasonNumber}";
+        if (series.TmdbId.HasValue)
+            seriesTitle += $"  •  <a href=\"https://www.themoviedb.org/tv/{series.TmdbId}\">TMDB</a>";
+
+        var text = $"<b>{seriesTitle}</b>\n\n";
+        text += $"Found <b>{allFiles.Count}</b> file(s) for this season.";
+
+        if (allCollections.Count > 0)
+        {
+            var qualityLines = allCollections
+                .Select(c => Bot.Utils.Beautify.FormatCollectionQuality(c))
+                .Where(q => !string.IsNullOrWhiteSpace(q))
+                .Distinct()
+                .ToList();
+
+            if (qualityLines.Count > 0)
+            {
+                text += "\n\n" + string.Join("\n", qualityLines);
+            }
+        }
 
         if (series.PosterPath != null)
         {
-            await _bot.SendPhoto(message!.Chat.Id, 
-                Bot.Utils.MessageBuilder.FormatTmdbImageUrl(series.PosterPath), 
-                text, 
+            await _bot.SendPhoto(message!.Chat.Id,
+                Bot.Utils.MessageBuilder.FormatTmdbImageUrl(series.PosterPath),
+                text,
                 parseMode: Telegram.Bot.Types.Enums.ParseMode.Html);
         }
         else

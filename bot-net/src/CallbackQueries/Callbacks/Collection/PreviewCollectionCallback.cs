@@ -46,14 +46,11 @@ public class PreviewCollectionCallback : ICallbackQuery
 
             if (movie != null)
             {
-                var text = $"🎬 <b>{movie.Title}</b> ({movie.ReleaseYear})\n";
-                text += $"<b>Collection:</b> {collection.Name}";
-                if (!string.IsNullOrWhiteSpace(collection.Quality))
-                {
-                    text += $" - Quality {collection.Quality}";
-                }
-                text += "\n";
-                text += $"<b>Files:</b> {collection.Files.Length}";
+                var movieTitle = $"🎬 {movie.Title} ({movie.ReleaseYear})";
+                if (movie.TmdbId.HasValue)
+                    movieTitle += $"  •  <a href=\"https://www.themoviedb.org/movie/{movie.TmdbId}\">TMDB</a>";
+
+                var text = Beautify.FormatCollectionPreviewHeader(collection, movieTitle);
 
                 if (movie.PosterPath != null)
                 {

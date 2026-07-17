@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Serialization;
+using System.Text.Json.Serialization;
 
 namespace Bot.Models;
 
@@ -26,4 +26,6 @@ public class Collection
     [JsonPropertyName("tags")] public string? Tags { get; set; }
 
     [JsonPropertyName("notes")] public string? Notes { get; set; }
+
+    [JsonPropertyName("technical_metadata")] public string? TechnicalMetadata { get; set; }
 }
