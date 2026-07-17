@@ -188,7 +188,7 @@ public class UploadService
 
                 Log.Info($"[Uploader] Processing file {fileIndex + 1}/{filesToUpload.Count}: {fileInfo.Name} ({fileSize} bytes)");
 
-                // Límite de 2GB (Telegram non-Premium)
+                // 2GB limit (Telegram non-Premium)
                 const long splitLimit = 1950000000;
 
                 if (fileSize > splitLimit)
@@ -393,10 +393,10 @@ public class UploadService
     private string TranslatePath(string hostPath)
     {
         // Handle various host and container mappings
-        var peliculasPrefixes = new[] { "/mnt/disco/70-79_Media/Peliculas", "/media/disco/Peliculas", "/Disco/70-79_Media/Peliculas" };
+        var moviesPrefixes = new[] { "/mnt/disco/70-79_Media/Peliculas", "/media/disco/Peliculas", "/Disco/70-79_Media/Peliculas" };
         var seriesPrefixes = new[] { "/mnt/disco/70-79_Media/Series", "/media/disco/Series", "/Disco/70-79_Media/Series" };
 
-        foreach (var prefix in peliculasPrefixes)
+        foreach (var prefix in moviesPrefixes)
         {
             if (hostPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {

@@ -21,7 +21,7 @@ public class DownloadSeriesCallback : ICallbackQuery
 
     public async Task ExecuteAsync(Message? message)
     {
-        await _bot.SendMessage(message!.Chat.Id, "Próximamente: Descargar serie completa o por temporadas.");
+        await _bot.SendMessage(message!.Chat.Id, "Coming soon: Download full series or by season.");
     }
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)

@@ -28,7 +28,7 @@ public class AddCommand : ICommand
         }
 
         await bot.SendMessage(msg.Chat.Id, 
-            "➕ <b>Añadir Película o Serie Manualmente</b>\n\nEscribe el nombre de lo que quieres buscar en TMDB (o escribe /cancelar para abortar):",
+            "➕ <b>Add Movie or Series Manually</b>\n\nType the name of what you want to search on TMDB (or type /cancel to abort):",
             parseMode: Telegram.Bot.Types.Enums.ParseMode.Html);
 
         await _dispatcher.PendingActionHandler.SetPendingAction(new PendingActionHandler.PendingAction(
@@ -46,14 +46,14 @@ public class AddCommand : ICommand
         var bot = _dispatcher.Bot;
         var apiClient = _dispatcher.ApiClient;
 
-        await bot.SendMessage(originalMessage.Chat.Id, $"🔍 Buscando \"{query}\" en TMDB...");
+        await bot.SendMessage(originalMessage.Chat.Id, $"🔍 Searching for \"{query}\" on TMDB...");
 
         try
         {
             var results = await apiClient.SearchTmdbAsync(query);
             if (results == null || results.Count == 0)
             {
-                await bot.SendMessage(originalMessage.Chat.Id, "❌ No se han encontrado resultados en TMDB.");
+                await bot.SendMessage(originalMessage.Chat.Id, "❌ No results found on TMDB.");
                 return;
             }
 
@@ -71,13 +71,13 @@ public class AddCommand : ICommand
             }
 
             await bot.SendMessage(originalMessage.Chat.Id, 
-                $"Selecciona el elemento que quieres añadir a la biblioteca local:", 
+                $"Select the item you want to add to the local library:", 
                 replyMarkup: new InlineKeyboardMarkup(buttons));
         }
         catch (Exception ex)
         {
             Log.Error("Failed to search TMDB for add command", ex);
-            await bot.SendMessage(originalMessage.Chat.Id, "❌ Error al buscar en TMDB.");
+            await bot.SendMessage(originalMessage.Chat.Id, "❌ Error searching TMDB.");
         }
     }
 

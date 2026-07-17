@@ -6,10 +6,10 @@
       <!-- Simple indicator for sync state instead of massive buttons -->
       <div class="media-action-bar" :class="{ active: isHovered }">
         <button v-if="!media.isOnTelegram" class="action-bar-btn primary">
-          <span>Respaldar / Opciones</span>
+          <span>Backup / Options</span>
         </button>
         <button v-else class="action-bar-btn secondary">
-          <span>Ver Detalles</span>
+          <span>View Details</span>
         </button>
       </div>
 

@@ -84,11 +84,11 @@ Starting to process...";
         
         if (result.MovieId == null && result.EpisodeId == null && result.SeasonId == null && result.CollectionId.HasValue)
         {
-            var message = @$"⚠️ No pude identificar automáticamente el archivo.
+            var message = @$"⚠️ Could not automatically identify the file.
 Id: {file.MessageId}
 Name: {file.FileName}
 
-Por favor, responde a este mensaje con el ID de TMDB numérico para enlazarla manualmente.";
+Please reply to this message with the numeric TMDB ID to link it manually.";
 
             await _bot.EditMessageText(answer.Chat.Id, answer.MessageId, message);
             
@@ -100,31 +100,31 @@ Por favor, responde a este mensaje con el ID de TMDB numérico para enlazarla ma
                 {
                     if (int.TryParse(text.Trim(), out var tmdbId))
                     {
-                        await _bot.SendMessage(answer.Chat.Id, $"Intentando enlazar con TMDB ID {tmdbId}...");
+                        await _bot.SendMessage(answer.Chat.Id, $"Attempting to link with TMDB ID {tmdbId}...");
                         var success = await _apiClient.IdentifyCollectionAsync(result.CollectionId.Value, tmdbId);
                         if (success)
                         {
-                            await _bot.SendMessage(answer.Chat.Id, "✅ Archivo enlazado correctamente.");
+                            await _bot.SendMessage(answer.Chat.Id, "✅ File linked successfully.");
                         }
                         else
                         {
-                            await _bot.SendMessage(answer.Chat.Id, "❌ Hubo un error al enlazar el archivo (posible ID incorrecto).");
+                            await _bot.SendMessage(answer.Chat.Id, "❌ An error occurred while linking the file (possibly an incorrect ID).");
                         }
                     }
                     else
                     {
-                        await _bot.SendMessage(answer.Chat.Id, "❌ ID inválido. Operación cancelada.");
+                        await _bot.SendMessage(answer.Chat.Id, "❌ Invalid ID. Operation cancelled.");
                     }
                 },
                 cancelCallback: async () =>
                 {
-                    await _bot.SendMessage(answer.Chat.Id, "Operación de enlace cancelada.");
+                    await _bot.SendMessage(answer.Chat.Id, "Link operation cancelled.");
                 }
             ));
         }
         else
         {
-            var message = @$"✅ Archivo procesado e identificado correctamente:
+            var message = @$"✅ File processed and identified successfully:
 Id: {file.MessageId}
 Name: {file.FileName}
 Movie ID: {result.MovieId}

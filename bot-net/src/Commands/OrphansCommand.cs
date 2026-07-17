@@ -14,8 +14,8 @@ public static class OrphansMessageBuilder
 
         if (orphans.Count == 0)
         {
-            return ("🎉 <b>¡No se han encontrado anomalías ni colecciones huérfanas en la base de datos!</b>", 
-                    new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("🔄 Refrescar", CallbackQueries.Callbacks.OrphansCallback.Pack("refresh", 0)) }));
+            return ("🎉 <b>No anomalies or orphaned collections found in the database!</b>", 
+                    new InlineKeyboardMarkup(new[] { InlineKeyboardButton.WithCallbackData("🔄 Refresh", CallbackQueries.Callbacks.OrphansCallback.Pack("refresh", 0)) }));
         }
 
         int pageSize = 5;
@@ -27,21 +27,21 @@ public static class OrphansMessageBuilder
         var currentOrphans = orphans.Skip(startIndex).Take(pageSize).ToList();
 
         var sb = new StringBuilder();
-        sb.AppendLine($"🔍 <b>Colecciones Huérfanas (Página {page + 1}/{totalPages})</b>");
-        sb.AppendLine("Estas colecciones no están asociadas a ninguna película o serie:\n");
+        sb.AppendLine($"🔍 <b>Orphaned Collections (Page {page + 1}/{totalPages})</b>");
+        sb.AppendLine("These collections are not associated with any movie or series:\n");
 
         var buttons = new List<InlineKeyboardButton[]>();
 
         foreach (var col in currentOrphans)
         {
             sb.AppendLine($"📦 <b>{col.Name}</b>");
-            sb.AppendLine($"   ID: {col.Id} | Calidad: {col.Quality ?? "Automática"}");
+            sb.AppendLine($"   ID: {col.Id} | Quality: {col.Quality ?? "Auto"}");
             sb.AppendLine();
 
             buttons.Add(new[]
             {
-                InlineKeyboardButton.WithCallbackData($"🔍 Identificar #{col.Id}", CallbackQueries.Callbacks.OrphansCallback.Pack("ident", page, col.Id.ToString())),
-                InlineKeyboardButton.WithCallbackData($"🗑️ Borrar", CallbackQueries.Callbacks.OrphansCallback.Pack("confirm_del", page, col.Id.ToString()))
+                InlineKeyboardButton.WithCallbackData($"🔍 Identify #{col.Id}", CallbackQueries.Callbacks.OrphansCallback.Pack("ident", page, col.Id.ToString())),
+                InlineKeyboardButton.WithCallbackData($"🗑️ Delete", CallbackQueries.Callbacks.OrphansCallback.Pack("confirm_del", page, col.Id.ToString()))
             });
         }
 
@@ -49,14 +49,14 @@ public static class OrphansMessageBuilder
         var navRow = new List<InlineKeyboardButton>();
         if (page > 0)
         {
-            navRow.Add(InlineKeyboardButton.WithCallbackData("⬅️ Anterior", CallbackQueries.Callbacks.OrphansCallback.Pack("page", page - 1)));
+            navRow.Add(InlineKeyboardButton.WithCallbackData("⬅️ Previous", CallbackQueries.Callbacks.OrphansCallback.Pack("page", page - 1)));
         }
         
-        navRow.Add(InlineKeyboardButton.WithCallbackData("🔄 Refrescar", CallbackQueries.Callbacks.OrphansCallback.Pack("refresh", page)));
+        navRow.Add(InlineKeyboardButton.WithCallbackData("🔄 Refresh", CallbackQueries.Callbacks.OrphansCallback.Pack("refresh", page)));
 
         if (page < totalPages - 1)
         {
-            navRow.Add(InlineKeyboardButton.WithCallbackData("Siguiente ➡️", CallbackQueries.Callbacks.OrphansCallback.Pack("page", page + 1)));
+            navRow.Add(InlineKeyboardButton.WithCallbackData("Next ➡️", CallbackQueries.Callbacks.OrphansCallback.Pack("page", page + 1)));
         }
 
         buttons.Add(navRow.ToArray());

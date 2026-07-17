@@ -42,12 +42,12 @@ public class OrphansCallback : ICallbackQuery
             {
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("🗑️ Confirmar Borrado", Pack("delete", _page, delConfirmId.ToString())),
-                    InlineKeyboardButton.WithCallbackData("✕ Cancelar", Pack("refresh", _page))
+                    InlineKeyboardButton.WithCallbackData("🗑️ Confirm Deletion", Pack("delete", _page, delConfirmId.ToString())),
+                    InlineKeyboardButton.WithCallbackData("✕ Cancel", Pack("refresh", _page))
                 }
             };
             await bot.EditMessageText(message.Chat.Id, message.MessageId, 
-                $"⚠️ ¿Estás seguro de que quieres borrar la colección ID <b>{delConfirmId}</b>?\nEsta acción no se puede deshacer.",
+                $"⚠️ Are you sure you want to delete collection ID <b>{delConfirmId}</b>?\nThis action cannot be undone.",
                 parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
                 replyMarkup: new InlineKeyboardMarkup(buttons));
         }
@@ -56,21 +56,21 @@ public class OrphansCallback : ICallbackQuery
             var ok = await apiClient.DeleteCollectionAsync(delId);
             if (ok)
             {
-                await bot.SendMessage(message.Chat.Id, "✅ Colección eliminada correctamente.");
+                await bot.SendMessage(message.Chat.Id, "✅ Collection deleted successfully.");
             }
             else
             {
-                await bot.SendMessage(message.Chat.Id, "❌ Error al eliminar la colección.");
+                await bot.SendMessage(message.Chat.Id, "❌ Error deleting the collection.");
             }
             await RefreshMessage(message, _page);
         }
         else if (_action == "ident" && int.TryParse(_targetIdStr, out var identId))
         {
             await bot.EditMessageText(message.Chat.Id, message.MessageId,
-                $"🔍 <b>Identificando Colección #{identId}</b>\n\nResponde a este mensaje escribiendo el nombre de la serie/película en TMDB, o introduce directamente el ID numérico si ya lo conoces:",
+                $"🔍 <b>Identifying Collection #{identId}</b>\n\nReply to this message with the series/movie name from TMDB, or enter the numeric ID directly if you already know it:",
                 parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
                 replyMarkup: new InlineKeyboardMarkup(new[] {
-                    InlineKeyboardButton.WithCallbackData("✕ Cancelar", Pack("refresh", _page))
+                    InlineKeyboardButton.WithCallbackData("✕ Cancel", Pack("refresh", _page))
                 }));
 
             await _dispatcher.PendingActionHandler.SetPendingAction(new PendingActionHandler.PendingAction(
@@ -94,11 +94,11 @@ public class OrphansCallback : ICallbackQuery
                 var ok = await apiClient.IdentifyCollectionAsync(colId, tmdbId);
                 if (ok)
                 {
-                    await bot.SendMessage(message.Chat.Id, "✅ Colección vinculada correctamente.");
+                    await bot.SendMessage(message.Chat.Id, "✅ Collection linked successfully.");
                 }
                 else
                 {
-                    await bot.SendMessage(message.Chat.Id, "❌ Error al vincular la colección.");
+                    await bot.SendMessage(message.Chat.Id, "❌ Error linking the collection.");
                 }
                 
                 await RefreshMessage(message, _page);
@@ -116,23 +116,23 @@ public class OrphansCallback : ICallbackQuery
             var ok = await apiClient.IdentifyCollectionAsync(collectionId, tmdbId);
             if (ok)
             {
-                await bot.SendMessage(originalMessage.Chat.Id, "✅ Colección vinculada correctamente.");
+                await bot.SendMessage(originalMessage.Chat.Id, "✅ Collection linked successfully.");
             }
             else
             {
-                await bot.SendMessage(originalMessage.Chat.Id, "❌ Error al vincular la colección.");
+                await bot.SendMessage(originalMessage.Chat.Id, "❌ Error linking the collection.");
             }
             await RefreshMessage(originalMessage, returnPage);
             return;
         }
 
-        await bot.SendMessage(originalMessage.Chat.Id, $"🔍 Buscando \"{text}\" en TMDB...");
+        await bot.SendMessage(originalMessage.Chat.Id, $"🔍 Searching for \"{text}\" on TMDB...");
         try
         {
             var results = await apiClient.SearchTmdbAsync(text);
             if (results == null || results.Count == 0)
             {
-                await bot.SendMessage(originalMessage.Chat.Id, "❌ No se han encontrado resultados en TMDB.");
+                await bot.SendMessage(originalMessage.Chat.Id, "❌ No results found on TMDB.");
                 await RefreshMessage(originalMessage, returnPage);
                 return;
             }
@@ -149,16 +149,16 @@ public class OrphansCallback : ICallbackQuery
                     )
                 });
             }
-            buttons.Add(new[] { InlineKeyboardButton.WithCallbackData("✕ Cancelar", Pack("refresh", returnPage)) });
+            buttons.Add(new[] { InlineKeyboardButton.WithCallbackData("✕ Cancel", Pack("refresh", returnPage)) });
 
             await bot.SendMessage(originalMessage.Chat.Id, 
-                $"Elige el resultado correcto para vincular:", 
+                $"Choose the correct result to link:", 
                 replyMarkup: new InlineKeyboardMarkup(buttons));
         }
         catch (Exception ex)
         {
             Log.Error("Failed to search TMDB or link collection", ex);
-            await bot.SendMessage(originalMessage.Chat.Id, "❌ Error de conexión al buscar en TMDB.");
+            await bot.SendMessage(originalMessage.Chat.Id, "❌ Connection error while searching TMDB.");
             await RefreshMessage(originalMessage, returnPage);
         }
     }

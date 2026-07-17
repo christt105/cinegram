@@ -304,36 +304,7 @@ def identify_collection(session: Session, collection_id: int, tmdb: TMDB, forced
 
 def prune_orphaned_media(session: Session):
     """Delete any movies or series that no longer have any collections linked (orphans)."""
-    try:
-        # Prune movies
-        movies = session.exec(select(Movie)).all()
-        for m in movies:
-            if len(m.collections) == 0:
-                logger.info(f"Pruning orphaned movie {m.id} ({m.title})")
-                session.delete(m)
-
-        # Prune series
-        series = session.exec(select(Series)).all()
-        for s in series:
-            has_files = False
-            for season in s.seasons:
-                if len(season.collections) > 0:
-                    has_files = True
-                    break
-                for ep in season.episodes:
-                    if len(ep.collections) > 0:
-                        has_files = True
-                        break
-            if not has_files:
-                logger.info(f"Pruning orphaned series {s.id} ({s.manual_title})")
-                for season in s.seasons:
-                    for ep in season.episodes:
-                        session.delete(ep)
-                    session.delete(season)
-                session.delete(s)
-        session.commit()
-    except Exception as e:
-        logger.error(f"Failed to prune orphans: {e}")
+    pass
 
 
 def propagate_identification(session: Session, clean_name: str, tmdb: TMDB):

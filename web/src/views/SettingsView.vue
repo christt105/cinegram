@@ -46,28 +46,28 @@
       <div class="glass-panel settings-card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
         <h3>Telegram Message Links</h3>
         <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">
-          Configura el prefijo de enlace para poder ir directamente a los mensajes del archivo en Telegram desde la biblioteca.
+          Configure the link prefix to navigate directly to file messages in Telegram from the library.
         </p>
         <div>
-          <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Base de enlace de Telegram:</label>
-          <input v-model="telegramLinkBase" @change="saveTelegramLinkBase" type="text" placeholder="https://t.me/BibliotecaKachopinesBot o https://t.me/c/1234567890" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-family: monospace; font-size: 0.9rem;" />
+          <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Telegram Link Base:</label>
+          <input v-model="telegramLinkBase" @change="saveTelegramLinkBase" type="text" placeholder="https://t.me/YourBotName or https://t.me/c/1234567890" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-family: monospace; font-size: 0.9rem;" />
         </div>
         <div style="font-size: 0.75rem; color: #6b7280; display: flex; flex-direction: column; gap: 0.25rem;">
-          <span>• <strong>Grupo/Canal Privado:</strong> Usa <code>https://t.me/c/ID_DEL_CHAT</code> (sin el prefijo -100).</span>
-          <span>• <strong>Chat del Bot:</strong> Usa <code>https://t.me/BibliotecaKachopinesBot</code>.</span>
+          <span>• <strong>Private Group/Channel:</strong> Use <code>https://t.me/c/CHAT_ID</code> (without the -100 prefix).</span>
+          <span>• <strong>Bot Chat:</strong> Use <code>https://t.me/YourBotName</code>.</span>
         </div>
       </div>
 
       <!-- Maintenance and Anomalies Card -->
       <div class="glass-panel settings-card" style="grid-column: 1 / -1; margin-top: 1.5rem; padding: 1.5rem;">
-        <h3 style="margin-bottom: 0.5rem;">Base de Datos y Mantenimiento de Integridad</h3>
+        <h3 style="margin-bottom: 0.5rem;">Database & Integrity Maintenance</h3>
         <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.95rem;">
-          Aquí se muestran colecciones o archivos que no se han podido asociar correctamente a ninguna película o serie de TMDB (registros huérfanos/anomalías).
+          Collections or files that could not be correctly matched to any TMDB movie or series are shown here (orphaned records/anomalies).
         </p>
 
-        <div v-if="loadingOrphans" class="loading-text" style="color: var(--text-secondary);">Cargando anomalías...</div>
+        <div v-if="loadingOrphans" class="loading-text" style="color: var(--text-secondary);">Loading anomalies...</div>
         <div v-else-if="orphans.length === 0" class="success-text" style="display: flex; align-items: center; gap: 0.5rem; color: #4ade80; font-weight: 600;">
-          <span>✓</span> ¡No se han encontrado anomalías ni colecciones huérfanas en la base de datos!
+          <span>✓</span> No anomalies or orphaned collections found in the database!
         </div>
         <div v-else class="orphans-section" style="display: flex; flex-direction: column; gap: 1rem;">
           <!-- Batch Actions Toolbar -->
@@ -75,16 +75,16 @@
             <div style="display: flex; align-items: center; gap: 0.75rem;">
               <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--jellyfin-blue);" />
               <span style="font-size: 0.95rem; font-weight: 500;">
-                Seleccionados: <strong style="color: var(--jellyfin-blue);">{{ selectedOrphanIds.length }}</strong> de <strong>{{ orphans.length }}</strong>
+                Selected: <strong style="color: var(--jellyfin-blue);">{{ selectedOrphanIds.length }}</strong> of <strong>{{ orphans.length }}</strong>
               </span>
             </div>
             
             <div style="display: flex; gap: 0.75rem;">
               <button @click="identifyBatch" :disabled="selectedOrphanIds.length === 0" class="glass-button" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;" :style="{ opacity: selectedOrphanIds.length === 0 ? 0.5 : 1 }">
-                🔍 Identificar en Lote
+                🔍 Batch Identify
               </button>
               <button @click="deleteBatch" :disabled="selectedOrphanIds.length === 0" class="glass-button danger" style="background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.35); color: #fca5a5; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;" :style="{ opacity: selectedOrphanIds.length === 0 ? 0.5 : 1 }">
-                🗑️ Borrar en Lote
+                🗑️ Batch Delete
               </button>
             </div>
           </div>
@@ -99,7 +99,7 @@
                 <div class="orphan-details">
                   <strong style="color: #fca5a5; font-size: 1.05rem;">{{ orphan.name }}</strong>
                   <span style="font-size: 0.85rem; color: #a1a1aa;">
-                    Colección ID: {{ orphan.id }} | Calidad: {{ orphan.quality || 'Automática' }} | {{ orphan.files_count }} archivos
+                    Collection ID: {{ orphan.id }} | Quality: {{ orphan.quality || 'Auto' }} | {{ orphan.files_count }} files
                   </span>
                   <ul style="margin: 0.5rem 0 0 1rem; padding: 0; font-size: 0.85rem; color: #888;">
                     <li v-for="file in orphan.files" :key="file.id" style="list-style-type: square; margin-bottom: 0.25rem;">
@@ -111,10 +111,10 @@
               
               <div class="orphan-actions">
                 <button @click="openIdentifyModal(orphan)" class="glass-button" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;">
-                  🔍 Identificar
+                  🔍 Identify
                 </button>
                 <button @click="deleteOrphan(orphan.id)" class="glass-button danger" style="background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.35); color: #fca5a5; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;">
-                  🗑️ Borrar
+                  🗑️ Delete
                 </button>
               </div>
             </div>
@@ -128,27 +128,27 @@
       <div class="glass-panel" style="width: 100%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
         
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
-          <h3 style="margin: 0; font-size: 1.2rem; color: #fff;">Buscar en TMDB</h3>
+          <h3 style="margin: 0; font-size: 1.2rem; color: #fff;">Search in TMDB</h3>
           <button @click="searchModalOpen = false" class="glass-button icon-only" style="padding: 0; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px;">✕</button>
         </div>
         
         <div style="color: #a1a1aa; font-size: 0.85rem; word-break: break-all;">
-          Identificando: <strong style="color: #fca5a5;">{{ activeOrphanName }}</strong>
+          Identifying: <strong style="color: #fca5a5;">{{ activeOrphanName }}</strong>
         </div>
 
         <!-- Search Bar -->
         <div style="display: flex; gap: 0.5rem; width: 100%;">
-          <input v-model="searchQuery" @keyup.enter="searchTMDB" type="text" placeholder="Escribe el nombre de la serie o película..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
-          <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Buscar</button>
+          <input v-model="searchQuery" @keyup.enter="searchTMDB" type="text" placeholder="Type the series or movie name..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
+          <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Search</button>
         </div>
 
         <!-- Results List -->
         <div style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 0.25rem;">
           <div v-if="isSearching" style="text-align: center; padding: 2rem; color: #a1a1aa;">
-            <div style="margin-bottom: 0.5rem;">Buscando resultados...</div>
+            <div style="margin-bottom: 0.5rem;">Searching...</div>
           </div>
           <div v-else-if="searchResults.length === 0 && searchQuery" style="text-align: center; padding: 2rem; color: #a1a1aa;">
-            No se han encontrado resultados.
+            No results found.
           </div>
           
           <div v-for="result in searchResults" :key="result.id" class="result-card" style="display: flex; gap: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; transition: background 0.2s;">
@@ -169,18 +169,18 @@
                 width: 'fit-content',
                 textTransform: 'uppercase',
                 fontWeight: '600'
-              }">{{ result.media_type === 'movie' ? 'Película' : 'Serie' }}</span>
-              <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;">{{ result.overview || 'Sin descripción disponible.' }}</p>
+              }">{{ result.media_type === 'movie' ? 'Movie' : 'Series' }}</span>
+              <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;">{{ result.overview || 'No description available.' }}</p>
             </div>
             
             <button @click="selectTMDBResult(result)" class="glass-button" style="align-self: center; background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
-              Seleccionar
+              Select
             </button>
           </div>
         </div>
         
         <div style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem;">
-          <button @click="searchModalOpen = false" class="glass-button" style="padding: 6px 16px;">Cerrar</button>
+          <button @click="searchModalOpen = false" class="glass-button" style="padding: 6px 16px;">Close</button>
         </div>
       </div>
     </div>
@@ -284,25 +284,25 @@ const selectTMDBResult = async (result: any) => {
       body: JSON.stringify({ tmdb_id: result.id })
     });
     if (res.ok) {
-      alert(`Colección vinculada correctamente a "${result.title}" (${result.year})`);
+      alert(`Collection successfully linked to "${result.title}" (${result.year})`);
       searchModalOpen.value = false;
       fetchOrphans();
     } else {
       const txt = await res.text();
-      alert("Error al identificar: " + txt);
+      alert("Error identifying: " + txt);
     }
   } catch (err) {
     console.error(err);
-    alert("Error de conexión.");
+    alert("Connection error.");
   }
 };
 
 const identifyOrphan = async (colId: number) => {
-  const tmdbIdStr = prompt("Introduce el ID de TMDB para identificar esta colección:");
+  const tmdbIdStr = prompt("Enter the TMDB ID to identify this collection:");
   if (!tmdbIdStr) return;
   const tmdbId = intVal(tmdbIdStr.trim());
   if (isNaN(tmdbId)) {
-    alert("El ID de TMDB debe ser un número válido.");
+    alert("The TMDB ID must be a valid number.");
     return;
   }
   
@@ -313,25 +313,25 @@ const identifyOrphan = async (colId: number) => {
       body: JSON.stringify({ tmdb_id: tmdbId })
     });
     if (res.ok) {
-      alert("Identificado y vinculado correctamente.");
+      alert("Identified and linked successfully.");
       fetchOrphans();
     } else {
       const txt = await res.text();
-      alert("Error al identificar: " + txt);
+      alert("Error identifying: " + txt);
     }
   } catch (err) {
     console.error(err);
-    alert("Error de conexión.");
+    alert("Connection error.");
   }
 };
 
 const identifyBatch = async () => {
   if (selectedOrphanIds.value.length === 0) return;
-  const tmdbIdStr = prompt(`Introduce el ID de TMDB para identificar las ${selectedOrphanIds.value.length} colecciones seleccionadas de golpe:`);
+  const tmdbIdStr = prompt(`Enter the TMDB ID to identify the ${selectedOrphanIds.value.length} selected collections at once:`);
   if (!tmdbIdStr) return;
   const tmdbId = intVal(tmdbIdStr.trim());
   if (isNaN(tmdbId)) {
-    alert("El ID de TMDB debe ser un número válido.");
+    alert("The TMDB ID must be a valid number.");
     return;
   }
   
@@ -345,20 +345,20 @@ const identifyBatch = async () => {
       })
     });
     if (res.ok) {
-      alert("Identificación en lote completada con éxito.");
+      alert("Batch identification completed successfully.");
       fetchOrphans();
     } else {
-      alert("Error al procesar lote.");
+      alert("Error processing batch.");
     }
   } catch (err) {
     console.error(err);
-    alert("Error de conexión.");
+    alert("Connection error.");
   }
 };
 
 const deleteBatch = async () => {
   if (selectedOrphanIds.value.length === 0) return;
-  if (!confirm(`¿Seguro que quieres borrar las ${selectedOrphanIds.value.length} colecciones seleccionadas de golpe? Se eliminarán de forma permanente.`)) return;
+  if (!confirm(`Are you sure you want to delete the ${selectedOrphanIds.value.length} selected collections at once? This action is permanent.`)) return;
   
   try {
     const res = await fetch(`${backendUrl}/maintenance/delete-batch`, {
@@ -369,14 +369,14 @@ const deleteBatch = async () => {
       })
     });
     if (res.ok) {
-      alert("Borrado en lote completado.");
+      alert("Batch deletion completed.");
       fetchOrphans();
     } else {
-      alert("Error al borrar lote.");
+      alert("Error deleting batch.");
     }
   } catch (err) {
     console.error(err);
-    alert("Error de conexión.");
+    alert("Connection error.");
   }
 };
 
@@ -385,16 +385,16 @@ const intVal = (val: string) => {
 };
 
 const deleteOrphan = async (colId: number) => {
-  if (!confirm("¿Seguro que quieres borrar esta colección huérfana de la base de datos? Se eliminarán también las referencias de sus archivos.")) return;
+  if (!confirm("Are you sure you want to delete this orphaned collection from the database? Its file references will also be removed.")) return;
   try {
     const res = await fetch(`${backendUrl}/collections/${colId}`, {
       method: "DELETE"
     });
     if (res.ok) {
-      alert("Colección huérfana eliminada.");
+      alert("Orphaned collection deleted.");
       fetchOrphans();
     } else {
-      alert("Error al borrar.");
+      alert("Error deleting.");
     }
   } catch (err) {
     console.error(err);

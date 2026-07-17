@@ -21,26 +21,26 @@
           
           <div class="actions-row" style="margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
             <router-link v-if="localDbItem" :to="'/item/' + type + '/' + localDbItem.id" class="glass-button" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #a7f3d0; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; padding: 6px 12px; font-size: 0.9rem; border-radius: 8px;">
-              📂 Ver Tarjeta Telegram
+              📂 View Telegram Card
             </router-link>
             
             <div v-if="type === 'movies' && !(item.MediaSources && item.MediaSources.length > 1)">
               <button @click="uploadItem(item, 'movie')" class="glass-button primary">
-                <UploadCloud :size="16" /> Subir a Telegram
+                <UploadCloud :size="16" /> Upload to Telegram
               </button>
             </div>
           </div>
 
           <div style="margin-top: 1.5rem;" v-if="type === 'movies' && item.MediaSources && item.MediaSources.length > 1">
-            <h3 style="font-size: 1.1rem; color: #a1a1aa; margin: 0 0 0.5rem 0;">Versiones disponibles:</h3>
+            <h3 style="font-size: 1.1rem; color: #a1a1aa; margin: 0 0 0.5rem 0;">Available versions:</h3>
             <div style="display:flex; flex-direction:column; gap:0.5rem;">
               <div v-for="ms in item.MediaSources" :key="ms.Id" style="display:flex; justify-content:space-between; align-items:center; background: rgba(0,0,0,0.2); padding: 0.5rem 1rem; border-radius: 8px;">
                 <div style="display: flex; flex-direction: column;">
-                  <span style="font-size: 0.9rem; font-weight: bold;">{{ ms.Name || 'Versión alternativa' }}</span>
+                  <span style="font-size: 0.9rem; font-weight: bold;">{{ ms.Name || 'Alternative version' }}</span>
                   <span style="font-size: 0.75rem; color: #a1a1aa;">{{ getMediaSourceDetails(ms) }}</span>
                 </div>
                 <button @click="uploadItem(item, 'movie', ms.Path)" class="glass-button primary btn-sm">
-                  <UploadCloud :size="14" style="margin-right:0.25rem;" /> Subir
+                  <UploadCloud :size="14" style="margin-right:0.25rem;" /> Upload
                 </button>
               </div>
             </div>
@@ -52,9 +52,9 @@
         <!-- Series have seasons and episodes -->
         <div v-if="type === 'series'" class="seasons-section">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem;">
-            <h2 style="font-size: 2rem; margin:0;">Temporadas</h2>
+            <h2 style="font-size: 2rem; margin:0;">Seasons</h2>
             <button @click="uploadItem(item, 'series')" class="glass-button primary">
-               <UploadCloud :size="16" /> Subir Serie Completa
+               <UploadCloud :size="16" /> Upload Full Series
             </button>
           </div>
           
@@ -63,7 +63,7 @@
             <div class="season-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap; gap: 1rem;">
               <h3 style="font-size: 1.5rem; margin: 0;">{{ season.Name }}</h3>
               <button @click="uploadItem(season, 'series')" class="glass-button primary">
-                <UploadCloud :size="16" /> Subir Temporada
+                <UploadCloud :size="16" /> Upload Season
               </button>
             </div>
             
@@ -78,16 +78,16 @@
                   <div v-if="ep.MediaSources && ep.MediaSources.length > 1" style="display:flex; flex-direction:column; gap:0.5rem; align-items:flex-end;">
                     <div v-for="ms in ep.MediaSources" :key="ms.Id" style="display:flex; gap:0.5rem; align-items:center;">
                       <div style="display: flex; flex-direction: column; align-items: flex-end;">
-                        <span style="font-size:0.75rem; font-weight: bold; color:#e4e4e7; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="ms.Name">{{ ms.Name || 'Versión' }}</span>
+                        <span style="font-size:0.75rem; font-weight: bold; color:#e4e4e7; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="ms.Name">{{ ms.Name || 'Version' }}</span>
                         <span style="font-size:0.65rem; color:#a1a1aa; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" :title="getMediaSourceDetails(ms)">{{ getMediaSourceDetails(ms) }}</span>
                       </div>
-                      <button @click="uploadItem(ep, 'series', ms.Path)" class="glass-button primary btn-sm icon-only" title="Subir Versión">
+                      <button @click="uploadItem(ep, 'series', ms.Path)" class="glass-button primary btn-sm icon-only" title="Upload Version">
                         <UploadCloud :size="14" />
                       </button>
                     </div>
                   </div>
                   <div v-else>
-                    <button @click="uploadItem(ep, 'series')" class="glass-button primary btn-sm icon-only" title="Subir Episodio">
+                    <button @click="uploadItem(ep, 'series')" class="glass-button primary btn-sm icon-only" title="Upload Episode">
                       <UploadCloud :size="16" />
                     </button>
                   </div>
@@ -191,13 +191,13 @@ const uploadItem = async (target: any, mediaType: string, forcePath?: string) =>
         });
         
         if (res.ok) {
-            alert("Subida añadida a la cola de Telegram.");
+            alert("Upload added to Telegram queue.");
         } else {
-            alert("Error al encolar subida.");
+            alert("Error queuing upload.");
         }
     } catch (e) {
         console.error(e);
-        alert("Error al encolar subida.");
+        alert("Error queuing upload.");
     }
 }
 

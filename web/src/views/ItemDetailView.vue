@@ -20,7 +20,7 @@
               <a :href="type === 'movies' ? 'https://www.themoviedb.org/movie/' + item.tmdb_id : 'https://www.themoviedb.org/tv/' + item.tmdb_id" target="_blank" rel="noopener noreferrer" class="tmdb-link" style="display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(13, 37, 63, 0.65); border: 1px solid rgba(1, 180, 228, 0.4); padding: 0.25rem 0.6rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #90cea1; text-decoration: none; transition: all 0.2s; height: 30px;">
                 <span style="color: #01b4e4; font-weight: 800;">TMDB:</span> {{ item.tmdb_id }}
               </a>
-              <button @click="copyTmdbId" class="glass-button" style="padding: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; height: 30px; width: 30px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); cursor: pointer;" title="Copiar ID de TMDB">
+              <button @click="copyTmdbId" class="glass-button" style="padding: 0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; height: 30px; width: 30px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); cursor: pointer;" title="Copy TMDB ID">
                 <Check v-if="copied" :size="13" style="color: #4ade80;" />
                 <Copy v-else :size="13" style="color: #a1a1aa;" />
               </button>
@@ -29,16 +29,16 @@
           <p class="overview" style="margin-top: 1rem; color: #d1d5db; line-height: 1.6;">{{ item.overview }}</p>
           <div class="admin-actions" style="margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
             <router-link v-if="jellyfinItemId" :to="'/jellyfin/' + type + '/' + jellyfinItemId" class="glass-button" style="background: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.35); color: #e9d5ff; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; padding: 6px 12px; font-size: 0.9rem; border-radius: 8px;">
-              📂 Ver Tarjeta Jellyfin
+              📂 View Jellyfin Card
             </router-link>
             <button @click="reidentifyItem" class="glass-button" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd;">
-              🔍 Re-identificar (TMDB ID)
+              🔍 Re-identify (TMDB ID)
             </button>
             <button @click="changePoster" class="glass-button" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #a7f3d0;">
-              🖼️ Cambiar Portada
+              🖼️ Change Poster
             </button>
             <button @click="deleteItem" class="glass-button danger" style="background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.35); color: #fca5a5;">
-              🗑️ Borrar Todo
+              🗑️ Delete All
             </button>
           </div>
         </div>
@@ -51,23 +51,23 @@
           <div v-if="item.collections && item.collections.length > 0" class="collection-list">
             <div v-for="col in item.collections" :key="col.id" class="collection-item glass-panel">
               <div class="col-info" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                <strong style="font-size: 1.1rem; color: #4ade80;">{{ col.name || col.quality || 'Respaldo Completo' }}</strong>
+                <strong style="font-size: 1.1rem; color: #4ade80;">{{ col.name || col.quality || 'Full Backup' }}</strong>
                 <span v-if="col.audio_languages" style="font-size: 0.9rem; color: #a1a1aa;">Audio: {{ col.audio_languages }}</span>
                 <span v-if="getTechMeta(col)" style="font-size: 0.8rem; color: #a1a1aa; max-width: 100%;">{{ getTechMeta(col) }}</span>
-                <span v-else-if="col.technical_metadata" class="meta-badge">Info. Técnica Disponible</span>
+                <span v-else-if="col.technical_metadata" class="meta-badge">Technical Info Available</span>
               </div>
               <div class="col-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; align-items: center;">
                 <button @click="downloadCollection(col.id)" class="glass-button primary">
-                  <DownloadCloud :size="16" /> Descargar
+                  <DownloadCloud :size="16" /> Download
                 </button>
                 <button @click="openReidentifyCollection(col)" class="glass-button" style="background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.35); color: #93c5fd;">
-                  <Search :size="16" /> Re-identificar
+                  <Search :size="16" /> Re-identify
                 </button>
                 <button @click="openEditModal(col, null, null)" class="glass-button" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;">
-                  <Edit3 :size="16" /> Editar
+                  <Edit3 :size="16" /> Edit
                 </button>
                 <button @click="deleteCollection(col.id)" class="glass-button danger">
-                  <Trash2 :size="16" /> Borrar
+                  <Trash2 :size="16" /> Delete
                 </button>
               </div>
             </div>
@@ -77,31 +77,31 @@
 
         <!-- Series have seasons and episodes -->
         <div v-if="type === 'series'" class="seasons-section">
-          <h2 style="margin-bottom: 1.5rem; font-size: 2rem;">Temporadas</h2>
+          <h2 style="margin-bottom: 1.5rem; font-size: 2rem;">Seasons</h2>
           <div v-for="season in item.seasons" :key="season.id" class="season-block">
             
             <div class="season-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap; gap: 1rem;">
-              <h3 style="font-size: 1.5rem; margin: 0;">Temporada {{ season.season_number }}</h3>
+              <h3 style="font-size: 1.5rem; margin: 0;">Season {{ season.season_number }}</h3>
               <button @click="downloadSeason(season.season_number)" class="glass-button primary">
-                <DownloadCloud :size="16" /> Descargar Temp.
+                <DownloadCloud :size="16" /> Download Season
               </button>
             </div>
 
             <!-- Season Packs (Collections linked directly to Season) -->
             <div v-if="season.collections && season.collections.length > 0" class="season-packs-section" style="margin-bottom: 1.5rem;">
               <h4 style="margin: 0 0 0.75rem 0; font-size: 1rem; color: #4ade80; display: flex; align-items: center; gap: 0.5rem;">
-                📦 Packs de Temporada Completa
+                📦 Full Season Packs
               </h4>
               <div class="season-packs-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
                 <div v-for="col in season.collections" :key="col.id" class="collection-item glass-panel" style="padding: 1rem; background: rgba(0, 0, 0, 0.25); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(74, 222, 128, 0.15);">
                   <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                    <strong style="color: #4ade80; font-size: 1.05rem;">{{ col.name || col.quality || 'Temporada Completa' }}</strong>
+                    <strong style="color: #4ade80; font-size: 1.05rem;">{{ col.name || col.quality || 'Full Season' }}</strong>
                     <span v-if="col.audio_languages" style="font-size: 0.85rem; color: #a1a1aa;">Audio: {{ col.audio_languages }}</span>
                     <span v-if="getTechMeta(col)" style="font-size: 0.8rem; color: #888;">{{ getTechMeta(col) }}</span>
                   </div>
                   <div style="display: flex; gap: 0.5rem;">
                     <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm">
-                      <DownloadCloud :size="14" /> Descargar Pack
+                      <DownloadCloud :size="14" /> Download Pack
                     </button>
                     <button @click="openReidentifyCollection(col)" class="glass-button btn-sm" style="background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.35); color: #93c5fd;">
                       <Search :size="14" /> Re-id
@@ -110,7 +110,7 @@
                       <Edit3 :size="14" /> Editar
                     </button>
                     <button @click="deleteCollection(col.id)" class="glass-button danger btn-sm">
-                      <Trash2 :size="14" /> Borrar
+                      <Trash2 :size="14" /> Delete
                     </button>
                   </div>
                 </div>
@@ -121,32 +121,32 @@
               <div v-for="ep in season.episodes" :key="ep.id" class="episode-item glass-panel" style="flex-direction: column; align-items: stretch; gap: 0;">
                 <div class="ep-info" style="border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.75rem; margin-bottom: 0.75rem;">
                   <strong style="color: var(--jellyfin-blue);">E{{ ep.episode_number }}</strong>
-                  <span style="font-weight: 500;">{{ ep.title?.replace(/^Episode\s+\d+$/, '') || 'Episodio ' + ep.episode_number }}</span>
+                  <span style="font-weight: 500;">{{ ep.title?.replace(/^Episode\s+\d+$/, '') || 'Episode ' + ep.episode_number }}</span>
                 </div>
                 
                 <div v-if="ep.collections && ep.collections.length > 0" class="ep-collections" style="width: 100%;">
                   <div v-for="col in ep.collections" :key="col.id" class="collection-item" style="background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 8px; margin-bottom: 0.5rem; border: 1px solid rgba(255,255,255,0.03);">
                     <div style="display: flex; flex-direction: column;">
                       <span style="font-size: 0.85rem; color: #d1d5db; font-weight: 500;">{{ col.name || col.quality || 'Auto' }}</span>
-                      <span style="font-size: 0.75rem; color: #888;">{{ col.files?.length || 0 }} archivos</span>
+                      <span style="font-size: 0.75rem; color: #888;">{{ col.files?.length || 0 }} files</span>
                     </div>
                     <div style="display: flex; gap: 0.25rem;">
-                      <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm icon-only" title="Descargar">
+                      <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm icon-only" title="Download">
                         <DownloadCloud :size="14" />
                       </button>
-                      <button @click="openReidentifyCollection(col)" class="glass-button btn-sm icon-only" style="background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.35); color: #93c5fd;" title="Re-identificar">
+                      <button @click="openReidentifyCollection(col)" class="glass-button btn-sm icon-only" style="background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.35); color: #93c5fd;" title="Re-identify">
                         <Search :size="14" />
                       </button>
-                      <button @click="openEditModal(col, season.season_number, ep.episode_number)" class="glass-button btn-sm icon-only" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;" title="Editar">
+                      <button @click="openEditModal(col, season.season_number, ep.episode_number)" class="glass-button btn-sm icon-only" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;" title="Edit">
                         <Edit3 :size="14" />
                       </button>
-                      <button @click="deleteCollection(col.id)" class="glass-button danger btn-sm icon-only" title="Borrar">
+                      <button @click="deleteCollection(col.id)" class="glass-button danger btn-sm icon-only" title="Delete">
                         <Trash2 :size="14" />
                       </button>
                     </div>
                   </div>
                 </div>
-                <div v-else class="no-col" style="color: var(--text-secondary); font-size: 0.85rem;">No respaldado aún</div>
+                <div v-else class="no-col" style="color: var(--text-secondary); font-size: 0.85rem;">Not backed up yet</div>
               </div>
             </div>
           </div>
@@ -158,61 +158,61 @@
     <!-- Edit Collection Modal -->
     <div v-if="editingCollection" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px);">
       <div class="glass-panel" style="width: 100%; max-width: 500px; padding: 2rem; border-radius: 16px; background: rgba(17, 24, 39, 0.9); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; gap: 1.25rem; border: 1px solid rgba(255,255,255,0.1);">
-        <h3 style="margin-top: 0; font-size: 1.5rem; margin-bottom: 0.5rem; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem;">Editar Colección</h3>
+        <h3 style="margin-top: 0; font-size: 1.5rem; margin-bottom: 0.5rem; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem;">Edit Collection</h3>
         
         <div style="display: flex; flex-direction: column; gap: 1rem; max-height: 70vh; overflow-y: auto; padding-right: 0.25rem;">
           <div>
-            <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Nombre / Versión (ej. Versión Extendida)</label>
+            <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Name / Version (e.g. Extended Version)</label>
             <input v-model="editForm.name" type="text" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
           </div>
           
           <div>
-            <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Calidad (e.g. 1080p, 4K, HDR)</label>
+            <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Quality (e.g. 1080p, 4K, HDR)</label>
             <input v-model="editForm.quality" type="text" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
             <div>
-              <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Audios (e.g. es, en)</label>
+              <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Audio Tracks (e.g. es, en)</label>
               <input v-model="editForm.audio_languages" type="text" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
             </div>
             <div>
-              <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Subtítulos</label>
+              <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Subtitles</label>
               <input v-model="editForm.subtitle_languages" type="text" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
             </div>
           </div>
 
           <!-- Series season/episode change controls -->
           <div v-if="type === 'series'" class="glass-panel" style="padding: 1rem; background: rgba(255, 255, 255, 0.02); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); display: flex; flex-direction: column; gap: 0.75rem;">
-            <h4 style="margin: 0; font-size: 0.95rem; color: var(--jellyfin-blue); font-weight: 600;">Ubicación dentro de la Serie</h4>
+            <h4 style="margin: 0; font-size: 0.95rem; color: var(--jellyfin-blue); font-weight: 600;">Position within Series</h4>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
               <div>
-                <label style="display: block; font-size: 0.8rem; color: #a1a1aa; margin-bottom: 0.25rem;">Temporada</label>
+                <label style="display: block; font-size: 0.8rem; color: #a1a1aa; margin-bottom: 0.25rem;">Season</label>
                 <input v-model.number="editForm.season_number" type="number" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
               </div>
               
               <div v-if="!editForm.is_season_pack">
-                <label style="display: block; font-size: 0.8rem; color: #a1a1aa; margin-bottom: 0.25rem;">Episodio</label>
+                <label style="display: block; font-size: 0.8rem; color: #a1a1aa; margin-bottom: 0.25rem;">Episode</label>
                 <input v-model.number="editForm.episode_number" type="number" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
               </div>
             </div>
 
             <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.25rem;">
               <input type="checkbox" id="is_season_pack" v-model="editForm.is_season_pack" style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--jellyfin-blue);" />
-              <label for="is_season_pack" style="font-size: 0.85rem; color: #d1d5db; cursor: pointer;">Es un Pack de Temporada Completa</label>
+              <label for="is_season_pack" style="font-size: 0.85rem; color: #d1d5db; cursor: pointer;">Is a Full Season Pack</label>
             </div>
           </div>
 
           <div>
-            <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Notas</label>
+            <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Notes</label>
             <textarea v-model="editForm.notes" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; min-height: 60px; font-family: sans-serif; resize: vertical;"></textarea>
           </div>
         </div>
 
         <div style="display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1rem; margin-top: 0.5rem;">
-          <button @click="editingCollection = null" class="glass-button">Cancelar</button>
-          <button @click="saveCollectionChanges" class="glass-button primary">Guardar Cambios</button>
+          <button @click="editingCollection = null" class="glass-button">Cancel</button>
+          <button @click="saveCollectionChanges" class="glass-button primary">Save Changes</button>
         </div>
       </div>
     </div>
@@ -220,14 +220,14 @@
     <!-- Choose Poster Modal -->
     <div v-if="showingPosterModal" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px);">
       <div class="glass-panel" style="width: 100%; max-width: 600px; padding: 2rem; border-radius: 16px; background: rgba(17, 24, 39, 0.9); box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; gap: 1.25rem; border: 1px solid rgba(255,255,255,0.1);">
-        <h3 style="margin-top: 0; font-size: 1.5rem; margin-bottom: 0.5rem; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem;">Elegir Portada de TMDB</h3>
+        <h3 style="margin-top: 0; font-size: 1.5rem; margin-bottom: 0.5rem; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.5rem;">Choose Poster from TMDB</h3>
         
         <!-- List of TMDB posters -->
         <div v-if="loadingPosters" style="color: #a1a1aa; text-align: center; padding: 2rem;">
-          Cargando portadas disponibles de TMDB...
+          Loading available TMDB posters...
         </div>
         <div v-else-if="availablePosters.length === 0" style="color: #a1a1aa; text-align: center; padding: 1.5rem;">
-          No se han encontrado portadas de TMDB para este elemento.
+          No TMDB posters found for this item.
         </div>
         <div v-else class="posters-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 0.75rem; max-height: 45vh; overflow-y: auto; padding-right: 0.5rem;">
           <div v-for="path in availablePosters" :key="path" @click="selectPoster(path)" class="poster-option" style="cursor: pointer; border-radius: 8px; overflow: hidden; border: 3px solid transparent; transition: all 0.2s; position: relative;" :style="{ borderColor: item.poster_path === path ? 'var(--jellyfin-blue)' : 'transparent' }">
@@ -238,15 +238,15 @@
 
         <!-- Manual custom URL fallback -->
         <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
-          <label style="font-size: 0.85rem; color: #a1a1aa;">O introduce una URL de portada manualmente:</label>
+          <label style="font-size: 0.85rem; color: #a1a1aa;">Or enter a poster URL manually:</label>
           <div style="display: flex; gap: 0.5rem;">
             <input v-model="manualPosterUrl" type="text" placeholder="https://... o /path.jpg" style="flex-grow: 1; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
-            <button @click="selectPoster(manualPosterUrl)" class="glass-button primary">Aplicar</button>
+            <button @click="selectPoster(manualPosterUrl)" class="glass-button primary">Apply</button>
           </div>
         </div>
 
         <div style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1rem; margin-top: 0.5rem;">
-          <button @click="showingPosterModal = false" class="glass-button">Cerrar</button>
+          <button @click="showingPosterModal = false" class="glass-button">Close</button>
         </div>
       </div>
     </div>
@@ -256,26 +256,26 @@
       <div class="glass-panel" style="width: 100%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
         
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
-          <h3 style="margin: 0; font-size: 1.2rem; color: #fff;">Re-identificar en TMDB</h3>
+          <h3 style="margin: 0; font-size: 1.2rem; color: #fff;">Re-identify in TMDB</h3>
           <button @click="showingReidentifyModal = false" class="glass-button icon-only" style="padding: 0; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px;">✕</button>
         </div>
         
         <!-- Search Bar -->
         <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-          <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Escribe el nombre de la serie o película..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
-          <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Buscar</button>
+          <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Type the series or movie name..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
+          <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Search</button>
         </div>
 
         <!-- Results List -->
         <div style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 0.25rem; min-height: 200px;">
           <div v-if="isSearchingTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">
-            Buscando en TMDB...
+            Searching TMDB...
           </div>
           <div v-else-if="searchResultsTMDB.length === 0 && searchQueryTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">
-            No se han encontrado resultados.
+            No results found.
           </div>
           <div v-else-if="searchResultsTMDB.length === 0" style="text-align: center; padding: 2rem; color: #a1a1aa;">
-            Escribe un título arriba y pulsa Buscar.
+            Type a title above and press Search.
           </div>
           
           <div v-else v-for="result in searchResultsTMDB" :key="result.id" class="result-card" style="display: flex; gap: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; transition: background 0.2s;">
@@ -287,20 +287,20 @@
                 <strong style="color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 250px;">{{ result.title }}</strong>
                 <span style="font-size: 0.75rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; color: #d1d5db;">{{ result.year }}</span>
                 <span :style="{ background: result.media_type === 'movie' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(168, 85, 247, 0.15)', color: result.media_type === 'movie' ? '#93c5fd' : '#e9d5ff' }" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">
-                  {{ result.media_type === 'movie' ? 'Película' : 'Serie' }}
+                  {{ result.media_type === 'movie' ? 'Movie' : 'Series' }}
                 </span>
               </div>
               <p style="margin: 0; font-size: 0.8rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">{{ result.overview }}</p>
             </div>
             
             <button @click="selectTMDBReidentify(result.id)" class="glass-button" style="align-self: center; background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
-              Seleccionar
+              Select
             </button>
           </div>
         </div>
         
         <div style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem;">
-          <button @click="showingReidentifyModal = false" class="glass-button" style="padding: 6px 16px;">Cerrar</button>
+          <button @click="showingReidentifyModal = false" class="glass-button" style="padding: 6px 16px;">Close</button>
         </div>
       </div>
     </div>
@@ -311,7 +311,7 @@
 
         <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
           <div>
-            <h3 style="margin: 0 0 0.25rem 0; font-size: 1.2rem; color: #fff;">🔍 Re-identificar Colección</h3>
+            <h3 style="margin: 0 0 0.25rem 0; font-size: 1.2rem; color: #fff;">🔍 Re-identify Collection</h3>
             <p style="margin: 0; font-size: 0.85rem; color: #93c5fd;">{{ reidentifyCollectionModal.name }}</p>
           </div>
           <button @click="reidentifyCollectionModal.open = false" class="glass-button icon-only" style="padding: 0; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">✕</button>
@@ -319,15 +319,15 @@
 
         <!-- Search Bar -->
         <div style="display: flex; gap: 0.5rem;">
-          <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Escribe el nombre de la película o serie..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
-          <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Buscar</button>
+          <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Type the movie or series name..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
+          <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Search</button>
         </div>
 
         <!-- Results List -->
         <div style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 0.25rem; min-height: 150px;">
-          <div v-if="isSearchingTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">Buscando en TMDB...</div>
-          <div v-else-if="searchResultsTMDB.length === 0 && searchQueryTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">No se han encontrado resultados.</div>
-          <div v-else-if="searchResultsTMDB.length === 0" style="text-align: center; padding: 1.5rem; color: #a1a1aa;">Escribe un título arriba y pulsa Buscar.</div>
+          <div v-if="isSearchingTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">Searching TMDB...</div>
+          <div v-else-if="searchResultsTMDB.length === 0 && searchQueryTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">No results found.</div>
+          <div v-else-if="searchResultsTMDB.length === 0" style="text-align: center; padding: 1.5rem; color: #a1a1aa;">Type a title above and press Search.</div>
 
           <div v-else v-for="result in searchResultsTMDB" :key="result.id" class="result-card" style="display: flex; gap: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; transition: background 0.2s;">
             <img v-if="result.poster_path" :src="'https://image.tmdb.org/t/p/w92' + result.poster_path" style="width: 50px; height: 75px; object-fit: cover; border-radius: 6px; flex-shrink: 0;" />
@@ -337,19 +337,19 @@
               <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                 <strong style="color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 250px;">{{ result.title }}</strong>
                 <span style="font-size: 0.75rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; color: #d1d5db;">{{ result.year }}</span>
-                <span :style="{ background: result.media_type === 'movie' ? 'rgba(59,130,246,0.15)' : 'rgba(168,85,247,0.15)', color: result.media_type === 'movie' ? '#93c5fd' : '#e9d5ff' }" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">{{ result.media_type === 'movie' ? 'Película' : 'Serie' }}</span>
+                <span :style="{ background: result.media_type === 'movie' ? 'rgba(59,130,246,0.15)' : 'rgba(168,85,247,0.15)', color: result.media_type === 'movie' ? '#93c5fd' : '#e9d5ff' }" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">{{ result.media_type === 'movie' ? 'Movie' : 'Series' }}</span>
               </div>
               <p style="margin: 0; font-size: 0.8rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ result.overview }}</p>
             </div>
 
             <button @click="selectCollectionTMDB(result.id)" :disabled="reidentifyCollectionModal.loading" class="glass-button" style="align-self: center; background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
-              Seleccionar
+              Select
             </button>
           </div>
         </div>
 
         <div style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem;">
-          <button @click="reidentifyCollectionModal.open = false" class="glass-button" style="padding: 6px 16px;">Cerrar</button>
+          <button @click="reidentifyCollectionModal.open = false" class="glass-button" style="padding: 6px 16px;">Close</button>
         </div>
       </div>
     </div>
@@ -428,7 +428,7 @@ const copyTmdbId = () => {
       copied.value = false
     }, 2000)
   } else {
-    alert("No se pudo copiar. Por favor, cópialo manualmente.")
+    alert("Could not copy. Please copy it manually.")
   }
 }
 
@@ -514,15 +514,15 @@ const saveCollectionChanges = async () => {
     })
 
     if (res.ok) {
-      alert("Colección actualizada correctamente.")
+      alert("Collection updated successfully.")
       editingCollection.value = null
       fetchItem() // refresh to reload layout and locations
     } else {
-      alert("Error al guardar los cambios.")
+      alert("Error saving changes.")
     }
   } catch (err) {
     console.error(err)
-    alert("Error de conexión.")
+    alert("Connection error.")
   }
 }
 
@@ -530,9 +530,9 @@ const downloadCollection = async (collectionId: number) => {
   try {
     const res = await fetch(`${backendUrl}/downloads/enqueue/collection/${collectionId}`, { method: 'POST' })
     if (res.ok) {
-      alert("Descarga añadida a la cola.")
+      alert("Download added to queue.")
     } else {
-      alert("Error al añadir descarga.")
+      alert("Error adding download.")
     }
   } catch (err) {
     console.error(err)
@@ -543,9 +543,9 @@ const downloadSeason = async (seasonNumber: number) => {
   try {
     const res = await fetch(`${backendUrl}/downloads/enqueue/series/${props.id}/season/${seasonNumber}`, { method: 'POST' })
     if (res.ok) {
-      alert("Temporada completa añadida a la cola.")
+      alert("Full season added to queue.")
     } else {
-      alert("Error al descargar temporada.")
+      alert("Error downloading season.")
     }
   } catch (err) {
     console.error(err)
@@ -633,15 +633,15 @@ const selectPoster = async (path: string) => {
       body: JSON.stringify({ poster_path: path.trim() })
     })
     if (res.ok) {
-      alert("Portada actualizada con éxito.")
+      alert("Poster updated successfully.")
       showingPosterModal.value = false
       fetchItem()
     } else {
-      alert("Error al actualizar la portada.")
+      alert("Error updating the poster.")
     }
   } catch (err) {
     console.error(err)
-    alert("Error de conexión.")
+    alert("Connection error.")
   }
 }
 
@@ -675,15 +675,15 @@ const selectCollectionTMDB = async (tmdbId: number) => {
     })
     if (res.ok) {
       reidentifyCollectionModal.value.open = false
-      alert('✅ Colección re-identificada correctamente.')
+      alert('✅ Collection re-identified successfully.')
       fetchItem()
     } else {
       const errText = await res.text()
-      alert('❌ Error al re-identificar: ' + errText)
+      alert('❌ Error re-identifying: ' + errText)
     }
   } catch (err) {
     console.error(err)
-    alert('Error de conexión.')
+    alert('Connection error.')
   } finally {
     reidentifyCollectionModal.value.loading = false
   }
@@ -714,15 +714,15 @@ const selectTMDBReidentify = async (newTmdbId: number) => {
       : `/series/${props.id}/reidentify?new_tmdb_id=${newTmdbId}`
     const res = await fetch(`${backendUrl}${endpoint}`, { method: 'POST' })
     if (res.ok) {
-      alert("Elemento re-identificado correctamente. Se ha actualizado la info y re-mapeado los archivos.")
+      alert("Item re-identified successfully. Info has been updated and files re-mapped.")
       fetchItem() // refresh
     } else {
       const errText = await res.text()
-      alert("Error al re-identificar: " + errText)
+      alert("Error re-identifying: " + errText)
     }
   } catch (err) {
     console.error(err)
-    alert("Error de conexión.")
+    alert("Connection error.")
   } finally {
     isLoading.value = false
   }
@@ -730,18 +730,18 @@ const selectTMDBReidentify = async (newTmdbId: number) => {
 
 const deleteItem = async () => {
   const confirmMsg = props.type === 'movies'
-    ? "¿Estás seguro de que quieres borrar esta película? Se desvincularán todas las colecciones."
-    : "¿Estás seguro de que quieres borrar esta serie? Se desvincularán todas las temporadas y episodios."
+    ? "Are you sure you want to delete this movie? All collections will be unlinked."
+    : "Are you sure you want to delete this series? All seasons and episodes will be unlinked."
   if (!confirm(confirmMsg)) return
   
   try {
     const endpoint = props.type === 'movies' ? `/movies/${props.id}` : `/series/${props.id}`
     const res = await fetch(`${backendUrl}${endpoint}`, { method: 'DELETE' })
     if (res.ok) {
-      alert("Borrado correctamente.")
+      alert("Deleted successfully.")
       window.history.back()
     } else {
-      alert("Error al borrar.")
+      alert("Error deleting.")
     }
   } catch (err) {
     console.error(err)

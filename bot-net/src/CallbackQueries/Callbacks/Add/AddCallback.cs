@@ -37,7 +37,7 @@ public class AddCallback : ICallbackQuery
             }
             catch { /* Ignore if already deleted */ }
 
-            var tempMsg = await bot.SendMessage(message.Chat.Id, "⏳ Añadiendo elemento a la biblioteca local...");
+            var tempMsg = await bot.SendMessage(message.Chat.Id, "⏳ Adding item to the local library...");
             
             try
             {
@@ -51,12 +51,12 @@ public class AddCallback : ICallbackQuery
 
                 if (ok)
                 {
-                    var typeName = _mediaType == "movie" ? "Película" : "Serie";
-                    await bot.SendMessage(message.Chat.Id, $"✅ {typeName} (TMDB ID: {tmdbId}) añadida correctamente a la biblioteca local!");
+                    var typeName = _mediaType == "movie" ? "Movie" : "Series";
+                    await bot.SendMessage(message.Chat.Id, $"✅ {typeName} (TMDB ID: {tmdbId}) added successfully to the local library!");
                 }
                 else
                 {
-                    await bot.SendMessage(message.Chat.Id, $"❌ Error al añadir el elemento a la biblioteca local (puede que ya exista o haya problemas con TMDB).");
+                    await bot.SendMessage(message.Chat.Id, $"❌ Error adding the item to the local library (it may already exist or there may be issues with TMDB).");
                 }
             }
             catch (Exception ex)
@@ -67,7 +67,7 @@ public class AddCallback : ICallbackQuery
                     await bot.DeleteMessages(tempMsg.Chat.Id, new[] { tempMsg.MessageId });
                 }
                 catch { /* Ignore */ }
-                await bot.SendMessage(message.Chat.Id, "❌ Error de conexión al crear el elemento.");
+                await bot.SendMessage(message.Chat.Id, "❌ Connection error while creating the item.");
             }
         }
     }

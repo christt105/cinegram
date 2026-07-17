@@ -23,7 +23,7 @@ public class SearchCommand : ICommand
         if (args.Length == 0)
         {
             await _bot.SendMessage(msg.Chat.Id,
-                "Please provide a search query. Usage: `/buscar <query>`",
+                "Please provide a search query. Usage: `/search <query>`",
                 replyParameters: new ReplyParameters { MessageId = msg.MessageId });
             return;
         }
@@ -71,7 +71,7 @@ public class SearchCommand : ICommand
         );
     }
 
-    public string Key => "/buscar";
+    public string Key => "/search";
     public string Description => "Search movies and series";
-    public string Usage => "/buscar <query>";
+    public string Usage => "/search <query>";
 }

@@ -5,21 +5,21 @@
       <div class="filters">
         <!-- Type filters for Telegram Library -->
         <template v-if="props.type === 'telegram'">
-          <button class="glass-button" :class="{ active: telegramFilter === 'all' }" @click="telegramFilter = 'all'">Todo</button>
-          <button class="glass-button" :class="{ active: telegramFilter === 'movies' }" @click="telegramFilter = 'movies'">Películas</button>
+          <button class="glass-button" :class="{ active: telegramFilter === 'all' }" @click="telegramFilter = 'all'">All</button>
+          <button class="glass-button" :class="{ active: telegramFilter === 'movies' }" @click="telegramFilter = 'movies'">Movies</button>
           <button class="glass-button" :class="{ active: telegramFilter === 'series' }" @click="telegramFilter = 'series'">Series</button>
           <div class="filter-separator"></div>
         </template>
 
-        <button class="glass-button" :class="{ active: sortBy === 'latest_added' }" @click="sortBy = 'latest_added'">Últimos añadidos</button>
-        <button class="glass-button" :class="{ active: sortBy === 'popular' }" @click="sortBy = 'popular'">Más popular</button>
-        <button class="glass-button" :class="{ active: sortBy === 'alphabetical' }" @click="sortBy = 'alphabetical'">Orden alfabético</button>
+        <button class="glass-button" :class="{ active: sortBy === 'latest_added' }" @click="sortBy = 'latest_added'">Latest Added</button>
+        <button class="glass-button" :class="{ active: sortBy === 'popular' }" @click="sortBy = 'popular'">Most Popular</button>
+        <button class="glass-button" :class="{ active: sortBy === 'alphabetical' }" @click="sortBy = 'alphabetical'">Alphabetical</button>
         <button class="glass-button primary" @click="emit('refresh')" :disabled="loading">
           <RefreshCw :size="16" :class="{ spinning: loading }" />
           Sync Jellyfin
         </button>
         <button class="glass-button success" @click="addMediaModalOpen = true" :disabled="loading" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #a7f3d0; margin-left: 0.5rem; display: inline-flex; align-items: center; gap: 0.25rem;">
-          ➕ Añadir Manual
+          ➕ Add Manually
         </button>
       </div>
     </div>
@@ -57,23 +57,23 @@
       <div class="glass-panel" style="width: 100%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
         
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
-          <h3 style="margin: 0; font-size: 1.2rem; color: #fff;">Añadir Película o Serie Manualmente</h3>
+          <h3 style="margin: 0; font-size: 1.2rem; color: #fff;">Add Movie or Series Manually</h3>
           <button @click="addMediaModalOpen = false" class="glass-button icon-only" style="padding: 0; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px;">✕</button>
         </div>
         
         <!-- Search Bar -->
         <div style="display: flex; gap: 0.5rem; width: 100%;">
-          <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Escribe el nombre de la serie o película..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
-          <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Buscar</button>
+          <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Type the series or movie name..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
+          <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Search</button>
         </div>
 
         <!-- Results List -->
         <div style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 0.25rem;">
           <div v-if="isSearchingTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">
-            <div style="margin-bottom: 0.5rem;">Buscando resultados...</div>
+            <div style="margin-bottom: 0.5rem;">Searching...</div>
           </div>
           <div v-else-if="searchResultsTMDB.length === 0 && searchQueryTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">
-            No se han encontrado resultados.
+            No results found.
           </div>
           
           <div v-for="result in searchResultsTMDB" :key="result.id" class="result-card" style="display: flex; gap: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; transition: background 0.2s;">
@@ -94,18 +94,18 @@
                 width: 'fit-content',
                 textTransform: 'uppercase',
                 fontWeight: '600'
-              }">{{ result.media_type === 'movie' ? 'Película' : 'Serie' }}</span>
-              <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;">{{ result.overview || 'Sin descripción disponible.' }}</p>
+              }">{{ result.media_type === 'movie' ? 'Movie' : 'Series' }}</span>
+              <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;">{{ result.overview || 'No description available.' }}</p>
             </div>
             
             <button @click="selectTMDBResult(result)" class="glass-button" style="align-self: center; background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #a7f3d0; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
-              Añadir
+              Add
             </button>
           </div>
         </div>
         
         <div style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem;">
-          <button @click="addMediaModalOpen = false" class="glass-button" style="padding: 6px 16px;">Cerrar</button>
+          <button @click="addMediaModalOpen = false" class="glass-button" style="padding: 6px 16px;">Close</button>
         </div>
       </div>
     </div>
@@ -295,7 +295,7 @@ const handleDownloadAll = async (media: any) => {
     }
     const res = await fetch(url, { method: 'POST' });
     if (!res.ok) throw new Error('Error enqueuing download.');
-    alert(`Descarga encolada para: ${media.title}`);
+    alert(`Download queued for: ${media.title}`);
   } catch (e: any) {
     console.error(e);
     alert(e.message || 'Error enqueuing download');
@@ -307,7 +307,7 @@ const handleDownloadSeason = async (event: { seriesId: number, seasonNumber: num
     const url = `${backendUrl}/downloads/enqueue/series/${event.seriesId}/season/${event.seasonNumber}`;
     const res = await fetch(url, { method: 'POST' });
     if (!res.ok) throw new Error('Error enqueuing download.');
-    alert(`Descarga encolada para Temporada ${event.seasonNumber} de ${event.title}`);
+    alert(`Download queued for Season ${event.seasonNumber} of ${event.title}`);
   } catch (e: any) {
     console.error(e);
     alert(e.message || 'Error enqueuing download');
@@ -319,7 +319,7 @@ const handleDownloadEpisode = async (event: { seriesId: number, seasonNumber: nu
     const url = `${backendUrl}/downloads/enqueue/series/${event.seriesId}/season/${event.seasonNumber}/episode/${event.episodeNumber}`;
     const res = await fetch(url, { method: 'POST' });
     if (!res.ok) throw new Error('Error enqueuing download.');
-    alert(`Descarga encolada para S${event.seasonNumber.toString().padStart(2, '0')}E${event.episodeNumber.toString().padStart(2, '0')} de ${event.title}`);
+    alert(`Download queued for S${event.seasonNumber.toString().padStart(2, '0')}E${event.episodeNumber.toString().padStart(2, '0')} of ${event.title}`);
   } catch (e: any) {
     console.error(e);
     alert(e.message || 'Error enqueuing download');
@@ -328,7 +328,7 @@ const handleDownloadEpisode = async (event: { seriesId: number, seasonNumber: nu
 
 const handleUpload = async (media: any) => {
   if (!media.path) {
-    alert('No se pudo encontrar la ruta local del archivo en Jellyfin.');
+    alert('Could not find the local file path in Jellyfin.');
     return;
   }
   try {
@@ -346,8 +346,8 @@ const handleUpload = async (media: any) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error('Error al encolar la subida.');
-    alert(`Subida encolada para: ${media.title}`);
+    if (!res.ok) throw new Error('Error queuing the upload.');
+    alert(`Upload queued for: ${media.title}`);
   } catch (e: any) {
     console.error(e);
     alert(e.message || 'Error enqueuing upload');
@@ -386,18 +386,18 @@ const selectTMDBResult = async (result: any) => {
       })
     });
     if (res.ok) {
-      alert(`"${result.title}" (${result.year}) añadido correctamente a la biblioteca local.`);
+      alert(`"${result.title}" (${result.year}) added successfully to the local library.`);
       addMediaModalOpen.value = false;
       searchQueryTMDB.value = "";
       searchResultsTMDB.value = [];
       emit('refresh'); // trigger library refresh
     } else {
       const txt = await res.text();
-      alert("Error al añadir: " + txt);
+      alert("Error adding: " + txt);
     }
   } catch (err) {
     console.error(err);
-    alert("Error de conexión.");
+    alert("Connection error.");
   }
 };
 </script>
