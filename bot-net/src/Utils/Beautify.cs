@@ -1,9 +1,80 @@
+using System.Text.Json;
 using Bot.Models;
 
 namespace Bot.Utils;
 
 public static class Beautify
 {
+    /// <summary>
+    /// Turns the raw ffprobe JSON stored in a collection into a short one-line summary
+    /// (size, bitrate, video codec, audio and subtitle languages). Returns an empty string
+    /// when the metadata is missing or cannot be parsed.
+    /// </summary>
+    public static string FormatTechnicalSummary(string? technicalMetadata)
+    {
+        if (string.IsNullOrWhiteSpace(technicalMetadata))
+            return string.Empty;
+
+        try
+        {
+            using var doc = JsonDocument.Parse(technicalMetadata);
+            var root = doc.RootElement;
+            var parts = new List<string>();
+
+            if (root.TryGetProperty("format", out var format))
+            {
+                if (format.TryGetProperty("size", out var size) && long.TryParse(size.GetString(), out var bytes))
+                    parts.Add($"{bytes / 1024f / 1024f / 1024f:0.00} GB");
+                if (format.TryGetProperty("bit_rate", out var bitRate) && long.TryParse(bitRate.GetString(), out var bps))
+                    parts.Add($"{bps / 1_000_000f:0.0} Mbps");
+            }
+
+            if (root.TryGetProperty("streams", out var streams) && streams.ValueKind == JsonValueKind.Array)
+            {
+                var video = streams.EnumerateArray()
+                    .FirstOrDefault(s => StreamType(s) == "video");
+                if (video.ValueKind == JsonValueKind.Object &&
+                    video.TryGetProperty("codec_name", out var codec) && codec.GetString() is { } codecName)
+                    parts.Add(codecName.ToUpperInvariant());
+
+                var audios = LanguagesOfType(streams, "audio");
+                if (audios.Count > 0)
+                    parts.Add($"Aud: {string.Join(",", audios)}");
+
+                var subs = LanguagesOfType(streams, "subtitle");
+                if (subs.Count > 0)
+                    parts.Add($"Sub: {string.Join(",", subs)}");
+            }
+
+            return string.Join("  |  ", parts);
+        }
+        catch (JsonException)
+        {
+            return string.Empty;
+        }
+    }
+
+    private static string? StreamType(JsonElement stream) =>
+        stream.ValueKind == JsonValueKind.Object && stream.TryGetProperty("codec_type", out var t)
+            ? t.GetString()
+            : null;
+
+    private static List<string> LanguagesOfType(JsonElement streams, string codecType)
+    {
+        var languages = new List<string>();
+        foreach (var stream in streams.EnumerateArray())
+        {
+            if (StreamType(stream) != codecType) continue;
+            if (!stream.TryGetProperty("tags", out var tags) || tags.ValueKind != JsonValueKind.Object) continue;
+
+            var lang = (tags.TryGetProperty("language", out var l) ? l.GetString() : null)
+                ?? (tags.TryGetProperty("LANGUAGE", out var u) ? u.GetString() : null);
+            if (!string.IsNullOrWhiteSpace(lang) && !languages.Contains(lang))
+                languages.Add(lang);
+        }
+        return languages;
+    }
+
     public static string FormatSize(long? bytes)
     {
         return bytes switch
@@ -95,8 +166,10 @@ public static class Beautify
             sb.AppendLine($"<b>Tags:</b> {collection.Tags}");
         if (!string.IsNullOrWhiteSpace(collection.Notes))
             sb.AppendLine($"<b>Notes:</b> {collection.Notes}");
-        if (!string.IsNullOrWhiteSpace(collection.TechnicalMetadata))
-            sb.AppendLine($"<b>Technical:</b> <code>{collection.TechnicalMetadata}</code>");
+
+        var technical = FormatTechnicalSummary(collection.TechnicalMetadata);
+        if (!string.IsNullOrWhiteSpace(technical))
+            sb.AppendLine($"<b>Technical:</b> {technical}");
 
         sb.AppendLine();
         sb.AppendLine($"<b>Files [{collection.Files!.Length}]:</b>");
@@ -120,14 +193,10 @@ public static class Beautify
             sb.AppendLine($"<b>Tags:</b> {collection.Tags}");
         if (!string.IsNullOrWhiteSpace(collection.Notes))
             sb.AppendLine($"<b>Notes:</b> {collection.Notes}");
-        if (!string.IsNullOrWhiteSpace(collection.TechnicalMetadata))
-            sb.AppendLine($"<b>Technical:</b> <code>{collection.TechnicalMetadata}</code>");
 
-        sb.AppendLine();
-        sb.AppendLine($"<b>Files: {collection.Files?.Length ?? 0}</b>");
-        if (collection.Files != null)
-            foreach (var (f, i) in collection.Files.Select((f, i) => (f, i)))
-                sb.AppendLine($"{i + 1}. {f.FileName}  <i>({FormatSize(f.FileSize)})</i>");
+        var technical = FormatTechnicalSummary(collection.TechnicalMetadata);
+        if (!string.IsNullOrWhiteSpace(technical))
+            sb.AppendLine($"<b>Technical:</b> {technical}");
 
         return sb.ToString().TrimEnd();
     }
