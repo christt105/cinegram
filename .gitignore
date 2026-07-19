@@ -1,2 +1,8 @@
 .env
 __pycache__/
+
+# Local compose overrides (host-specific paths)
+docker-compose.override.yml
+
+# Core dumps
+core.*
