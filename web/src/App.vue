@@ -2,8 +2,8 @@
   <div class="dashboard">
     <aside class="sidebar glass-panel">
       <div class="logo">
-        <div class="logo-icon">JG</div>
-        <h2>Jellygram</h2>
+        <div class="logo-icon">CG</div>
+        <h2>Cinegram</h2>
       </div>
       
       <nav class="nav-menu">
