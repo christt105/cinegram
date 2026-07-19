@@ -1,14 +1,4 @@
 services:
-  # bot:
-  #   build:
-  #     context: ./bot
-  #     dockerfile: Dockerfile
-  #   env_file:
-  #     - .env
-  #   restart: unless-stopped
-  #   volumes:
-  #     - C:\Users\chris\Desktop\Projects\jellygram\appdata/bot:/data
-  
   bot-net:
     build:
       context: ./bot-net
