@@ -4,11 +4,17 @@ using Bot.Services;
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<BotHolder>();
 builder.Services.AddHostedService<Worker>();
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+});
 
 // Keep Kestrel on a fixed internal port
 builder.WebHost.UseUrls("http://0.0.0.0:8080");
 
 var app = builder.Build();
+
+app.UseCors();
 
 // Health check
 app.MapGet("/", () => Results.Ok(new { status = "ok" }));
