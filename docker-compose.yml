@@ -46,7 +46,7 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile.dev
-    container_name: jellygram-web
+    container_name: cinegram-web
     restart: unless-stopped
     ports:
       - "5173:5173"

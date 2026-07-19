@@ -9,8 +9,8 @@ const serverUrl = import.meta.env.VITE_JELLYFIN_URL || 'http://192.168.1.15:8096
 const token = import.meta.env.VITE_JELLYFIN_TOKEN || '';
 
 const jellyfin = new Jellyfin({
-    clientInfo: { name: 'Jellygram', version: '2.0.0' },
-    deviceInfo: { name: 'Browser', id: 'jellygram-web' }
+    clientInfo: { name: 'Cinegram', version: '2.0.0' },
+    deviceInfo: { name: 'Browser', id: 'cinegram-web' }
 });
 
 export const api = jellyfin.createApi(serverUrl);

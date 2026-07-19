@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import tmdbsimple as tmdb_simple
 
-app = FastAPI(title="jellygram-backend")
+app = FastAPI(title="cinegram-backend")
 
 app.add_middleware(
     CORSMiddleware,
