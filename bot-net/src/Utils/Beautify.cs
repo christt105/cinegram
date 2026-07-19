@@ -198,12 +198,6 @@ public static class Beautify
         if (!string.IsNullOrWhiteSpace(technical))
             sb.AppendLine($"<b>Technical:</b> {technical}");
 
-        sb.AppendLine();
-        sb.AppendLine($"<b>Files: {collection.Files?.Length ?? 0}</b>");
-        if (collection.Files != null)
-            foreach (var (f, i) in collection.Files.Select((f, i) => (f, i)))
-                sb.AppendLine($"{i + 1}. {f.FileName}  <i>({FormatSize(f.FileSize)})</i>");
-
         return sb.ToString().TrimEnd();
     }
 }
