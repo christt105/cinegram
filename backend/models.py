@@ -103,7 +103,7 @@ class File(SQLModel, table=True):
     filename: str
     filesize: int
     mime_type: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.now(timezone.utc), nullable=False)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
 
     collection_id: int = Field(foreign_key="collection.id")
     collection: "Collection" = Relationship(back_populates="files")
@@ -114,7 +114,7 @@ class DownloadTask(SQLModel, table=True):
     status: str = "pending" # pending, downloading, completed, failed
     progress: int = 0
     error_message: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
 
 class UploadTask(SQLModel, table=True):
@@ -128,5 +128,5 @@ class UploadTask(SQLModel, table=True):
     status: str = "pending" # pending, uploading, completed, failed
     progress: int = 0
     error_message: Optional[str] = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
