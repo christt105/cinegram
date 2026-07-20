@@ -1,25 +1,30 @@
 <template>
   <div class="media-view">
     <div class="content-header">
-      <h1>{{ title }}</h1>
+      <div class="content-heading">
+        <h1>{{ title }}</h1>
+        <p class="content-subtitle">{{ subtitle }}</p>
+      </div>
       <div class="filters">
         <!-- Type filters for Telegram Library -->
-        <template v-if="props.type === 'telegram'">
-          <button class="glass-button" :class="{ active: telegramFilter === 'all' }" @click="telegramFilter = 'all'">All</button>
-          <button class="glass-button" :class="{ active: telegramFilter === 'movies' }" @click="telegramFilter = 'movies'">Movies</button>
-          <button class="glass-button" :class="{ active: telegramFilter === 'series' }" @click="telegramFilter = 'series'">Series</button>
-          <div class="filter-separator"></div>
-        </template>
+        <div v-if="props.type === 'telegram'" class="segmented">
+          <button :class="{ active: telegramFilter === 'all' }" @click="telegramFilter = 'all'">All</button>
+          <button :class="{ active: telegramFilter === 'movies' }" @click="telegramFilter = 'movies'">Movies</button>
+          <button :class="{ active: telegramFilter === 'series' }" @click="telegramFilter = 'series'">Series</button>
+        </div>
 
-        <button class="glass-button" :class="{ active: sortBy === 'latest_added' }" @click="sortBy = 'latest_added'">Latest Added</button>
-        <button class="glass-button" :class="{ active: sortBy === 'popular' }" @click="sortBy = 'popular'">Most Popular</button>
-        <button class="glass-button" :class="{ active: sortBy === 'alphabetical' }" @click="sortBy = 'alphabetical'">Alphabetical</button>
+        <div class="segmented">
+          <button :class="{ active: sortBy === 'latest_added' }" @click="sortBy = 'latest_added'">Latest</button>
+          <button :class="{ active: sortBy === 'popular' }" @click="sortBy = 'popular'">Popular</button>
+          <button :class="{ active: sortBy === 'alphabetical' }" @click="sortBy = 'alphabetical'">A-Z</button>
+        </div>
+
+        <button class="glass-button" @click="addMediaModalOpen = true" :disabled="loading">
+          <Plus :size="16" /> Add Manually
+        </button>
         <button class="glass-button primary" @click="emit('refresh')" :disabled="loading">
           <RefreshCw :size="16" :class="{ spinning: loading }" />
           Sync Jellyfin
-        </button>
-        <button class="glass-button success" @click="addMediaModalOpen = true" :disabled="loading" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #a7f3d0; margin-left: 0.5rem; display: inline-flex; align-items: center; gap: 0.25rem;">
-          ➕ Add Manually
         </button>
       </div>
     </div>
@@ -54,7 +59,7 @@
 
     <!-- TMDB Add Media Modal -->
     <div v-if="addMediaModalOpen" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px); padding: 1rem;">
-      <div class="glass-panel" style="width: 100%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
+      <div class="glass-panel" style="width: 100%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; background: var(--glass-bg-strong); border: 1px solid var(--glass-border); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); backdrop-filter: blur(24px);">
         
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
           <h3 style="margin: 0; font-size: 1.2rem; color: #fff;">Add Movie or Series Manually</h3>
@@ -114,7 +119,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { RefreshCw, AlertCircle } from 'lucide-vue-next';
+import { RefreshCw, AlertCircle, Plus } from 'lucide-vue-next';
 import MediaCard from '../components/MediaCard.vue';
 import { normalizeText } from '../utils/normalize';
 
@@ -139,6 +144,12 @@ const title = computed(() => {
   if (props.type === 'telegram') return 'Telegram Library';
   if (props.type === 'movies') return 'Movies';
   return 'Series';
+});
+
+const subtitle = computed(() => {
+  if (props.type === 'telegram') return 'Cloud backup for your entire media collection';
+  if (props.type === 'movies') return 'Manage and sync your cinematic collection';
+  return 'Manage and sync your series collection';
 });
 
 const activeError = computed(() => {
@@ -402,3 +413,44 @@ const selectTMDBResult = async (result: any) => {
   }
 };
 </script>
+
+<style scoped>
+.content-heading h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.segmented {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface-container-low);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-xl);
+}
+
+.segmented button {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: var(--on-surface-variant);
+  font-family: 'Geist', 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: var(--r-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.segmented button:hover {
+  color: var(--on-surface);
+}
+
+.segmented button.active {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+</style>
