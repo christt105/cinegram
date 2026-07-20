@@ -2,6 +2,7 @@ import requests
 import os
 import re
 import difflib
+import unicodedata
 import tmdbsimple as tmdb
 
 from config import TMDB_API_KEY, TMDB_CONTENT_LANGUAGE
@@ -195,6 +196,23 @@ class TMDB:
         return try_movie
             
     @staticmethod
+    def _normalize(text: str) -> str:
+        """Normalize a title for fuzzy matching.
+
+        Strips diacritics (via NFKD decomposition) and maps special
+        separators (·, –, —, -) to spaces, so that variants such as
+        ``Pokémon``/``Pokemon`` or ``WALL·E``/``Wall-E``/``Wall E``
+        collapse to the same comparable form.
+        """
+        if not text:
+            return ""
+        decomposed = unicodedata.normalize("NFKD", text)
+        stripped = "".join(c for c in decomposed if not unicodedata.combining(c))
+        for sep in ("·", "–", "—", "-"):
+            stripped = stripped.replace(sep, " ")
+        return re.sub(r"\s+", " ", stripped).strip().lower()
+
+    @staticmethod
     def _best_match(results: list, clean_name: str, media_type: str) -> dict | None:
         """Return the result whose title most closely matches clean_name.
 
@@ -204,11 +222,11 @@ class TMDB:
         if not results:
             return None
 
-        query_lower = clean_name.lower()
+        query_norm = TMDB._normalize(clean_name)
 
         def score(r: dict) -> tuple:
-            title = (r.get("title") or r.get("name") or "").lower()
-            sim = difflib.SequenceMatcher(None, query_lower, title).ratio()
+            title = TMDB._normalize(r.get("title") or r.get("name") or "")
+            sim = difflib.SequenceMatcher(None, query_norm, title).ratio()
             pop = float(r.get("popularity") or 0)
             return (sim, pop)
 
@@ -222,6 +240,26 @@ class TMDB:
         best["media_type"] = media_type
         return best
 
+    def _search_and_match(self, query: str, content_type: str) -> dict | None:
+        """Search TMDB for ``query`` and return the best matching result."""
+        search = tmdb.Search()
+        response = None
+
+        if content_type == "movie":
+            search.movie(query=query, language=TMDB_CONTENT_LANGUAGE)
+            response = self._best_match(search.results, query, "movie")
+        elif content_type == "tv":
+            search.tv(query=query, language=TMDB_CONTENT_LANGUAGE)
+            response = self._best_match(search.results, query, "tv")
+
+        if not response:
+            search.multi(query=query, language=TMDB_CONTENT_LANGUAGE)
+            response = self._best_match(search.results, query,
+                                        search.results[0].get("media_type", "movie")
+                                        if search.results else "movie")
+
+        return response
+
     def identify_by_filename(self, filename: str) -> dict:
         """Identify a movie or series by its filename."""
         file = self.clean_filename(filename)
@@ -230,20 +268,12 @@ class TMDB:
             response = self.identify_by_tmdbid(file["tmdbid"], file["type"])
 
         if not response:
-            search = tmdb.Search()
-
-            if file["type"] == "movie":
-                search.movie(query=file["clean_name"], language=TMDB_CONTENT_LANGUAGE)
-                response = self._best_match(search.results, file["clean_name"], "movie")
-            elif file["type"] == "tv":
-                search.tv(query=file["clean_name"], language=TMDB_CONTENT_LANGUAGE)
-                response = self._best_match(search.results, file["clean_name"], "tv")
+            response = self._search_and_match(file["clean_name"], file["type"])
 
             if not response:
-                search.multi(query=file["clean_name"], language=TMDB_CONTENT_LANGUAGE)
-                response = self._best_match(search.results, file["clean_name"],
-                                            search.results[0].get("media_type", "movie")
-                                            if search.results else "movie")
+                normalized = self._normalize(file["clean_name"])
+                if normalized and normalized != file["clean_name"].lower():
+                    response = self._search_and_match(normalized, file["type"])
 
         return response or {}
 

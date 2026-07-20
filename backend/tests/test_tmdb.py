@@ -1,53 +1,48 @@
-import time
+import pytest
+
 try:
     from backend.tmdb import TMDB
 except ImportError:
     from tmdb import TMDB
 
-# Initialize with your API key (it’s already set in config)
-tmdb_client = TMDB()
 
-# Filenames to test
-examples = [
-    # "Pokémon 2: El poder de uno (1999).zip.001",
-    # "Jurassic World: Dominion [Versión Extendida] (1080p).zip.001",
-    # "La guerra del mañana (2021) 1080p.zip.001",
-    # "Hayao Miyazaki and the Heron (2024) [tmdbid-1292585].zip.001",
-    # "Glass (Cristal) (1080p).zip.001",
-    # "Hijos de la anarquía - S05E10 - Crucificado.mkv.zip.001",
-    # "Yellowstone 5x08 Un cuchillo y ninguna moneda.mkv",
-    # "One Piece 1x125.mkv",
-    # "Naruto Shippuden S07E02.avi",
-    # "Skinamarink 1080p.part5.rar",
-    # "Raised by Wolves 2x08.part3.rar",
-    # "Top Gun Maverick IMAX 1080p.part04.rar",
-    # "Vikingos - Temporada 3 (Blu-ray 1080p).zip.006",
-    # "Pokémon 2: El poder de uno (1999) [tmdbid-12599].zip.001",
-    # "Jurassic World: Dominion [Versión Extendida] (1080p) [tmdbid-507086].zip.001",
-    # "La guerra del mañana (2021) 1080p [tmdbid-588228].zip.001",
-    # "Hayao Miyazaki and the Heron (2024) [tmdbid-1292585].zip.001",
-    # "Glass (Cristal) (1080p) [tmdbid-450465].zip.001",
-    # "Hijos de la anarquía - S05E10 - Crucificado.mkv [tmdbid-1409].zip.001",
-    # "Yellowstone 5x08 Un cuchillo y ninguna moneda [tmdbid-73586].mkv",
-    # "One Piece 1x125 [tmdbid-37854].mkv",
-    # "Naruto Shippuden - S07E02 - [tmdbid-31910].avi",
-    # "Skinamarink 1080p [tmdbid-994143].part5.rar",
-    # "Raised by Wolves 2x08 [tmdbid-85723].part3.rar",
-    # "Top Gun Maverick IMAX 1080p [tmdbid-361743].part04.rar",
-    # "Vikingos - Temporada 3 (Blu-ray 1080p) [tmdbid-44217].zip.006",
-    #"Pokémon 2: El poder de uno (1999) [tmdbid-8964512].zip.001",
-    "Bailando con los pájaros (2019) 1080p AC3.zip.001",
-]
+@pytest.mark.parametrize("raw,expected", [
+    ("Pokémon", "pokemon"),
+    ("Pokemon", "pokemon"),
+    ("WALL·E", "wall e"),
+    ("Wall-E", "wall e"),
+    ("Wall E", "wall e"),
+    ("Spider-Man", "spider man"),
+    ("Amélie", "amelie"),
+    ("Jurassic World – Dominion", "jurassic world dominion"),
+    ("", ""),
+])
+def test_normalize(raw, expected):
+    assert TMDB._normalize(raw) == expected
 
-for f in examples:
-    # Step 1: clean filename
-    cleaned = TMDB.clean_filename(f)
-    print("\nFile:", f)
-    print("→ Cleaned:", cleaned)
 
-    # Step 2: try to identify on TMDB
-    result = tmdb_client.identify_by_filename(f)
-    
-    print("→ TMDB result:", result.get("title") or result.get("name"), "| ID:", result.get("id"))
-    time.sleep(1)
+@pytest.mark.parametrize("query,candidates,expected", [
+    # Accented official title, unaccented query (and vice versa)
+    ("Pokemon", ["Pokémon", "Digimon"], "Pokémon"),
+    ("Pokémon", ["Pokemon", "Monster Rancher"], "Pokemon"),
+    # Middle-dot official title against dashed / spaced filenames
+    ("Wall-E", ["WALL·E", "Cars"], "WALL·E"),
+    ("Wall E", ["WALL·E", "Up"], "WALL·E"),
+    # No regression on hyphenated / accented titles that already worked
+    ("Spider-Man", ["Spider-Man", "Superman"], "Spider-Man"),
+    ("Amelie", ["Amélie", "Delicatessen"], "Amélie"),
+])
+def test_best_match_normalizes_diacritics(query, candidates, expected):
+    results = [{"name": t, "popularity": 1.0} for t in candidates]
+    match = TMDB._best_match(results, query, "tv")
+    assert match is not None
+    assert (match.get("title") or match.get("name")) == expected
 
+
+def test_best_match_rejects_below_threshold():
+    results = [{"name": "Completely Unrelated Show", "popularity": 50.0}]
+    assert TMDB._best_match(results, "Pokémon", "tv") is None
+
+
+def test_best_match_empty_results():
+    assert TMDB._best_match([], "Pokémon", "tv") is None
