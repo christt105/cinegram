@@ -2,7 +2,7 @@
   <div class="item-detail-page">
     <div class="header-nav">
       <button @click="$router.back()" class="glass-button">
-        &larr; Volver
+        &larr; Back
       </button>
       <div style="flex-grow:1"></div>
     </div>
@@ -10,7 +10,12 @@
     <div v-if="isLoading" class="loading-state">Loading...</div>
     <div v-else-if="item" class="item-content">
       
-      <div class="item-hero glass-panel" style="padding: 1.5rem; border-radius: 16px;">
+      <div class="item-hero glass-panel">
+        <div
+          v-if="item.poster_path"
+          class="hero-backdrop"
+          :style="{ backgroundImage: `url(${item.poster_path})` }"
+        ></div>
         <img v-if="item.poster_path" :src="item.poster_path" class="hero-poster" />
         <div class="hero-info">
           <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
@@ -248,17 +253,37 @@ onMounted(() => {
 }
 
 .item-hero {
+  position: relative;
   display: flex;
   gap: 2rem;
   margin-bottom: 2rem;
   align-items: flex-start;
-  background: rgba(255, 255, 255, 0.05);
+  padding: 1.5rem;
+  border-radius: var(--r-2xl);
+  overflow: hidden;
+}
+
+.hero-backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(24px) brightness(0.4);
+  transform: scale(1.1);
+  z-index: 0;
+}
+
+.item-hero > .hero-info,
+.item-hero > .hero-poster {
+  position: relative;
+  z-index: 1;
 }
 
 .hero-poster {
-  width: 250px;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  width: 240px;
+  border-radius: var(--r-xl);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+  border: 1px solid var(--glass-border);
   object-fit: cover;
 }
 
