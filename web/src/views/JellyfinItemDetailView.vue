@@ -25,7 +25,7 @@
           <p class="overview" style="margin-top: 1rem; color: #d1d5db; line-height: 1.6;">{{ item.Overview }}</p>
           
           <div class="actions-row" style="margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center;">
-            <router-link v-if="localDbItem" :to="'/item/' + type + '/' + localDbItem.id" class="glass-button" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #a7f3d0; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; padding: 6px 12px; font-size: 0.9rem; border-radius: 8px;">
+            <router-link v-if="localDbItem" :to="'/item/' + type + '/' + localDbItem.id" class="glass-button" style="background: rgba(34, 197, 94, 0.14); border-color: rgba(34, 197, 94, 0.30); color: #7ee2a8; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; padding: 6px 12px; font-size: 0.9rem; border-radius: 8px;">
               📂 View Telegram Card
             </router-link>
             
@@ -327,6 +327,9 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .item-detail-page {
+    overflow-x: hidden;
+  }
   .item-hero {
     flex-direction: column;
     align-items: center;
@@ -335,6 +338,14 @@ onMounted(() => {
 
   .hero-poster {
     width: 200px;
+  }
+
+  .episode-list {
+    grid-template-columns: 1fr;
+  }
+
+  .episode-item {
+    flex-wrap: wrap;
   }
 }
 </style>

@@ -61,10 +61,10 @@
             </div>
             
             <div style="display: flex; gap: 0.75rem;">
-              <button @click="identifyBatch" :disabled="selectedOrphanIds.length === 0" class="glass-button" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;" :style="{ opacity: selectedOrphanIds.length === 0 ? 0.5 : 1 }">
+              <button @click="identifyBatch" :disabled="selectedOrphanIds.length === 0" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;" :style="{ opacity: selectedOrphanIds.length === 0 ? 0.5 : 1 }">
                 🔍 Batch Identify
               </button>
-              <button @click="deleteBatch" :disabled="selectedOrphanIds.length === 0" class="glass-button danger" style="background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.35); color: #fca5a5; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;" :style="{ opacity: selectedOrphanIds.length === 0 ? 0.5 : 1 }">
+              <button @click="deleteBatch" :disabled="selectedOrphanIds.length === 0" class="glass-button danger" style="background: rgba(255, 180, 171, 0.12); border-color: rgba(255, 180, 171, 0.30); color: #ffb4ab; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;" :style="{ opacity: selectedOrphanIds.length === 0 ? 0.5 : 1 }">
                 🗑️ Batch Delete
               </button>
             </div>
@@ -78,7 +78,7 @@
                   <input type="checkbox" :value="orphan.id" v-model="selectedOrphanIds" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--jellyfin-blue);" />
                 </div>
                 <div class="orphan-details">
-                  <strong style="color: #fca5a5; font-size: 1.05rem;">{{ orphan.name }}</strong>
+                  <strong style="color: #ffb4ab; font-size: 1.05rem;">{{ orphan.name }}</strong>
                   <span style="font-size: 0.85rem; color: #a1a1aa;">
                     Collection ID: {{ orphan.id }} | Quality: {{ orphan.quality || 'Auto' }} | {{ orphan.files_count }} files
                   </span>
@@ -91,10 +91,10 @@
               </div>
               
               <div class="orphan-actions">
-                <button @click="openIdentifyModal(orphan)" class="glass-button" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;">
+                <button @click="openIdentifyModal(orphan)" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;">
                   🔍 Identify
                 </button>
-                <button @click="deleteOrphan(orphan.id)" class="glass-button danger" style="background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.35); color: #fca5a5; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;">
+                <button @click="deleteOrphan(orphan.id)" class="glass-button danger" style="background: rgba(255, 180, 171, 0.12); border-color: rgba(255, 180, 171, 0.30); color: #ffb4ab; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;">
                   🗑️ Delete
                 </button>
               </div>
@@ -114,7 +114,7 @@
         </div>
         
         <div style="color: #a1a1aa; font-size: 0.85rem; word-break: break-all;">
-          Identifying: <strong style="color: #fca5a5;">{{ activeOrphanName }}</strong>
+          Identifying: <strong style="color: #ffb4ab;">{{ activeOrphanName }}</strong>
         </div>
 
         <!-- Search Bar -->
@@ -142,8 +142,8 @@
                 <span style="color: #6b7280; font-size: 0.8rem;">({{ result.year }})</span>
               </div>
               <span class="badge" :style="{
-                background: result.media_type === 'movie' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                color: result.media_type === 'movie' ? '#93c5fd' : '#a7f3d0',
+                background: result.media_type === 'movie' ? 'rgba(214, 186, 255, 0.14)' : 'rgba(34, 197, 94, 0.14)',
+                color: result.media_type === 'movie' ? '#d6baff' : '#7ee2a8',
                 fontSize: '0.7rem',
                 padding: '2px 6px',
                 borderRadius: '4px',
@@ -154,7 +154,7 @@
               <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;">{{ result.overview || 'No description available.' }}</p>
             </div>
             
-            <button @click="selectTMDBResult(result)" class="glass-button" style="align-self: center; background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
+            <button @click="selectTMDBResult(result)" class="glass-button" style="align-self: center; background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
               Select
             </button>
           </div>

@@ -91,8 +91,8 @@
                 <span style="color: #6b7280; font-size: 0.8rem;">({{ result.year }})</span>
               </div>
               <span class="badge" :style="{
-                background: result.media_type === 'movie' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                color: result.media_type === 'movie' ? '#93c5fd' : '#a7f3d0',
+                background: result.media_type === 'movie' ? 'rgba(214, 186, 255, 0.14)' : 'rgba(34, 197, 94, 0.14)',
+                color: result.media_type === 'movie' ? '#d6baff' : '#7ee2a8',
                 fontSize: '0.7rem',
                 padding: '2px 6px',
                 borderRadius: '4px',
@@ -103,7 +103,7 @@
               <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;">{{ result.overview || 'No description available.' }}</p>
             </div>
             
-            <button @click="selectTMDBResult(result)" class="glass-button" style="align-self: center; background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #a7f3d0; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
+            <button @click="selectTMDBResult(result)" class="glass-button" style="align-self: center; background: rgba(34, 197, 94, 0.14); border-color: rgba(34, 197, 94, 0.30); color: #7ee2a8; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
               Add
             </button>
           </div>
