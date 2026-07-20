@@ -19,10 +19,6 @@
           <span class="label" style="color: var(--text-secondary);">Backend API URL:</span>
           <span class="value" style="font-family: monospace;">{{ backendUrl }}</span>
         </div>
-        <div class="status-item" style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">
-          <span class="label" style="color: var(--text-secondary);">Telegram Bot Username:</span>
-          <span class="value" style="color: var(--secondary); font-weight: 500;">{{ botUsername }}</span>
-        </div>
       </div>
       
       <!-- Library Statistics Card -->
@@ -42,21 +38,6 @@
         </div>
       </div>
 
-      <!-- Telegram Link Configuration Card -->
-      <div class="glass-panel settings-card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
-        <h3>Telegram Message Links</h3>
-        <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">
-          Configure the link prefix to navigate directly to file messages in Telegram from the library.
-        </p>
-        <div>
-          <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Telegram Link Base:</label>
-          <input v-model="telegramLinkBase" @change="saveTelegramLinkBase" type="text" placeholder="https://t.me/YourBotName or https://t.me/c/1234567890" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-family: monospace; font-size: 0.9rem;" />
-        </div>
-        <div style="font-size: 0.75rem; color: #6b7280; display: flex; flex-direction: column; gap: 0.25rem;">
-          <span>• <strong>Private Group/Channel:</strong> Use <code>https://t.me/c/CHAT_ID</code> (without the -100 prefix).</span>
-          <span>• <strong>Bot Chat:</strong> Use <code>https://t.me/YourBotName</code>.</span>
-        </div>
-      </div>
 
       <!-- Maintenance and Anomalies Card -->
       <div class="glass-panel settings-card" style="grid-column: 1 / -1; margin-top: 1.5rem; padding: 1.5rem;">
@@ -198,16 +179,6 @@ const props = defineProps<{
 
 const jellyfinUrl = import.meta.env.VITE_JELLYFIN_URL || `${window.location.protocol}//${window.location.hostname}:8096`;
 const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:8005`;
-
-const envBotUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || '').replace('@', '');
-const botUsername = envBotUsername ? `@${envBotUsername}` : 'Not configured';
-const telegramLinkBase = ref(
-  localStorage.getItem('telegram_link_base') ||
-  (envBotUsername ? `https://t.me/${envBotUsername}` : '')
-);
-const saveTelegramLinkBase = () => {
-  localStorage.setItem('telegram_link_base', telegramLinkBase.value.trim());
-};
 
 const orphans = ref<any[]>([]);
 const loadingOrphans = ref(true);
