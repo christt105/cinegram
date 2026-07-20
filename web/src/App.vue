@@ -38,7 +38,7 @@
       </div>
     </aside>
 
-    <main class="main-content">
+    <main class="main-content" ref="mainContent">
       <header class="header">
         <div class="search-bar" v-if="!['settings', 'item-detail', 'queue'].includes($route.name as string)">
           <Search :size="18" class="search-icon" />
@@ -69,11 +69,35 @@
 
 <script setup lang="ts">
 import { Film, Tv, Send, Settings, Search, User, List } from 'lucide-vue-next';
-import { onMounted, ref, computed } from 'vue';
+import { onMounted, ref, computed, nextTick } from 'vue';
+import { useRouter } from 'vue-router';
 import { useJellyfin } from './api/jellyfin';
 import { useBackend } from './api/backend';
 
 const searchQuery = ref('');
+
+// Restore scroll position of the main content area on back/forward navigation.
+// The scrollable element is <main>, not the window, so vue-router's built-in
+// scrollBehavior can't handle it.
+const mainContent = ref<HTMLElement | null>(null);
+const router = useRouter();
+const scrollPositions = new Map<string, number>();
+
+router.beforeEach((to, from) => {
+  if (mainContent.value) {
+    scrollPositions.set(from.fullPath, mainContent.value.scrollTop);
+  }
+  return true;
+});
+
+router.afterEach((to) => {
+  const saved = scrollPositions.get(to.fullPath) ?? 0;
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      if (mainContent.value) mainContent.value.scrollTop = saved;
+    });
+  });
+});
 
 const { items: jellyfinItems, loading: jellyfinLoading, error: jellyfinError, fetchItems: fetchJellyfin } = useJellyfin();
 const { telegramMovies, telegramSeries, loading: backendLoading, error: backendError, fetchTelegramMovies, fetchTelegramSeries } = useBackend();
