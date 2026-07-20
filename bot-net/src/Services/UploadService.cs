@@ -392,26 +392,20 @@ public class UploadService
 
     private string TranslatePath(string hostPath)
     {
-        // Handle various host and container mappings
-        var moviesPrefixes = new[] { "/mnt/disco/70-79_Media/Peliculas", "/media/disco/Peliculas", "/Disco/70-79_Media/Peliculas" };
-        var seriesPrefixes = new[] { "/mnt/disco/70-79_Media/Series", "/media/disco/Series", "/Disco/70-79_Media/Series" };
-
-        foreach (var prefix in moviesPrefixes)
+        var mappings = new[]
         {
-            if (hostPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            (Prefix: Environment.GetEnvironmentVariable("IMPORT_MOVIES_DIR"), Target: "/data/import/movies"),
+            (Prefix: Environment.GetEnvironmentVariable("IMPORT_SHOWS_DIR"), Target: "/data/import/shows"),
+        };
+
+        foreach (var (prefix, target) in mappings)
+        {
+            if (!string.IsNullOrEmpty(prefix) && hostPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
             {
-                return hostPath.Replace(prefix, "/data/import/movies", StringComparison.OrdinalIgnoreCase);
+                return hostPath.Replace(prefix, target, StringComparison.OrdinalIgnoreCase);
             }
         }
 
-        foreach (var prefix in seriesPrefixes)
-        {
-            if (hostPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            {
-                return hostPath.Replace(prefix, "/data/import/shows", StringComparison.OrdinalIgnoreCase);
-            }
-        }
-        
         return hostPath;
     }
 

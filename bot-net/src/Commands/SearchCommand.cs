@@ -28,17 +28,18 @@ public class SearchCommand : ICommand
             return;
         }
 
-        var query = string.Join(" ", args).ToLowerInvariant();
+        var rawQuery = string.Join(" ", args);
+        var query = TextNormalizer.Normalize(rawQuery);
 
         var movies = await _apiClient.GetMoviesAsync();
         var series = await _apiClient.GetSeriesAsync();
 
-        var matchedMovies = movies?.Where(m => m.Title != null && m.Title.ToLowerInvariant().Contains(query)).ToList() ?? new();
-        var matchedSeries = series?.Where(s => s.ManualTitle != null && s.ManualTitle.ToLowerInvariant().Contains(query)).ToList() ?? new();
+        var matchedMovies = movies?.Where(m => m.Title != null && TextNormalizer.Normalize(m.Title).Contains(query)).ToList() ?? new();
+        var matchedSeries = series?.Where(s => s.ManualTitle != null && TextNormalizer.Normalize(s.ManualTitle).Contains(query)).ToList() ?? new();
 
         if (matchedMovies.Count == 0 && matchedSeries.Count == 0)
         {
-            await _bot.SendMessage(msg.Chat.Id, $"📭 No results found for '{query}'.",
+            await _bot.SendMessage(msg.Chat.Id, $"📭 No results found for '{rawQuery}'.",
                 replyParameters: new ReplyParameters { MessageId = msg.MessageId });
             return;
         }
@@ -65,7 +66,7 @@ public class SearchCommand : ICommand
 
         await _bot.SendMessage(
             msg.Chat.Id,
-            $"🔎 Results for '{query}':",
+            $"🔎 Results for '{rawQuery}':",
             replyMarkup: keyboard,
             replyParameters: new ReplyParameters { MessageId = msg.MessageId }
         );

@@ -116,6 +116,7 @@
 import { computed, ref } from 'vue';
 import { RefreshCw, AlertCircle } from 'lucide-vue-next';
 import MediaCard from '../components/MediaCard.vue';
+import { normalizeText } from '../utils/normalize';
 
 const props = defineProps<{
   type: 'movies' | 'series' | 'telegram';
@@ -237,8 +238,8 @@ const computedItems = computed(() => {
 
   // 1. Search Query Filter
   if (props.searchQuery && props.searchQuery.trim() !== '') {
-    const q = props.searchQuery.toLowerCase().trim();
-    list = list.filter(item => item.title && item.title.toLowerCase().includes(q));
+    const q = normalizeText(props.searchQuery);
+    list = list.filter(item => item.title && normalizeText(item.title).includes(q));
   }
 
   // 2. Sorting

@@ -5,7 +5,7 @@ import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 import { BaseItemKind, ItemFields } from '@jellyfin/sdk/lib/generated-client/models';
 import { ref } from 'vue';
 
-const serverUrl = import.meta.env.VITE_JELLYFIN_URL || 'http://192.168.1.15:8096';
+const serverUrl = import.meta.env.VITE_JELLYFIN_URL || `${window.location.protocol}//${window.location.hostname}:8096`;
 const token = import.meta.env.VITE_JELLYFIN_TOKEN || '';
 
 const jellyfin = new Jellyfin({
