@@ -29,23 +29,23 @@
               📂 View Telegram Card
             </router-link>
             
-            <div v-if="type === 'movies' && !(item.MediaSources && item.MediaSources.length > 1)">
+            <div class="upload-action" v-if="type === 'movies' && !(item.MediaSources && item.MediaSources.length > 1)">
               <button @click="uploadItem(item, 'movie')" class="glass-button primary">
                 <UploadCloud :size="16" /> Upload to Telegram
               </button>
             </div>
           </div>
 
-          <div style="margin-top: 1.5rem;" v-if="type === 'movies' && item.MediaSources && item.MediaSources.length > 1">
-            <h3 style="font-size: 1.1rem; color: #a1a1aa; margin: 0 0 0.5rem 0;">Available versions:</h3>
+          <div class="versions-block" style="margin-top: 1.5rem;" v-if="type === 'movies' && item.MediaSources && item.MediaSources.length > 1">
+            <h3 style="font-size: 1.1rem; color: var(--on-surface-variant); margin: 0 0 0.5rem 0;">Available versions:</h3>
             <div style="display:flex; flex-direction:column; gap:0.5rem;">
-              <div v-for="ms in item.MediaSources" :key="ms.Id" style="display:flex; justify-content:space-between; align-items:center; background: rgba(0,0,0,0.2); padding: 0.5rem 1rem; border-radius: 8px;">
-                <div style="display: flex; flex-direction: column;">
-                  <span style="font-size: 0.9rem; font-weight: bold;">{{ ms.Name || 'Alternative version' }}</span>
-                  <span style="font-size: 0.75rem; color: #a1a1aa;">{{ getMediaSourceDetails(ms) }}</span>
+              <div v-for="ms in item.MediaSources" :key="ms.Id" class="version-row">
+                <div class="version-info">
+                  <span class="version-name">{{ ms.Name || 'Alternative version' }}</span>
+                  <span class="version-detail">{{ getMediaSourceDetails(ms) }}</span>
                 </div>
-                <button @click="uploadItem(item, 'movie', ms.Path)" class="glass-button primary btn-sm">
-                  <UploadCloud :size="14" style="margin-right:0.25rem;" /> Upload
+                <button @click="uploadItem(item, 'movie', ms.Path)" class="glass-button primary btn-sm version-upload">
+                  <UploadCloud :size="14" /> Upload
                 </button>
               </div>
             </div>
@@ -328,18 +328,70 @@ onMounted(() => {
   gap: 1rem;
 }
 
+.version-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  background: var(--surface-container-lowest);
+  border: 1px solid var(--glass-border);
+  padding: 0.6rem 1rem;
+  border-radius: var(--r-lg);
+}
+
+.version-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.version-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.version-detail {
+  font-size: 0.75rem;
+  color: var(--on-surface-variant);
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 768px) {
   .item-detail-page {
     overflow-x: hidden;
   }
   .item-hero {
     flex-direction: column;
-    align-items: center;
-    text-align: center;
+    align-items: stretch;
+    text-align: left;
   }
 
   .hero-poster {
     width: 200px;
+    margin: 0 auto;
+  }
+
+  /* Full-width, tappable action buttons */
+  .actions-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .actions-row > .glass-button,
+  .actions-row > .upload-action,
+  .actions-row > .upload-action > .glass-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .version-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .version-upload {
+    width: 100%;
+    justify-content: center;
   }
 
   .episode-list {
