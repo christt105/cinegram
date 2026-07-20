@@ -245,6 +245,8 @@ onMounted(() => {
   flex-direction: column;
   gap: 2rem;
   padding: 1rem 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .header-nav {

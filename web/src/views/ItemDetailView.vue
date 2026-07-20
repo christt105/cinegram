@@ -819,6 +819,8 @@ onMounted(() => {
   padding: 2rem;
   max-width: 1040px;
   margin: 0 auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .header-nav {
   margin-bottom: 1.5rem;
