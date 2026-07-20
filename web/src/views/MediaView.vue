@@ -24,7 +24,7 @@
         </button>
         <button class="glass-button primary" @click="emit('refresh')" :disabled="loading">
           <RefreshCw :size="16" :class="{ spinning: loading }" />
-          Sync Jellyfin
+          Refresh
         </button>
       </div>
     </div>

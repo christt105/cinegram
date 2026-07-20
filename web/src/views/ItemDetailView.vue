@@ -55,13 +55,26 @@
           <h2>Available Versions</h2>
           <div v-if="item.collections && item.collections.length > 0" class="collection-list">
             <div v-for="col in item.collections" :key="col.id" class="collection-item glass-panel">
-              <div class="col-info" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                <strong style="font-size: 1.1rem; color: #4ade80;">{{ col.name || col.quality || 'Full Backup' }}</strong>
-                <span v-if="col.audio_languages" style="font-size: 0.9rem; color: #a1a1aa;">Audio: {{ col.audio_languages }}</span>
-                <span v-if="getTechMeta(col)" style="font-size: 0.8rem; color: #a1a1aa; max-width: 100%;">{{ getTechMeta(col) }}</span>
-                <span v-else-if="col.technical_metadata" class="meta-badge">Technical Info Available</span>
+              <div class="col-info">
+                <div class="col-title-row">
+                  <strong class="col-name">{{ col.name || col.quality || 'Full Backup' }}</strong>
+                  <span v-if="col.files && col.files.length" class="files-chip label-caps">
+                    {{ col.files.length }} {{ col.files.length === 1 ? 'file' : 'files' }}
+                  </span>
+                </div>
+                <span v-if="col.quality && col.name" class="col-meta">Quality: {{ col.quality }}</span>
+                <span v-if="col.audio_languages" class="col-meta">Audio: {{ col.audio_languages }}</span>
+                <span v-if="getTechMeta(col)" class="col-meta">{{ getTechMeta(col) }}</span>
+
+                <ul v-if="col.files && col.files.length" class="file-list">
+                  <li v-for="f in col.files" :key="f.id">
+                    <span class="file-name">{{ f.filename }}</span>
+                    <span class="file-size">{{ formatSize(f.filesize) }}</span>
+                  </li>
+                </ul>
+                <span v-else class="col-meta muted">No file details available.</span>
               </div>
-              <div class="col-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; align-items: center;">
+              <div class="col-actions">
                 <button @click="sendCollectionPreview(col.id)" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;" :disabled="sendingPreview === col.id" :title="'Send Info & Files to Telegram'">
                   <span v-if="sendingPreview === col.id">⏳</span>
                   <span v-else>📨</span>
@@ -110,13 +123,24 @@
                 📦 Full Season Packs
               </h4>
               <div class="season-packs-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                <div v-for="col in season.collections" :key="col.id" class="collection-item glass-panel" style="padding: 1rem; background: rgba(0, 0, 0, 0.25); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(74, 222, 128, 0.15);">
-                  <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                    <strong style="color: #4ade80; font-size: 1.05rem;">{{ col.name || col.quality || 'Full Season' }}</strong>
-                    <span v-if="col.audio_languages" style="font-size: 0.85rem; color: #a1a1aa;">Audio: {{ col.audio_languages }}</span>
-                    <span v-if="getTechMeta(col)" style="font-size: 0.8rem; color: #888;">{{ getTechMeta(col) }}</span>
+                <div v-for="col in season.collections" :key="col.id" class="collection-item glass-panel">
+                  <div class="col-info">
+                    <div class="col-title-row">
+                      <strong class="col-name">{{ col.name || col.quality || 'Full Season' }}</strong>
+                      <span v-if="col.files && col.files.length" class="files-chip label-caps">
+                        {{ col.files.length }} {{ col.files.length === 1 ? 'file' : 'files' }}
+                      </span>
+                    </div>
+                    <span v-if="col.audio_languages" class="col-meta">Audio: {{ col.audio_languages }}</span>
+                    <span v-if="getTechMeta(col)" class="col-meta">{{ getTechMeta(col) }}</span>
+                    <ul v-if="col.files && col.files.length" class="file-list">
+                      <li v-for="f in col.files" :key="f.id">
+                        <span class="file-name">{{ f.filename }}</span>
+                        <span class="file-size">{{ formatSize(f.filesize) }}</span>
+                      </li>
+                    </ul>
                   </div>
-                  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                  <div class="col-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                     <button @click="sendCollectionPreview(col.id)" class="glass-button btn-sm" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;" :disabled="sendingPreview === col.id" title="Send to Telegram">
                       <span>{{ sendingPreview === col.id ? '⏳' : '📨' }}</span>
                     </button>
@@ -390,6 +414,13 @@ const item = ref<any>(null)
 const isLoading = ref(true)
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:8005`
+
+const formatSize = (bytes: number) => {
+  if (!bytes || bytes <= 0) return '—'
+  const mb = bytes / (1024 * 1024)
+  if (mb >= 1024) return (mb / 1024).toFixed(2) + ' GB'
+  return mb.toFixed(0) + ' MB'
+}
 
 const editingCollection = ref<any>(null)
 const editForm = ref({
@@ -908,9 +939,76 @@ onMounted(() => {
 }
 .collection-item {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: var(--r-xl);
+}
+.col-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.col-title-row {
+  display: flex;
   align-items: center;
-  padding: 0.2rem 0;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.col-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+.files-chip {
+  padding: 3px 8px;
+  border-radius: var(--r-full);
+  background: rgba(34, 197, 94, 0.14);
+  color: #7ee2a8;
+  font-size: 10px;
+}
+.col-meta {
+  font-size: 0.85rem;
+  color: var(--on-surface-variant);
+}
+.col-meta.muted {
+  opacity: 0.6;
+  font-style: italic;
+}
+.file-list {
+  list-style: none;
+  margin: 0.25rem 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--glass-border);
+}
+.file-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.8rem;
+}
+.file-name {
+  color: var(--on-surface);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.file-size {
+  color: var(--on-surface-variant);
+  font-family: 'Geist', 'Inter', monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.col-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
 }
 .ep-collections {
   display: flex;
