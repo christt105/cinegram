@@ -47,9 +47,6 @@
         <div v-else style="flex-grow: 1;"></div>
 
         <div class="header-actions">
-          <button class="icon-pill" aria-label="Notifications">
-            <Bell :size="18" />
-          </button>
           <div class="user-profile">
             <User :size="18" />
           </div>
@@ -71,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { Film, Tv, Send, Settings, Search, User, List, Bell } from 'lucide-vue-next';
+import { Film, Tv, Send, Settings, Search, User, List } from 'lucide-vue-next';
 import { onMounted, ref, computed } from 'vue';
 import { useJellyfin } from './api/jellyfin';
 import { useBackend } from './api/backend';
@@ -261,25 +258,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.icon-pill {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  color: var(--on-surface-variant);
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.icon-pill:hover {
-  background: var(--surface-container);
-  color: var(--primary);
 }
 
 .user-profile {
@@ -508,7 +486,7 @@ onMounted(() => {
   }
 
   .media-grid {
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
   }
 }

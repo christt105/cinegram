@@ -217,11 +217,15 @@ const goToDetail = () => {
 
 @media (max-width: 768px) {
   .media-content {
-    padding: 10px;
+    padding: 12px 14px;
   }
 
   .media-title {
     font-size: 0.85rem;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
   }
 
   .media-overlay {

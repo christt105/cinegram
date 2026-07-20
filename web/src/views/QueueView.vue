@@ -210,7 +210,6 @@ onUnmounted(() => {
 .queue-view {
   display: flex;
   flex-direction: column;
-  height: 100%;
 }
 
 .stats-bento {
@@ -276,8 +275,7 @@ onUnmounted(() => {
 .queue-container {
   display: flex;
   gap: 24px;
-  flex-grow: 1;
-  overflow-y: auto;
+  align-items: flex-start;
   padding-bottom: 24px;
 }
 
