@@ -21,7 +21,7 @@
         </div>
         <div class="status-item" style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">
           <span class="label" style="color: var(--text-secondary);">Telegram Bot Username:</span>
-          <span class="value" style="color: #60a5fa; font-weight: 500;">@BibliotecaKachopinesBot</span>
+          <span class="value" style="color: var(--secondary); font-weight: 500;">{{ botUsername }}</span>
         </div>
       </div>
       
@@ -199,7 +199,12 @@ const props = defineProps<{
 const jellyfinUrl = import.meta.env.VITE_JELLYFIN_URL || `${window.location.protocol}//${window.location.hostname}:8096`;
 const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:8005`;
 
-const telegramLinkBase = ref(localStorage.getItem('telegram_link_base') || 'https://t.me/BibliotecaKachopinesBot');
+const envBotUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME || '').replace('@', '');
+const botUsername = envBotUsername ? `@${envBotUsername}` : 'Not configured';
+const telegramLinkBase = ref(
+  localStorage.getItem('telegram_link_base') ||
+  (envBotUsername ? `https://t.me/${envBotUsername}` : '')
+);
 const saveTelegramLinkBase = () => {
   localStorage.setItem('telegram_link_base', telegramLinkBase.value.trim());
 };
