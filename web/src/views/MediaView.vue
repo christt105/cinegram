@@ -13,6 +13,13 @@
           <button :class="{ active: telegramFilter === 'series' }" @click="telegramFilter = 'series'">Series</button>
         </div>
 
+        <!-- Backup status filter for Jellyfin libraries -->
+        <div v-if="props.type !== 'telegram'" class="segmented">
+          <button :class="{ active: backupFilter === 'all' }" @click="backupFilter = 'all'">All</button>
+          <button :class="{ active: backupFilter === 'backed_up' }" @click="backupFilter = 'backed_up'">Backed up</button>
+          <button :class="{ active: backupFilter === 'not_backed_up' }" @click="backupFilter = 'not_backed_up'">Not backed up</button>
+        </div>
+
         <div class="segmented">
           <button :class="{ active: sortBy === 'latest_added' }" @click="sortBy = 'latest_added'">Latest</button>
           <button :class="{ active: sortBy === 'popular' }" @click="sortBy = 'popular'">Popular</button>
@@ -138,7 +145,8 @@ const emit = defineEmits(['refresh']);
 
 const sortBy = ref<'latest_added' | 'popular' | 'alphabetical'>('latest_added');
 const telegramFilter = ref<'all' | 'movies' | 'series'>('all');
-const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:8005`;
+const backupFilter = ref<'all' | 'backed_up' | 'not_backed_up'>('all');
+const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:${import.meta.env.VITE_BACKEND_PORT || 8005}`;
 
 const title = computed(() => {
   if (props.type === 'telegram') return 'Telegram Library';
@@ -253,14 +261,25 @@ const computedItems = computed(() => {
     list = list.filter(item => item.title && normalizeText(item.title).includes(q));
   }
 
-  // 2. Sorting
+  // 2. Backup status filter (Jellyfin libraries only)
+  if (props.type !== 'telegram') {
+    if (backupFilter.value === 'backed_up') {
+      list = list.filter(item => item.isOnTelegram);
+    } else if (backupFilter.value === 'not_backed_up') {
+      list = list.filter(item => !item.isOnTelegram);
+    }
+  }
+
+  // 3. Sorting
   if (sortBy.value === 'latest_added') {
     list.sort((a, b) => {
-      const dateA = a.dateCreated || '';
-      const dateB = b.dateCreated || '';
-      if (dateA && dateB) {
-        return dateB.localeCompare(dateA);
-      }
+      const timeA = a.dateCreated ? new Date(a.dateCreated).getTime() : NaN;
+      const timeB = b.dateCreated ? new Date(b.dateCreated).getTime() : NaN;
+      const validA = !Number.isNaN(timeA);
+      const validB = !Number.isNaN(timeB);
+      if (validA && validB) return timeB - timeA;
+      if (validA) return -1;
+      if (validB) return 1;
       return (b.year || 0) - (a.year || 0);
     });
   } else if (sortBy.value === 'popular') {

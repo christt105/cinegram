@@ -11,7 +11,7 @@ services:
     env_file:
       - .env
     ports:
-      - "8088:8080"
+      - "${BOT_NET_PORT:-8088}:8080"
     volumes:
       - ./appdata/bot-net:/data
       # Import & Download directories (writeable for downloading)
@@ -41,7 +41,9 @@ services:
     container_name: cinegram-web
     restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "${WEB_PORT:-5173}:5173"
     environment:
       - VITE_JELLYFIN_URL=${JELLYFIN_URL:-}
       - VITE_JELLYFIN_TOKEN=${JELLYFIN_TOKEN:-}
+      - VITE_BACKEND_PORT=${BACKEND_PORT:-8005}
+      - VITE_BOT_NET_PORT=${BOT_NET_PORT:-8088}

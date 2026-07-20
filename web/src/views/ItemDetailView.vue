@@ -413,7 +413,7 @@ const props = defineProps<{
 const item = ref<any>(null)
 const isLoading = ref(true)
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:8005`
+const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:${import.meta.env.VITE_BACKEND_PORT || 8005}`
 
 const formatSize = (bytes: number) => {
   if (!bytes || bytes <= 0) return '—'
@@ -603,7 +603,7 @@ const downloadSeason = async (seasonNumber: number) => {
   }
 }
 
-const botNetUrl = import.meta.env.VITE_BOT_NET_URL || `${window.location.protocol}//${window.location.hostname}:8088`
+const botNetUrl = import.meta.env.VITE_BOT_NET_URL || `${window.location.protocol}//${window.location.hostname}:${import.meta.env.VITE_BOT_NET_PORT || 8088}`
 
 const sendingPreview = ref<number | null>(null)
 const sendingSeasonPreview = ref<number | null>(null)
