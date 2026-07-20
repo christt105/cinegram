@@ -19,10 +19,6 @@
           <span class="label" style="color: var(--text-secondary);">Backend API URL:</span>
           <span class="value" style="font-family: monospace;">{{ backendUrl }}</span>
         </div>
-        <div class="status-item" style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">
-          <span class="label" style="color: var(--text-secondary);">Telegram Bot Username:</span>
-          <span class="value" style="color: #60a5fa; font-weight: 500;">@BibliotecaKachopinesBot</span>
-        </div>
       </div>
       
       <!-- Library Statistics Card -->
@@ -42,21 +38,6 @@
         </div>
       </div>
 
-      <!-- Telegram Link Configuration Card -->
-      <div class="glass-panel settings-card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
-        <h3>Telegram Message Links</h3>
-        <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0;">
-          Configure the link prefix to navigate directly to file messages in Telegram from the library.
-        </p>
-        <div>
-          <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Telegram Link Base:</label>
-          <input v-model="telegramLinkBase" @change="saveTelegramLinkBase" type="text" placeholder="https://t.me/YourBotName or https://t.me/c/1234567890" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-family: monospace; font-size: 0.9rem;" />
-        </div>
-        <div style="font-size: 0.75rem; color: #6b7280; display: flex; flex-direction: column; gap: 0.25rem;">
-          <span>• <strong>Private Group/Channel:</strong> Use <code>https://t.me/c/CHAT_ID</code> (without the -100 prefix).</span>
-          <span>• <strong>Bot Chat:</strong> Use <code>https://t.me/YourBotName</code>.</span>
-        </div>
-      </div>
 
       <!-- Maintenance and Anomalies Card -->
       <div class="glass-panel settings-card" style="grid-column: 1 / -1; margin-top: 1.5rem; padding: 1.5rem;">
@@ -80,10 +61,10 @@
             </div>
             
             <div style="display: flex; gap: 0.75rem;">
-              <button @click="identifyBatch" :disabled="selectedOrphanIds.length === 0" class="glass-button" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;" :style="{ opacity: selectedOrphanIds.length === 0 ? 0.5 : 1 }">
+              <button @click="identifyBatch" :disabled="selectedOrphanIds.length === 0" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;" :style="{ opacity: selectedOrphanIds.length === 0 ? 0.5 : 1 }">
                 🔍 Batch Identify
               </button>
-              <button @click="deleteBatch" :disabled="selectedOrphanIds.length === 0" class="glass-button danger" style="background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.35); color: #fca5a5; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;" :style="{ opacity: selectedOrphanIds.length === 0 ? 0.5 : 1 }">
+              <button @click="deleteBatch" :disabled="selectedOrphanIds.length === 0" class="glass-button danger" style="background: rgba(255, 180, 171, 0.12); border-color: rgba(255, 180, 171, 0.30); color: #ffb4ab; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;" :style="{ opacity: selectedOrphanIds.length === 0 ? 0.5 : 1 }">
                 🗑️ Batch Delete
               </button>
             </div>
@@ -97,7 +78,7 @@
                   <input type="checkbox" :value="orphan.id" v-model="selectedOrphanIds" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--jellyfin-blue);" />
                 </div>
                 <div class="orphan-details">
-                  <strong style="color: #fca5a5; font-size: 1.05rem;">{{ orphan.name }}</strong>
+                  <strong style="color: #ffb4ab; font-size: 1.05rem;">{{ orphan.name }}</strong>
                   <span style="font-size: 0.85rem; color: #a1a1aa;">
                     Collection ID: {{ orphan.id }} | Quality: {{ orphan.quality || 'Auto' }} | {{ orphan.files_count }} files
                   </span>
@@ -110,10 +91,10 @@
               </div>
               
               <div class="orphan-actions">
-                <button @click="openIdentifyModal(orphan)" class="glass-button" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;">
+                <button @click="openIdentifyModal(orphan)" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;">
                   🔍 Identify
                 </button>
-                <button @click="deleteOrphan(orphan.id)" class="glass-button danger" style="background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.35); color: #fca5a5; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;">
+                <button @click="deleteOrphan(orphan.id)" class="glass-button danger" style="background: rgba(255, 180, 171, 0.12); border-color: rgba(255, 180, 171, 0.30); color: #ffb4ab; padding: 6px 12px; font-size: 0.85rem; border-radius: 8px;">
                   🗑️ Delete
                 </button>
               </div>
@@ -125,7 +106,7 @@
 
     <!-- TMDB Search Modal -->
     <div v-if="searchModalOpen" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px); padding: 1rem;">
-      <div class="glass-panel" style="width: 100%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
+      <div class="glass-panel" style="width: 100%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; background: var(--glass-bg-strong); border: 1px solid var(--glass-border); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5); backdrop-filter: blur(24px);">
         
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
           <h3 style="margin: 0; font-size: 1.2rem; color: #fff;">Search in TMDB</h3>
@@ -133,7 +114,7 @@
         </div>
         
         <div style="color: #a1a1aa; font-size: 0.85rem; word-break: break-all;">
-          Identifying: <strong style="color: #fca5a5;">{{ activeOrphanName }}</strong>
+          Identifying: <strong style="color: #ffb4ab;">{{ activeOrphanName }}</strong>
         </div>
 
         <!-- Search Bar -->
@@ -161,8 +142,8 @@
                 <span style="color: #6b7280; font-size: 0.8rem;">({{ result.year }})</span>
               </div>
               <span class="badge" :style="{
-                background: result.media_type === 'movie' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(16, 185, 129, 0.15)',
-                color: result.media_type === 'movie' ? '#93c5fd' : '#a7f3d0',
+                background: result.media_type === 'movie' ? 'rgba(214, 186, 255, 0.14)' : 'rgba(34, 197, 94, 0.14)',
+                color: result.media_type === 'movie' ? '#d6baff' : '#7ee2a8',
                 fontSize: '0.7rem',
                 padding: '2px 6px',
                 borderRadius: '4px',
@@ -173,7 +154,7 @@
               <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;">{{ result.overview || 'No description available.' }}</p>
             </div>
             
-            <button @click="selectTMDBResult(result)" class="glass-button" style="align-self: center; background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
+            <button @click="selectTMDBResult(result)" class="glass-button" style="align-self: center; background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
               Select
             </button>
           </div>
@@ -198,11 +179,6 @@ const props = defineProps<{
 
 const jellyfinUrl = import.meta.env.VITE_JELLYFIN_URL || `${window.location.protocol}//${window.location.hostname}:8096`;
 const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:8005`;
-
-const telegramLinkBase = ref(localStorage.getItem('telegram_link_base') || 'https://t.me/BibliotecaKachopinesBot');
-const saveTelegramLinkBase = () => {
-  localStorage.setItem('telegram_link_base', telegramLinkBase.value.trim());
-};
 
 const orphans = ref<any[]>([]);
 const loadingOrphans = ref(true);

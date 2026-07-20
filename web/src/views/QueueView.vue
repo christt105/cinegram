@@ -1,11 +1,36 @@
 <template>
   <div class="queue-view">
     <div class="content-header">
-      <h1>Active Transfers</h1>
+      <div class="content-heading">
+        <h1>Transfers</h1>
+        <p class="content-subtitle">Media flow between the Jellyfin server and Telegram cloud storage</p>
+      </div>
       <button class="glass-button primary" @click="fetchQueues">
         <RefreshCw :size="16" :class="{ spinning: isLoading }" />
         Refresh
       </button>
+    </div>
+
+    <div class="stats-bento">
+      <div class="stat-card glass-panel">
+        <span class="stat-label label-caps">Active Uploads</span>
+        <span class="stat-value" style="color: var(--primary);">{{ uploads.length }}</span>
+      </div>
+      <div class="stat-card glass-panel">
+        <span class="stat-label label-caps">Active Downloads</span>
+        <span class="stat-value" style="color: var(--secondary);">{{ downloads.length }}</span>
+      </div>
+      <div class="stat-card glass-panel">
+        <span class="stat-label label-caps">Failed</span>
+        <span class="stat-value" style="color: var(--error);">{{ failedCount }}</span>
+      </div>
+      <div class="stat-card glass-panel">
+        <span class="stat-label label-caps">System Status</span>
+        <span class="stat-status">
+          <span class="status-dot"></span>
+          {{ isLoading ? 'Syncing' : 'Stable' }}
+        </span>
+      </div>
     </div>
 
     <div class="queue-container">
@@ -17,7 +42,10 @@
         <div v-else class="task-list">
           <div v-for="task in uploads" :key="task.id" class="glass-panel task-card">
             <div class="task-info">
-              <h4>{{ task.title || 'Unknown Media' }} ({{ task.year || '' }})</h4>
+              <div class="task-titleblock">
+                <h4>{{ task.title || 'Unknown Media' }} ({{ task.year || '' }})</h4>
+                <span class="task-direction label-caps">Jellyfin &rarr; Telegram</span>
+              </div>
               <div style="display:flex; gap:0.5rem; align-items:center;">
                 <span class="badge" :class="task.status">{{ task.status }}</span>
                 <button v-if="task.status === 'failed'" @click="retryUpload(task.id)" class="glass-button success btn-sm icon-only" title="Retry" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #a7f3d0; display: inline-flex; align-items: center; justify-content: center; padding: 4px;">
@@ -48,7 +76,10 @@
         <div v-else class="task-list">
           <div v-for="task in downloads" :key="task.id" class="glass-panel task-card">
             <div class="task-info">
-              <h4>{{ task.title || 'Collection ID: ' + task.collection_id }}</h4>
+              <div class="task-titleblock">
+                <h4>{{ task.title || 'Collection ID: ' + task.collection_id }}</h4>
+                <span class="task-direction label-caps">Telegram &rarr; Jellyfin</span>
+              </div>
               <div style="display:flex; gap:0.5rem; align-items:center;">
                 <span class="badge" :class="task.status">{{ task.status }}</span>
                 <button v-if="task.status === 'failed'" @click="retryDownload(task.id)" class="glass-button success btn-sm icon-only" title="Retry" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #a7f3d0; display: inline-flex; align-items: center; justify-content: center; padding: 4px;">
@@ -74,7 +105,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { RefreshCw, X } from 'lucide-vue-next';
 
 interface UploadTask {
@@ -99,6 +130,10 @@ interface DownloadTask {
 const uploads = ref<UploadTask[]>([]);
 const downloads = ref<DownloadTask[]>([]);
 const isLoading = ref(false);
+const failedCount = computed(() =>
+  uploads.value.filter(t => t.status === 'failed').length +
+  downloads.value.filter(t => t.status === 'failed').length
+);
 let pollInterval: any = null;
 const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:8005`;
 
@@ -175,14 +210,72 @@ onUnmounted(() => {
 .queue-view {
   display: flex;
   flex-direction: column;
-  height: 100%;
+}
+
+.stats-bento {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--gutter);
+  margin-bottom: var(--sp-lg);
+}
+
+.stat-card {
+  padding: var(--sp-md);
+  border-radius: var(--r-xl);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stat-label {
+  color: var(--on-surface-variant);
+  opacity: 0.7;
+}
+
+.stat-value {
+  font-size: 2.25rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.stat-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 10px var(--success);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% { opacity: 0.4; }
+}
+
+.task-titleblock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.task-direction {
+  color: var(--on-surface-variant);
+  opacity: 0.6;
+  font-size: 10px;
 }
 
 .queue-container {
   display: flex;
   gap: 24px;
-  flex-grow: 1;
-  overflow-y: auto;
+  align-items: flex-start;
   padding-bottom: 24px;
 }
 
@@ -195,7 +288,8 @@ onUnmounted(() => {
 
 .queue-section h2 {
   font-size: 1.25rem;
-  color: var(--text-secondary);
+  font-weight: 700;
+  color: var(--on-surface);
   border-bottom: 1px solid var(--glass-border);
   padding-bottom: 8px;
 }
@@ -226,28 +320,32 @@ onUnmounted(() => {
 }
 
 .badge {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: var(--r-full);
+  font-family: 'Geist', 'Inter', sans-serif;
+  font-size: 0.7rem;
   font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
-.badge.pending { background: rgba(255, 170, 0, 0.2); color: #fbbf24; }
-.badge.uploading, .badge.downloading { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
-.badge.failed { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.badge.pending { background: rgba(245, 191, 0, 0.15); color: var(--warning); border: 1px solid rgba(245, 191, 0, 0.25); }
+.badge.uploading, .badge.downloading { background: rgba(214, 186, 255, 0.15); color: var(--secondary); border: 1px solid rgba(214, 186, 255, 0.25); }
+.badge.completed, .badge.success { background: rgba(34, 197, 94, 0.12); color: var(--success); border: 1px solid rgba(34, 197, 94, 0.25); }
+.badge.failed { background: rgba(255, 180, 171, 0.12); color: var(--error); border: 1px solid rgba(255, 180, 171, 0.25); }
 
 .progress-bar-container {
   width: 100%;
-  height: 6px;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 3px;
+  height: 8px;
+  background: var(--surface-container-highest);
+  border-radius: var(--r-full);
   overflow: hidden;
 }
 
 .progress-bar {
   height: 100%;
-  background: var(--jellyfin-blue);
+  background: var(--primary);
+  border-radius: var(--r-full);
   transition: width 0.3s ease;
 }
 

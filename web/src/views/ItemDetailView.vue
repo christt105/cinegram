@@ -2,7 +2,7 @@
   <div class="item-detail-page">
     <div class="header-nav">
       <button @click="$router.back()" class="glass-button">
-        &larr; Volver
+        &larr; Back
       </button>
       <div style="flex-grow:1"></div>
     </div>
@@ -10,7 +10,12 @@
     <div v-if="isLoading" class="loading-state">Loading...</div>
     <div v-else-if="item" class="item-content">
       
-      <div class="item-hero glass-panel" style="padding: 1.5rem; border-radius: 16px;">
+      <div class="item-hero glass-panel">
+        <div
+          v-if="item.poster_path"
+          class="hero-backdrop"
+          :style="{ backgroundImage: `url(${item.poster_path.startsWith('/') ? 'https://image.tmdb.org/t/p/w780' + item.poster_path : item.poster_path})` }"
+        ></div>
         <img v-if="item.poster_path" :src="item.poster_path.startsWith('/') ? 'https://image.tmdb.org/t/p/w500' + item.poster_path : item.poster_path" class="hero-poster" />
         <div class="hero-info">
           <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
@@ -28,16 +33,16 @@
           </div>
           <p class="overview" style="margin-top: 1rem; color: #d1d5db; line-height: 1.6;">{{ item.overview }}</p>
           <div class="admin-actions" style="margin-top: 1.5rem; display: flex; gap: 0.75rem; flex-wrap: wrap;">
-            <router-link v-if="jellyfinItemId" :to="'/jellyfin/' + type + '/' + jellyfinItemId" class="glass-button" style="background: rgba(168, 85, 247, 0.15); border-color: rgba(168, 85, 247, 0.35); color: #e9d5ff; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; padding: 6px 12px; font-size: 0.9rem; border-radius: 8px;">
+            <router-link v-if="jellyfinItemId" :to="'/jellyfin/' + type + '/' + jellyfinItemId" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; padding: 6px 12px; font-size: 0.9rem; border-radius: 8px;">
               📂 View Jellyfin Card
             </router-link>
-            <button @click="reidentifyItem" class="glass-button" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd;">
+            <button @click="reidentifyItem" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;">
               🔍 Re-identify (TMDB ID)
             </button>
-            <button @click="changePoster" class="glass-button" style="background: rgba(16, 185, 129, 0.15); border-color: rgba(16, 185, 129, 0.35); color: #a7f3d0;">
+            <button @click="changePoster" class="glass-button" style="background: rgba(34, 197, 94, 0.14); border-color: rgba(34, 197, 94, 0.30); color: #7ee2a8;">
               🖼️ Change Poster
             </button>
-            <button @click="deleteItem" class="glass-button danger" style="background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.35); color: #fca5a5;">
+            <button @click="deleteItem" class="glass-button danger" style="background: rgba(255, 180, 171, 0.12); border-color: rgba(255, 180, 171, 0.30); color: #ffb4ab;">
               🗑️ Delete All
             </button>
           </div>
@@ -50,14 +55,27 @@
           <h2>Available Versions</h2>
           <div v-if="item.collections && item.collections.length > 0" class="collection-list">
             <div v-for="col in item.collections" :key="col.id" class="collection-item glass-panel">
-              <div class="col-info" style="display: flex; flex-direction: column; gap: 0.5rem;">
-                <strong style="font-size: 1.1rem; color: #4ade80;">{{ col.name || col.quality || 'Full Backup' }}</strong>
-                <span v-if="col.audio_languages" style="font-size: 0.9rem; color: #a1a1aa;">Audio: {{ col.audio_languages }}</span>
-                <span v-if="getTechMeta(col)" style="font-size: 0.8rem; color: #a1a1aa; max-width: 100%;">{{ getTechMeta(col) }}</span>
-                <span v-else-if="col.technical_metadata" class="meta-badge">Technical Info Available</span>
+              <div class="col-info">
+                <div class="col-title-row">
+                  <strong class="col-name">{{ col.name || col.quality || 'Full Backup' }}</strong>
+                  <span v-if="col.files && col.files.length" class="files-chip label-caps">
+                    {{ col.files.length }} {{ col.files.length === 1 ? 'file' : 'files' }}
+                  </span>
+                </div>
+                <span v-if="col.quality && col.name" class="col-meta">Quality: {{ col.quality }}</span>
+                <span v-if="col.audio_languages" class="col-meta">Audio: {{ col.audio_languages }}</span>
+                <span v-if="getTechMeta(col)" class="col-meta">{{ getTechMeta(col) }}</span>
+
+                <ul v-if="col.files && col.files.length" class="file-list">
+                  <li v-for="f in col.files" :key="f.id">
+                    <span class="file-name">{{ f.filename }}</span>
+                    <span class="file-size">{{ formatSize(f.filesize) }}</span>
+                  </li>
+                </ul>
+                <span v-else class="col-meta muted">No file details available.</span>
               </div>
-              <div class="col-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; align-items: center;">
-                <button @click="sendCollectionPreview(col.id)" class="glass-button" style="background: rgba(0, 176, 237, 0.15); border-color: rgba(0, 176, 237, 0.35); color: #7dd3fc;" :disabled="sendingPreview === col.id" :title="'Send Info & Files to Telegram'">
+              <div class="col-actions">
+                <button @click="sendCollectionPreview(col.id)" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;" :disabled="sendingPreview === col.id" :title="'Send Info & Files to Telegram'">
                   <span v-if="sendingPreview === col.id">⏳</span>
                   <span v-else>📨</span>
                   <span style="margin-left: 4px;">{{ sendingPreview === col.id ? 'Sending...' : 'Send' }}</span>
@@ -65,7 +83,7 @@
                 <button @click="downloadCollection(col.id)" class="glass-button primary">
                   <DownloadCloud :size="16" /> Download
                 </button>
-                <button @click="openReidentifyCollection(col)" class="glass-button" style="background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.35); color: #93c5fd;">
+                <button @click="openReidentifyCollection(col)" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;">
                   <Search :size="16" /> Re-identify
                 </button>
                 <button @click="openEditModal(col, null, null)" class="glass-button" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;">
@@ -88,7 +106,7 @@
             <div class="season-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap; gap: 1rem;">
               <h3 style="font-size: 1.5rem; margin: 0;">Season {{ season.season_number }}</h3>
               <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
-                <button @click="sendSeasonPreview(season.season_number)" class="glass-button" style="background: rgba(0, 176, 237, 0.15); border-color: rgba(0, 176, 237, 0.35); color: #7dd3fc;" :disabled="sendingSeasonPreview === season.season_number" :title="'Send season Info & Files to Telegram'">
+                <button @click="sendSeasonPreview(season.season_number)" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;" :disabled="sendingSeasonPreview === season.season_number" :title="'Send season Info & Files to Telegram'">
                   <span v-if="sendingSeasonPreview === season.season_number">⏳</span>
                   <span v-else>📨</span>
                   <span style="margin-left: 4px;">{{ sendingSeasonPreview === season.season_number ? 'Sending...' : 'Send' }}</span>
@@ -105,24 +123,35 @@
                 📦 Full Season Packs
               </h4>
               <div class="season-packs-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
-                <div v-for="col in season.collections" :key="col.id" class="collection-item glass-panel" style="padding: 1rem; background: rgba(0, 0, 0, 0.25); border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(74, 222, 128, 0.15);">
-                  <div style="display: flex; flex-direction: column; gap: 0.25rem;">
-                    <strong style="color: #4ade80; font-size: 1.05rem;">{{ col.name || col.quality || 'Full Season' }}</strong>
-                    <span v-if="col.audio_languages" style="font-size: 0.85rem; color: #a1a1aa;">Audio: {{ col.audio_languages }}</span>
-                    <span v-if="getTechMeta(col)" style="font-size: 0.8rem; color: #888;">{{ getTechMeta(col) }}</span>
+                <div v-for="col in season.collections" :key="col.id" class="collection-item glass-panel">
+                  <div class="col-info">
+                    <div class="col-title-row">
+                      <strong class="col-name">{{ col.name || col.quality || 'Full Season' }}</strong>
+                      <span v-if="col.files && col.files.length" class="files-chip label-caps">
+                        {{ col.files.length }} {{ col.files.length === 1 ? 'file' : 'files' }}
+                      </span>
+                    </div>
+                    <span v-if="col.audio_languages" class="col-meta">Audio: {{ col.audio_languages }}</span>
+                    <span v-if="getTechMeta(col)" class="col-meta">{{ getTechMeta(col) }}</span>
+                    <ul v-if="col.files && col.files.length" class="file-list">
+                      <li v-for="f in col.files" :key="f.id">
+                        <span class="file-name">{{ f.filename }}</span>
+                        <span class="file-size">{{ formatSize(f.filesize) }}</span>
+                      </li>
+                    </ul>
                   </div>
-                  <div style="display: flex; gap: 0.5rem;">
-                    <button @click="sendCollectionPreview(col.id)" class="glass-button btn-sm" style="background: rgba(0,176,237,0.15); border-color: rgba(0,176,237,0.35); color: #7dd3fc;" :disabled="sendingPreview === col.id" title="Send to Telegram">
+                  <div class="col-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button @click="sendCollectionPreview(col.id)" class="glass-button btn-sm" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;" :disabled="sendingPreview === col.id" title="Send to Telegram">
                       <span>{{ sendingPreview === col.id ? '⏳' : '📨' }}</span>
                     </button>
                     <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm">
                       <DownloadCloud :size="14" /> Download Pack
                     </button>
-                    <button @click="openReidentifyCollection(col)" class="glass-button btn-sm" style="background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.35); color: #93c5fd;">
+                    <button @click="openReidentifyCollection(col)" class="glass-button btn-sm" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;">
                       <Search :size="14" /> Re-id
                     </button>
                     <button @click="openEditModal(col, season.season_number, null)" class="glass-button btn-sm" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;">
-                      <Edit3 :size="14" /> Editar
+                      <Edit3 :size="14" /> Edit
                     </button>
                     <button @click="deleteCollection(col.id)" class="glass-button danger btn-sm">
                       <Trash2 :size="14" /> Delete
@@ -145,11 +174,11 @@
                       <span style="font-size: 0.85rem; color: #d1d5db; font-weight: 500;">{{ col.name || col.quality || 'Auto' }}</span>
                       <span style="font-size: 0.75rem; color: #888;">{{ col.files?.length || 0 }} files</span>
                     </div>
-                    <div style="display: flex; gap: 0.25rem;">
+                    <div style="display: flex; gap: 0.25rem; flex-wrap: wrap; justify-content: flex-end;">
                       <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm icon-only" title="Download">
                         <DownloadCloud :size="14" />
                       </button>
-                      <button @click="openReidentifyCollection(col)" class="glass-button btn-sm icon-only" style="background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.35); color: #93c5fd;" title="Re-identify">
+                      <button @click="openReidentifyCollection(col)" class="glass-button btn-sm icon-only" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;" title="Re-identify">
                         <Search :size="14" />
                       </button>
                       <button @click="openEditModal(col, season.season_number, ep.episode_number)" class="glass-button btn-sm icon-only" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;" title="Edit">
@@ -254,7 +283,7 @@
         <!-- Manual custom URL fallback -->
         <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
           <label style="font-size: 0.85rem; color: #a1a1aa;">Or enter a poster URL manually:</label>
-          <div style="display: flex; gap: 0.5rem;">
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
             <input v-model="manualPosterUrl" type="text" placeholder="https://... o /path.jpg" style="flex-grow: 1; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
             <button @click="selectPoster(manualPosterUrl)" class="glass-button primary">Apply</button>
           </div>
@@ -301,14 +330,14 @@
               <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                 <strong style="color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 250px;">{{ result.title }}</strong>
                 <span style="font-size: 0.75rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; color: #d1d5db;">{{ result.year }}</span>
-                <span :style="{ background: result.media_type === 'movie' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(168, 85, 247, 0.15)', color: result.media_type === 'movie' ? '#93c5fd' : '#e9d5ff' }" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">
+                <span :style="{ background: result.media_type === 'movie' ? 'rgba(214, 186, 255, 0.14)' : 'rgba(214, 186, 255, 0.14)', color: result.media_type === 'movie' ? '#d6baff' : '#d6baff' }" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">
                   {{ result.media_type === 'movie' ? 'Movie' : 'Series' }}
                 </span>
               </div>
               <p style="margin: 0; font-size: 0.8rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.4;">{{ result.overview }}</p>
             </div>
             
-            <button @click="selectTMDBReidentify(result.id)" class="glass-button" style="align-self: center; background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
+            <button @click="selectTMDBReidentify(result.id)" class="glass-button" style="align-self: center; background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
               Select
             </button>
           </div>
@@ -322,18 +351,18 @@
 
     <!-- Re-identify Collection Modal -->
     <div v-if="reidentifyCollectionModal.open" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px); padding: 1rem;">
-      <div class="glass-panel" style="width: 100%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(59,130,246,0.2); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
+      <div class="glass-panel" style="width: 100%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(214, 186, 255, 0.20); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
 
         <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
           <div>
             <h3 style="margin: 0 0 0.25rem 0; font-size: 1.2rem; color: #fff;">🔍 Re-identify Collection</h3>
-            <p style="margin: 0; font-size: 0.85rem; color: #93c5fd;">{{ reidentifyCollectionModal.name }}</p>
+            <p style="margin: 0; font-size: 0.85rem; color: #d6baff;">{{ reidentifyCollectionModal.name }}</p>
           </div>
           <button @click="reidentifyCollectionModal.open = false" class="glass-button icon-only" style="padding: 0; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">✕</button>
         </div>
 
         <!-- Search Bar -->
-        <div style="display: flex; gap: 0.5rem;">
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
           <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Type the movie or series name..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
           <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Search</button>
         </div>
@@ -352,12 +381,12 @@
               <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                 <strong style="color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 250px;">{{ result.title }}</strong>
                 <span style="font-size: 0.75rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; color: #d1d5db;">{{ result.year }}</span>
-                <span :style="{ background: result.media_type === 'movie' ? 'rgba(59,130,246,0.15)' : 'rgba(168,85,247,0.15)', color: result.media_type === 'movie' ? '#93c5fd' : '#e9d5ff' }" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">{{ result.media_type === 'movie' ? 'Movie' : 'Series' }}</span>
+                <span :style="{ background: result.media_type === 'movie' ? 'rgba(214, 186, 255, 0.14)' : 'rgba(214, 186, 255, 0.14)', color: result.media_type === 'movie' ? '#d6baff' : '#d6baff' }" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">{{ result.media_type === 'movie' ? 'Movie' : 'Series' }}</span>
               </div>
               <p style="margin: 0; font-size: 0.8rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ result.overview }}</p>
             </div>
 
-            <button @click="selectCollectionTMDB(result.id)" :disabled="reidentifyCollectionModal.loading" class="glass-button" style="align-self: center; background: rgba(59,130,246,0.15); border-color: rgba(59,130,246,0.35); color: #93c5fd; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
+            <button @click="selectCollectionTMDB(result.id)" :disabled="reidentifyCollectionModal.loading" class="glass-button" style="align-self: center; background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
               Select
             </button>
           </div>
@@ -385,6 +414,13 @@ const item = ref<any>(null)
 const isLoading = ref(true)
 
 const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:8005`
+
+const formatSize = (bytes: number) => {
+  if (!bytes || bytes <= 0) return '—'
+  const mb = bytes / (1024 * 1024)
+  if (mb >= 1024) return (mb / 1024).toFixed(2) + ' GB'
+  return mb.toFixed(0) + ' MB'
+}
 
 const editingCollection = ref<any>(null)
 const editForm = ref({
@@ -812,21 +848,48 @@ onMounted(() => {
 <style scoped>
 .item-detail-page {
   padding: 2rem;
-  max-width: 1000px;
+  max-width: 1040px;
   margin: 0 auto;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .header-nav {
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 }
 .hero-poster {
-  width: 250px;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  position: relative;
+  z-index: 1;
+  width: 240px;
+  border-radius: var(--r-xl);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+  border: 1px solid var(--glass-border);
 }
 .item-hero {
+  position: relative;
   display: flex;
   gap: 2rem;
   margin-bottom: 2rem;
+  padding: 1.5rem;
+  border-radius: var(--r-2xl);
+  overflow: hidden;
+}
+.hero-backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  filter: blur(24px) brightness(0.4);
+  transform: scale(1.1);
+  z-index: 0;
+}
+.item-hero > .hero-info,
+.item-hero > .hero-poster {
+  position: relative;
+  z-index: 1;
+}
+.hero-info {
+  position: relative;
+  z-index: 1;
 }
 .hero-info h1 {
   margin-top: 0;
@@ -840,6 +903,12 @@ onMounted(() => {
 .overview {
   line-height: 1.6;
   opacity: 0.8;
+}
+.item-actions h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  margin-bottom: 1rem;
 }
 .collection-list {
   display: flex;
@@ -870,9 +939,76 @@ onMounted(() => {
 }
 .collection-item {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: var(--r-xl);
+}
+.col-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.col-title-row {
+  display: flex;
   align-items: center;
-  padding: 0.2rem 0;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.col-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+.files-chip {
+  padding: 3px 8px;
+  border-radius: var(--r-full);
+  background: rgba(34, 197, 94, 0.14);
+  color: #7ee2a8;
+  font-size: 10px;
+}
+.col-meta {
+  font-size: 0.85rem;
+  color: var(--on-surface-variant);
+}
+.col-meta.muted {
+  opacity: 0.6;
+  font-style: italic;
+}
+.file-list {
+  list-style: none;
+  margin: 0.25rem 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--glass-border);
+}
+.file-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.8rem;
+}
+.file-name {
+  color: var(--on-surface);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.file-size {
+  color: var(--on-surface-variant);
+  font-family: 'Geist', 'Inter', monospace;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.col-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
 }
 .ep-collections {
   display: flex;
@@ -885,12 +1021,12 @@ onMounted(() => {
   margin-left: 0.5rem;
 }
 .danger {
-  background: rgba(239, 68, 68, 0.2) !important;
-  border-color: rgba(239, 68, 68, 0.5) !important;
-  color: #fca5a5 !important;
+  background: rgba(255, 180, 171, 0.15) !important;
+  border-color: rgba(255, 180, 171, 0.35) !important;
+  color: #ffb4ab !important;
 }
 .danger:hover {
-  background: rgba(239, 68, 68, 0.4) !important;
+  background: rgba(255, 180, 171, 0.30) !important;
 }
 .meta-badge {
   background: rgba(255,255,255,0.1);
@@ -915,6 +1051,10 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
+  .item-detail-page {
+    padding: 1rem;
+    overflow-x: hidden;
+  }
   .item-hero {
     flex-direction: column;
   }
@@ -928,8 +1068,13 @@ onMounted(() => {
   }
   .collection-item {
     flex-direction: column;
-    align-items: flex-end;
-    gap: 0.5rem;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .col-actions,
+  .collection-item > div:last-child {
+    width: 100%;
+    justify-content: flex-start !important;
   }
 }
 </style>
