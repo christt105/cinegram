@@ -196,7 +196,7 @@ const props = defineProps<{
   telegramSeries: any[];
 }>();
 
-const jellyfinUrl = import.meta.env.VITE_JELLYFIN_URL || 'http://192.168.1.15:8096';
+const jellyfinUrl = import.meta.env.VITE_JELLYFIN_URL || `${window.location.protocol}//${window.location.hostname}:8096`;
 const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:8005`;
 
 const telegramLinkBase = ref(localStorage.getItem('telegram_link_base') || 'https://t.me/BibliotecaKachopinesBot');

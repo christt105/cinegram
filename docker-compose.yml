@@ -15,8 +15,8 @@ services:
     volumes:
       - ./appdata/bot-net:/data
       # Import & Download directories (writeable for downloading)
-      - ${IMPORT_MOVIES_DIR:-/mnt/disco/70-79_Media/Peliculas}:/data/import/movies
-      - ${IMPORT_SHOWS_DIR:-/mnt/disco/70-79_Media/Series}:/data/import/shows
+      - ${IMPORT_MOVIES_DIR:?set IMPORT_MOVIES_DIR in .env}:/data/import/movies
+      - ${IMPORT_SHOWS_DIR:?set IMPORT_SHOWS_DIR in .env}:/data/import/shows
     environment:
       - JELLYFIN_MOVIES_DIR=/data/import/movies
       - JELLYFIN_SHOWS_DIR=/data/import/shows
@@ -43,5 +43,5 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_JELLYFIN_URL=${JELLYFIN_URL:-http://192.168.1.15:8096}
+      - VITE_JELLYFIN_URL=${JELLYFIN_URL:-}
       - VITE_JELLYFIN_TOKEN=${JELLYFIN_TOKEN:-}
