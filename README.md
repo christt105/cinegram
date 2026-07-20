@@ -72,15 +72,23 @@ All configuration lives in `.env` (see `.env.example` for the template).
 | `IMPORT_MOVIES_DIR`     | Host path for the movies library, bind-mounted into `bot-net` at `/data/import/movies`.         |
 | `IMPORT_SHOWS_DIR`      | Host path for the shows library, bind-mounted into `bot-net` at `/data/import/shows`.            |
 | `PUID` / `PGID`         | User/group IDs the `backend` and `bot-net` containers run as, so they can write to the host media directories (defaults `1000:1000`). |
-| `BACKEND_PORT`          | Host port for the backend API (defaults `8005`).                                                |
+| `WEB_PORT`              | Host port for the web panel (defaults `5173`). Change it if the port is already in use.          |
+| `BACKEND_PORT`          | Host port for the backend API (defaults `8005`). The web reads it as `VITE_BACKEND_PORT`.        |
+| `BOT_NET_PORT`          | Host port for the `bot-net` worker (defaults `8088`). The web reads it as `VITE_BOT_NET_PORT`.   |
 
 ## Service ports
 
 | Service   | Host port               | Container port |
 | --------- | ----------------------- | -------------- |
-| `web`     | `5173`                  | `5173`         |
+| `web`     | `${WEB_PORT:-5173}`     | `5173`         |
 | `backend` | `${BACKEND_PORT:-8005}` | `8000`         |
-| `bot-net` | `8088`                  | `8080`         |
+| `bot-net` | `${BOT_NET_PORT:-8088}` | `8080`         |
+
+All three host ports are configurable in `.env`, so you can move any of them if
+it clashes with something else already running on the host. The web panel picks
+up `BACKEND_PORT` / `BOT_NET_PORT` automatically (injected as `VITE_BACKEND_PORT`
+/ `VITE_BOT_NET_PORT`), so the browser talks to the services on whatever ports
+you choose.
 
 ## Bot commands
 

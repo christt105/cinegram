@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:8005`;
+const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:${import.meta.env.VITE_BACKEND_PORT || 8005}`;
 
 export interface TelegramFile {
   id: number;
