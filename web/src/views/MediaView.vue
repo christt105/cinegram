@@ -51,18 +51,23 @@
       <p>No media found matching the filters or search query.</p>
     </div>
 
-    <div v-else class="media-grid">
-      <MediaCard 
-        v-for="item in computedItems" 
-        :key="item.id" 
-        :media="item" 
-        @delete="handleDelete"
-        @download-all="handleDownloadAll"
-        @download-season="handleDownloadSeason"
-        @download-episode="handleDownloadEpisode"
-        @upload="handleUpload"
-      />
-    </div>
+    <template v-else>
+      <div class="media-grid">
+        <MediaCard
+          v-for="item in pagedItems"
+          :key="item.id"
+          :media="item"
+          @delete="handleDelete"
+          @download-all="handleDownloadAll"
+          @download-season="handleDownloadSeason"
+          @download-episode="handleDownloadEpisode"
+          @upload="handleUpload"
+        />
+      </div>
+      <div ref="sentinel" class="scroll-sentinel">
+        <div v-if="hasMore" class="spinner"></div>
+      </div>
+    </template>
 
     <!-- TMDB Add Media Modal -->
     <div v-if="addMediaModalOpen" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px); padding: 1rem;">
@@ -124,8 +129,15 @@
   </div>
 </template>
 
+<script lang="ts">
+// Remembers how many cards were revealed per library type, so returning to a
+// list restores the same amount of content and its saved scroll position.
+const visibleCountCache = new Map<string, number>();
+const PAGE_SIZE = 48;
+</script>
+
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import { RefreshCw, AlertCircle, Plus } from 'lucide-vue-next';
 import MediaCard from '../components/MediaCard.vue';
 import { normalizeText } from '../utils/normalize';
@@ -301,6 +313,45 @@ const computedItems = computed(() => {
   }
 
   return list;
+});
+
+// Infinite scroll: reveal cards in chunks as a sentinel scrolls into view,
+// keeping the DOM small on large libraries. The revealed count is cached per
+// type so back-navigation restores both the content and its scroll position.
+const visibleCount = ref(visibleCountCache.get(props.type) ?? PAGE_SIZE);
+const pagedItems = computed(() => computedItems.value.slice(0, visibleCount.value));
+const hasMore = computed(() => visibleCount.value < computedItems.value.length);
+const sentinel = ref<HTMLElement | null>(null);
+let observer: IntersectionObserver | null = null;
+
+const loadMore = () => {
+  if (!hasMore.value) return;
+  visibleCount.value = Math.min(visibleCount.value + PAGE_SIZE, computedItems.value.length);
+  visibleCountCache.set(props.type, visibleCount.value);
+};
+
+const onIntersect = async (entries: IntersectionObserverEntry[]) => {
+  if (!entries[0].isIntersecting || !hasMore.value) return;
+  loadMore();
+  await nextTick();
+  // Keep filling while the sentinel stays on screen (tall viewport / short list).
+  if (observer && sentinel.value) {
+    observer.unobserve(sentinel.value);
+    observer.observe(sentinel.value);
+  }
+};
+
+onMounted(() => {
+  observer = new IntersectionObserver(onIntersect, { rootMargin: '600px' });
+  if (sentinel.value) observer.observe(sentinel.value);
+});
+
+onBeforeUnmount(() => observer?.disconnect());
+
+// The movies/series/telegram routes reuse this component, so react to type
+// changes by restoring that type's revealed count instead of remounting.
+watch(() => props.type, (type) => {
+  visibleCount.value = visibleCountCache.get(type) ?? PAGE_SIZE;
 });
 
 const handleDelete = async (item: any) => {
@@ -483,5 +534,14 @@ const selectTMDBResult = async (result: any) => {
 .segmented button.active {
   background: var(--primary);
   color: var(--on-primary);
+}
+
+.scroll-sentinel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 1px;
+  padding: var(--sp-md) 0;
 }
 </style>
