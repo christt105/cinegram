@@ -277,8 +277,30 @@ class TMDB:
 
         return response or {}
 
+    @staticmethod
+    def _format_search_result(r: dict) -> dict | None:
+        """Shape a raw TMDB result into the compact form the frontend expects."""
+        m_type = r.get("media_type")
+        if not m_type or m_type not in ["movie", "tv"]:
+            return None
+        title = r.get("title") if m_type == "movie" else r.get("name")
+        release_date = r.get("release_date") if m_type == "movie" else r.get("first_air_date")
+        year = release_date.split("-")[0] if release_date else "Unknown"
+        return {
+            "id": r.get("id"),
+            "title": title,
+            "media_type": m_type,
+            "year": year,
+            "poster_path": r.get("poster_path"),
+            "overview": r.get("overview")
+        }
+
     def search(self, query: str, media_type: str = "multi") -> list:
-        """Search movies/series on TMDB."""
+        """Search movies/series on TMDB by title, or by TMDB ID when the query is numeric."""
+        query = (query or "").strip()
+        if query.isdigit():
+            return self._search_by_id(int(query), media_type)
+
         search = tmdb.Search()
         results = []
         if media_type == "movie":
@@ -294,22 +316,19 @@ class TMDB:
         else:
             search.multi(query=query, language=TMDB_CONTENT_LANGUAGE)
             results = getattr(search, 'results', [])
-            
-        formatted = []
-        for r in results:
-            m_type = r.get("media_type")
-            if not m_type or m_type not in ["movie", "tv"]:
-                continue
-            title = r.get("title") if m_type == "movie" else r.get("name")
-            release_date = r.get("release_date") if m_type == "movie" else r.get("first_air_date")
-            year = release_date.split("-")[0] if release_date else "Unknown"
-            formatted.append({
-                "id": r.get("id"),
-                "title": title,
-                "media_type": m_type,
-                "year": year,
-                "poster_path": r.get("poster_path"),
-                "overview": r.get("overview")
-            })
-        return formatted
+
+        return [f for r in results if (f := self._format_search_result(r))]
+
+    def _search_by_id(self, tmdb_id: int, media_type: str) -> list:
+        """Look up a TMDB item directly by its ID, honoring the requested media type."""
+        raw = []
+        if media_type in ("movie", "multi"):
+            movie = self.get_movie(tmdb_id)
+            if movie:
+                raw.append(movie)
+        if media_type in ("tv", "multi"):
+            tv = self.get_tv(tmdb_id)
+            if tv:
+                raw.append(tv)
+        return [f for r in raw if (f := self._format_search_result(r))]
             
