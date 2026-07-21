@@ -138,6 +138,12 @@ Cinegram is an open-source tool built for personal media management and self-hos
 
 This product uses the TMDB API but is not endorsed or certified by TMDB.
 
+## Support
+
+If you find Cinegram useful and want to support its development, you can buy me a coffee!
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/christt105)
+
 ## Contributing
 
 Contributions, bug reports, and feature requests are welcome. Feel free to open an issue or submit a pull request.
