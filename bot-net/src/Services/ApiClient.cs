@@ -342,4 +342,17 @@ public class ApiClient : IDisposable
         var response = await _httpClient.PostAsJsonAsync("/maintenance/create-media", payload);
         return response.IsSuccessStatusCode;
     }
+
+    public async Task<byte[]?> DownloadBackupAsync()
+    {
+        var response = await _httpClient.GetAsync("/maintenance/backup");
+        if (!response.IsSuccessStatusCode)
+        {
+            var text = await response.Content.ReadAsStringAsync();
+            Log.Error($"Backup failed: {response.StatusCode} {text}");
+            return null;
+        }
+
+        return await response.Content.ReadAsByteArrayAsync();
+    }
 }

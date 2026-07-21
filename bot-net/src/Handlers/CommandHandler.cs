@@ -26,6 +26,7 @@ public class CommandHandler
             new SearchCommand(bot.Bot, bot.ApiClient),
             new QueueCommand(bot.Bot, bot.ApiClient),
             new OrphansCommand(bot.Bot, bot.ApiClient),
+            new BackupCommand(bot.Bot, bot.ApiClient),
             new AddCommand(bot),
             new ImportCommand(bot)
         };

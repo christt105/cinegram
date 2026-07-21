@@ -1,14 +1,53 @@
-from fastapi import APIRouter, Depends
+import os
+import shutil
+import sqlite3
+import tempfile
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from sqlmodel import Session, select
 from database import get_session
 from models import Collection
 from schemas import BatchIdentifyRequest, BatchDeleteRequest
 from crud import identify_collection, prune_orphaned_media
+from config import settings
 from tmdb import TMDB
 from logger import logger
 
 router = APIRouter(prefix="/maintenance", tags=["maintenance"])
 tmdb = TMDB()
+
+
+@router.get("/backup")
+def backup_database():
+    db_path = settings.DATABASE_PATH
+    if not os.path.exists(db_path):
+        raise HTTPException(status_code=404, detail="Database not found")
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    filename = f"cinegram-backup-{timestamp}.db"
+    tmp_dir = tempfile.mkdtemp(prefix="cinegram-backup-")
+    tmp_path = os.path.join(tmp_dir, filename)
+
+    try:
+        source = sqlite3.connect(db_path)
+        try:
+            source.execute(f"VACUUM INTO '{tmp_path.replace(chr(39), chr(39) * 2)}'")
+        finally:
+            source.close()
+    except sqlite3.Error as e:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        logger.error(f"Database backup failed: {e}")
+        raise HTTPException(status_code=500, detail="Backup failed")
+
+    return FileResponse(
+        tmp_path,
+        media_type="application/octet-stream",
+        filename=filename,
+        background=BackgroundTask(shutil.rmtree, tmp_dir, ignore_errors=True),
+    )
 
 @router.get("/orphans")
 def get_orphans(session: Session = Depends(get_session)):
