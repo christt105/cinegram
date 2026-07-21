@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Bot.Models;
+using Bot.Utils;
 using TL;
 
 namespace Bot.Services;
@@ -9,14 +10,12 @@ public class DownloadService
     private readonly WTelegram.Bot _bot;
     private readonly ApiClient _apiClient;
     private readonly TaskQueue _queue;
-    private readonly int _allowedUser;
 
     public DownloadService(WTelegram.Bot bot, ApiClient apiClient, TaskQueue queue)
     {
         _bot = bot;
         _apiClient = apiClient;
         _queue = queue;
-        _allowedUser = Convert.ToInt32(Environment.GetEnvironmentVariable("TELEGRAM_AUTH_USER_ID"));
     }
 
     public async Task PollAndProcessAsync(CancellationToken stoppingToken)
@@ -64,7 +63,7 @@ public class DownloadService
             foreach (var file in task.Files)
             {
                 Log.Info($"[Downloader] Fetching message {file.MessageId} for file {file.Filename}");
-                var messages = await _bot.GetMessagesById(_allowedUser, new[] { file.MessageId });
+                var messages = await _bot.GetMessagesById(AuthConfig.OwnerUserId, new[] { file.MessageId });
                 var msg = messages.FirstOrDefault();
                 if (msg == null || (msg.Document == null && msg.Video == null))
                     throw new Exception($"Message {file.MessageId} not found or has no document/video.");

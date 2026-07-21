@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using Bot.Models;
+using Bot.Utils;
 using Telegram.Bot.Types;
 using File = System.IO.File;
 
@@ -73,14 +74,12 @@ public class UploadService
     private readonly WTelegram.Bot _bot;
     private readonly ApiClient _apiClient;
     private readonly TaskQueue _queue;
-    private readonly int _allowedUser;
 
     public UploadService(WTelegram.Bot bot, ApiClient apiClient, TaskQueue queue)
     {
         _bot = bot;
         _apiClient = apiClient;
         _queue = queue;
-        _allowedUser = Convert.ToInt32(Environment.GetEnvironmentVariable("TELEGRAM_AUTH_USER_ID"));
     }
 
     public async Task PollAndProcessAsync(CancellationToken stoppingToken)
@@ -253,7 +252,7 @@ public class UploadService
                                     });
 
                                     sent = await _bot.SendDocument(
-                                        _allowedUser,
+                                        AuthConfig.OwnerUserId,
                                         new InputFileStream(progressStream, partInfo.Name),
                                         caption: partInfo.Name
                                     );
@@ -326,7 +325,7 @@ public class UploadService
                                 });
 
                                 sent = await _bot.SendDocument(
-                                    _allowedUser,
+                                    AuthConfig.OwnerUserId,
                                     new InputFileStream(progressStream, fileInfo.Name),
                                     caption: fileInfo.Name
                                 );
