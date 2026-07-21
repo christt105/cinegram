@@ -32,6 +32,8 @@ jobs:
         working-directory: ./backend
         env:
           PYTHONPATH: .
+          DATA_DIR: ./data
+          DATABASE_PATH: ./data/test.db
         run: |
           python -m pytest
 
