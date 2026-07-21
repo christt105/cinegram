@@ -5,6 +5,9 @@ services:
     image: ghcr.io/christt105/cinegram-bot-net:${CINEGRAM_TAG:-latest}
     user: "${PUID:-1000}:${PGID:-1000}"
     restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
     env_file:
       - .env
     ports:
