@@ -43,18 +43,33 @@ The `bot-net` worker authenticates as a Telegram **bot**, which caps file transf
 
 ## Quick start
 
-1. Clone the repository.
-2. Copy the environment template and fill in your own values:
+Cinegram runs from prebuilt images on the GitHub Container Registry, so a deployment needs only two files — no clone, no build.
+
+1. Create a directory and fetch the compose file and the environment template:
    ```bash
-   cp .env.example .env
-   # edit .env
+   mkdir cinegram && cd cinegram
+   curl -O https://raw.githubusercontent.com/christt105/cinegram/main/docker-compose.yml
+   curl -o .env https://raw.githubusercontent.com/christt105/cinegram/main/.env.example
    ```
-3. Point `IMPORT_MOVIES_DIR` and `IMPORT_SHOWS_DIR` at the host directories where Jellyfin expects movies and shows (these are bind-mounted into `bot-net`).
-4. Start the stack:
+2. Edit `.env` with your own values. In particular, point `IMPORT_MOVIES_DIR` and `IMPORT_SHOWS_DIR` at the host directories where Jellyfin expects movies and shows (these are bind-mounted into `bot-net`).
+3. Start the stack:
    ```bash
-   docker compose up -d --build
+   docker compose up -d
    ```
-5. Open the web panel at `http://<host>:5173`.
+4. Open the web panel at `http://<host>:5173`.
+
+Docker pulls the `web`, `backend`, and `bot-net` images from `ghcr.io/christt105/cinegram-*`. To update later, run `docker compose pull && docker compose up -d`. Pin a specific release by setting `CINEGRAM_TAG=v1.0.0` in `.env` (defaults to `latest`).
+
+### Build from source
+
+Contributors who want to run their own changes can build the images locally instead of pulling them:
+
+```bash
+git clone https://github.com/christt105/cinegram.git
+cd cinegram
+cp .env.example .env   # then edit
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
 
 ## Environment variables
 
@@ -62,7 +77,7 @@ All configuration lives in `.env` (see `.env.example` for the template).
 
 | Variable                | Description                                                                                     |
 | ----------------------- | ----------------------------------------------------------------------------------------------- |
-| `JELLYFIN_URL`          | Base URL of your Jellyfin server (e.g. `http://your-jellyfin-host:8096`). Consumed by the web build as `VITE_JELLYFIN_URL`; if left empty the web falls back to the browser host on port 8096. |
+| `JELLYFIN_URL`          | Base URL of your Jellyfin server (e.g. `http://your-jellyfin-host:8096`). Read by the web container at start; if left empty the web falls back to the browser host on port 8096. |
 | `JELLYFIN_TOKEN`        | Jellyfin API token used by the web client.                                                      |
 | `TELEGRAM_API_ID`       | Telegram `api_id` from <https://my.telegram.org>.                                               |
 | `TELEGRAM_API_HASH`     | Telegram `api_hash` from <https://my.telegram.org>.                                             |
@@ -74,8 +89,9 @@ All configuration lives in `.env` (see `.env.example` for the template).
 | `IMPORT_SHOWS_DIR`      | Host path for the shows library, bind-mounted into `bot-net` at `/data/import/shows`.            |
 | `PUID` / `PGID`         | User/group IDs the `backend` and `bot-net` containers run as, so they can write to the host media directories (defaults `1000:1000`). |
 | `WEB_PORT`              | Host port for the web panel (defaults `5173`). Change it if the port is already in use.          |
-| `BACKEND_PORT`          | Host port for the backend API (defaults `8005`). The web reads it as `VITE_BACKEND_PORT`.        |
-| `BOT_NET_PORT`          | Host port for the `bot-net` worker (defaults `8088`). The web reads it as `VITE_BOT_NET_PORT`.   |
+| `BACKEND_PORT`          | Host port for the backend API (defaults `8005`). The web container reads it at start.           |
+| `BOT_NET_PORT`          | Host port for the `bot-net` worker (defaults `8088`). The web container reads it at start.       |
+| `CINEGRAM_TAG`          | Image tag to deploy (defaults `latest`; pin to a release like `v1.0.0`).                         |
 
 ## Service ports
 
@@ -85,9 +101,9 @@ All configuration lives in `.env` (see `.env.example` for the template).
 | `backend` | `${BACKEND_PORT:-8005}` | `8000`         |
 | `bot-net` | `${BOT_NET_PORT:-8088}` | `8080`         |
 
-All three host ports are configurable in `.env`, so you can move any of them if it clashes with something else already running on the host. The web reads `JELLYFIN_URL` / `JELLYFIN_TOKEN` / `BACKEND_PORT` / `BOT_NET_PORT` as Vite build args, so the browser talks to the services on whatever ports you choose. Because Vite inlines these at build time, re-run `docker compose up -d --build web` after changing them.
+All three host ports are configurable in `.env`, so you can move any of them if it clashes with something else already running on the host. At container start the web injects `JELLYFIN_URL` / `JELLYFIN_TOKEN` / `BACKEND_PORT` / `BOT_NET_PORT` into the browser (via `/config.js`), so the app talks to the services on whatever ports you choose. After changing them, `docker compose up -d` is enough — no rebuild.
 
-The `web` service is built into a static bundle and served by nginx. A `web/Dockerfile.dev` (Vite dev server with hot reload) is kept for local development.
+The `web` service is a static bundle served by nginx, with the runtime config written on startup by `web/docker-entrypoint.sh`. A `web/Dockerfile.dev` (Vite dev server with hot reload) is kept for local development.
 
 ## Security
 
@@ -125,9 +141,9 @@ Make sure to back up the `./appdata` directory when migrating servers or updatin
 ## Troubleshooting
 
 - **Permission errors writing to media folders**: Ensure `PUID` and `PGID` in `.env` match the Linux user/group that owns `IMPORT_MOVIES_DIR` and `IMPORT_SHOWS_DIR`.
-- **Web UI settings or backend port updates not taking effect**: Vite bakes build arguments at container creation. Rebuild the web container after changing `.env`:
+- **Web UI settings or backend port updates not taking effect**: the web reads them at container start. Recreate the web container after changing `.env`:
   ```bash
-  docker compose up -d --build web
+  docker compose up -d web
   ```
 
 ## Disclaimer
