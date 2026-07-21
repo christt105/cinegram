@@ -303,8 +303,37 @@ def identify_collection(session: Session, collection_id: int, tmdb: TMDB, forced
 
 
 def prune_orphaned_media(session: Session):
-    """Delete any movies or series that no longer have any collections linked (orphans)."""
-    pass
+    """Delete movies and series left without any linked collection.
+
+    Manually added entries are kept even while empty so their files can be
+    attached later; everything else with no collections is pruned.
+    """
+    pruned = False
+
+    for movie in session.exec(select(Movie)).all():
+        if movie.manually_added:
+            continue
+        if not movie.collections:
+            session.delete(movie)
+            pruned = True
+
+    for series in session.exec(select(Series)).all():
+        if series.manually_added:
+            continue
+        has_collections = any(
+            season.collections or any(ep.collections for ep in season.episodes)
+            for season in series.seasons
+        )
+        if not has_collections:
+            for season in series.seasons:
+                for episode in season.episodes:
+                    session.delete(episode)
+                session.delete(season)
+            session.delete(series)
+            pruned = True
+
+    if pruned:
+        session.commit()
 
 
 def propagate_identification(session: Session, clean_name: str, tmdb: TMDB):

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 from fastapi import FastAPI, Depends, BackgroundTasks, HTTPException
 from pydantic import BaseModel
@@ -928,7 +928,7 @@ def update_download_status(task_id: int, payload: DownloadStatusIn, session: Ses
     if payload.error_message:
         task.error_message = payload.error_message
     if payload.status in ["completed", "failed"]:
-        task.completed_at = datetime.utcnow()
+        task.completed_at = datetime.now(timezone.utc)
     session.add(task)
     session.commit()
     return {"status": "ok"}
@@ -1036,7 +1036,7 @@ def update_upload_status(task_id: int, payload: UploadStatusIn, session: Session
     if payload.error_message:
         task.error_message = payload.error_message
     if payload.status in ["completed", "failed"]:
-        task.completed_at = datetime.utcnow()
+        task.completed_at = datetime.now(timezone.utc)
     session.add(task)
     session.commit()
     return {"status": "ok"}
@@ -1071,9 +1071,17 @@ def create_manual_media(request: CreateManualMediaRequest, session: Session = De
         
     if request.media_type == "movie":
         movie = get_or_create_movie(session, tmdb_result)
+        if not movie.manually_added:
+            movie.manually_added = True
+            session.add(movie)
+            session.commit()
         return {"status": "success", "type": "movie", "id": movie.id}
     elif request.media_type == "tv":
         series = get_or_create_series(session, tmdb_result)
+        if not series.manually_added:
+            series.manually_added = True
+            session.add(series)
+            session.commit()
         return {"status": "success", "type": "series", "id": series.id}
     else:
         raise HTTPException(status_code=400, detail="Invalid media type")

@@ -38,6 +38,12 @@ def init_db():
             session.commit()
         except Exception:
             pass
+        for table in ("movie", "series"):
+            try:
+                session.execute(text(f"ALTER TABLE {table} ADD COLUMN manually_added BOOLEAN DEFAULT 0;"))
+                session.commit()
+            except Exception:
+                pass
         try:
             session.execute(text("UPDATE movie SET created_at = datetime('now') WHERE created_at IS NULL;"))
             session.commit()
