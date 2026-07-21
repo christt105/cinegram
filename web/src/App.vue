@@ -36,6 +36,16 @@
         <div class="status-indicator"></div>
         <span>Connected to Jellyfin &amp; Backend</span>
       </div>
+
+      <a
+        class="sidebar-footer"
+        href="https://github.com/christt105/cinegram"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <Github :size="16" />
+        <span>View on GitHub</span>
+      </a>
     </aside>
 
     <main class="main-content" ref="mainContent">
@@ -68,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { Film, Tv, Send, Settings, Search, User, List } from 'lucide-vue-next';
+import { Film, Tv, Send, Settings, Search, User, List, Github } from 'lucide-vue-next';
 import { onMounted, ref, computed, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useJellyfin } from './api/jellyfin';
@@ -223,6 +233,26 @@ onMounted(() => {
   flex-shrink: 0;
   background: var(--success);
   box-shadow: 0 0 10px var(--success);
+}
+
+.sidebar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 16px;
+  border-radius: var(--r-lg);
+  color: var(--on-surface-variant);
+  text-decoration: none;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.sidebar-footer:hover {
+  color: var(--on-surface);
+  background: var(--surface-container-high);
 }
 
 /* Main Content */
@@ -451,7 +481,7 @@ onMounted(() => {
     box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
   }
 
-  .logo, .server-status {
+  .logo, .server-status, .sidebar-footer {
     display: none;
   }
 

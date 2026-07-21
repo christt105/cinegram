@@ -172,12 +172,26 @@ const activeError = computed(() => {
 const computedItems = computed(() => {
   let list: any[] = [];
 
+  // Index by TMDB id so cross-referencing stays O(n) on large libraries.
+  const jellyfinByTmdb = new Map<number, any>();
+  for (const ji of props.jellyfinItems || []) {
+    if (ji.tmdbId != null) jellyfinByTmdb.set(ji.tmdbId, ji);
+  }
+  const telegramMovieByTmdb = new Map<number, any>();
+  for (const tm of props.telegramMovies || []) {
+    if (tm.tmdb_id != null) telegramMovieByTmdb.set(tm.tmdb_id, tm);
+  }
+  const telegramSeriesByTmdb = new Map<number, any>();
+  for (const ts of props.telegramSeries || []) {
+    if (ts.tmdb_id != null) telegramSeriesByTmdb.set(ts.tmdb_id, ts);
+  }
+
   if (props.type === 'telegram') {
     // Show only what's on Telegram (Movies & Series)
     let moviesList: any[] = [];
     if (telegramFilter.value === 'all' || telegramFilter.value === 'movies') {
       moviesList = (props.telegramMovies || []).map(tm => {
-        const jItem = (props.jellyfinItems || []).find(ji => ji.tmdbId === tm.tmdb_id);
+        const jItem = tm.tmdb_id != null ? jellyfinByTmdb.get(tm.tmdb_id) : undefined;
         return {
           id: `tg-movie-${tm.id}`,
           rawId: tm.id,
@@ -208,7 +222,7 @@ const computedItems = computed(() => {
             collections.push(...e.collections);
           });
         });
-        const jItem = (props.jellyfinItems || []).find(ji => ji.tmdbId === ts.tmdb_id);
+        const jItem = ts.tmdb_id != null ? jellyfinByTmdb.get(ts.tmdb_id) : undefined;
         return {
           id: `tg-series-${ts.id}`,
           rawId: ts.id,
@@ -239,11 +253,9 @@ const computedItems = computed(() => {
     });
 
     list = filteredJellyfin.map(item => {
-      const isTelegramMatch = item.type === 'movie'
-        ? (props.telegramMovies || []).some(tm => tm.tmdb_id === item.tmdbId)
-        : (props.telegramSeries || []).some(ts => ts.tmdb_id === item.tmdbId);
-      const tmMatch = item.type === 'movie' ? (props.telegramMovies || []).find(tm => tm.tmdb_id === item.tmdbId) : undefined;
-      const tsMatch = item.type === 'series' ? (props.telegramSeries || []).find(ts => ts.tmdb_id === item.tmdbId) : undefined;
+      const tmMatch = item.type === 'movie' && item.tmdbId != null ? telegramMovieByTmdb.get(item.tmdbId) : undefined;
+      const tsMatch = item.type === 'series' && item.tmdbId != null ? telegramSeriesByTmdb.get(item.tmdbId) : undefined;
+      const isTelegramMatch = item.type === 'movie' ? !!tmMatch : !!tsMatch;
       return {
         ...item,
         rawId: tmMatch ? tmMatch.id : (tsMatch ? tsMatch.id : undefined),

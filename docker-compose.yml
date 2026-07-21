@@ -37,13 +37,13 @@ services:
   web:
     build:
       context: ./web
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
+      args:
+        - VITE_JELLYFIN_URL=${JELLYFIN_URL:-}
+        - VITE_JELLYFIN_TOKEN=${JELLYFIN_TOKEN:-}
+        - VITE_BACKEND_PORT=${BACKEND_PORT:-8005}
+        - VITE_BOT_NET_PORT=${BOT_NET_PORT:-8088}
     container_name: cinegram-web
     restart: unless-stopped
     ports:
-      - "${WEB_PORT:-5173}:5173"
-    environment:
-      - VITE_JELLYFIN_URL=${JELLYFIN_URL:-}
-      - VITE_JELLYFIN_TOKEN=${JELLYFIN_TOKEN:-}
-      - VITE_BACKEND_PORT=${BACKEND_PORT:-8005}
-      - VITE_BOT_NET_PORT=${BOT_NET_PORT:-8088}
+      - "${WEB_PORT:-5173}:80"

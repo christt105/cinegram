@@ -15,6 +15,7 @@ class Movie(SQLModel, table=True):
     overview: Optional[str] = None
     tags: Optional[str] = None  # Comma separated tags
     notes: Optional[str] = None
+    manually_added: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
 
     collections: List["Collection"] = Relationship(
@@ -32,6 +33,7 @@ class Series(SQLModel, table=True):
     release_year: Optional[int] = None
     tags: Optional[str] = None
     notes: Optional[str] = None
+    manually_added: bool = Field(default=False)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
 
     seasons: List["Season"] = Relationship(back_populates="series")

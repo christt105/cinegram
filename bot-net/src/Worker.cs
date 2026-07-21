@@ -1,4 +1,5 @@
 using Bot.Services;
+using Bot.Utils;
 using Microsoft.Data.Sqlite;
 
 namespace Bot;
@@ -25,7 +26,7 @@ public class Worker : BackgroundService
             var apiId = int.Parse(Environment.GetEnvironmentVariable("TELEGRAM_API_ID")!);
             var apiHash = Environment.GetEnvironmentVariable("TELEGRAM_API_HASH")!;
             var botToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN")!;
-            var authUserId = long.Parse(Environment.GetEnvironmentVariable("TELEGRAM_AUTH_USER_ID")!);
+            var authUserId = AuthConfig.OwnerUserId;
 
             var backendUrl = Environment.GetEnvironmentVariable("BACKEND_URL") ?? "http://backend:8000";
 
