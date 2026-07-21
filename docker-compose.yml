@@ -1,11 +1,13 @@
 name: cinegram
 
+# Runs Cinegram from prebuilt images published to GitHub Container Registry,
+# so a deployment needs only this file and a .env — no clone, no build.
+# To build from source instead, add docker-compose.build.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+
 services:
   bot-net:
-    build:
-      context: ./bot-net
-      dockerfile: Dockerfile
-    container_name: bot-net
+    image: ghcr.io/christt105/cinegram-bot-net:${CINEGRAM_TAG:-latest}
     user: "${PUID:-1000}:${PGID:-1000}"
     restart: unless-stopped
     env_file:
@@ -20,11 +22,9 @@ services:
     environment:
       - JELLYFIN_MOVIES_DIR=/data/import/movies
       - JELLYFIN_SHOWS_DIR=/data/import/shows
-  
+
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ghcr.io/christt105/cinegram-backend:${CINEGRAM_TAG:-latest}
     user: "${PUID:-1000}:${PGID:-1000}"
     env_file:
       - .env
@@ -35,15 +35,14 @@ services:
     restart: unless-stopped
 
   web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-      args:
-        - VITE_JELLYFIN_URL=${JELLYFIN_URL:-}
-        - VITE_JELLYFIN_TOKEN=${JELLYFIN_TOKEN:-}
-        - VITE_BACKEND_PORT=${BACKEND_PORT:-8005}
-        - VITE_BOT_NET_PORT=${BOT_NET_PORT:-8088}
-    container_name: cinegram-web
+    image: ghcr.io/christt105/cinegram-web:${CINEGRAM_TAG:-latest}
     restart: unless-stopped
     ports:
       - "${WEB_PORT:-5173}:80"
+    # Injected into the browser at container start (see web/docker-entrypoint.sh),
+    # so ports and the Jellyfin server can change without rebuilding the image.
+    environment:
+      - JELLYFIN_URL=${JELLYFIN_URL:-}
+      - JELLYFIN_TOKEN=${JELLYFIN_TOKEN:-}
+      - BACKEND_PORT=${BACKEND_PORT:-8005}
+      - BOT_NET_PORT=${BOT_NET_PORT:-8088}

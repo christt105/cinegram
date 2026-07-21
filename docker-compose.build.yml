@@ -1,0 +1,19 @@
+# Override that builds the images locally from source instead of pulling them
+# from GHCR. For contributors working on the code:
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+
+services:
+  bot-net:
+    build:
+      context: ./bot-net
+      dockerfile: Dockerfile
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
