@@ -54,18 +54,6 @@
           <Search :size="18" class="search-icon" />
           <input type="text" v-model="searchQuery" placeholder="Search for movies, series..." />
         </div>
-
-        <div class="header-actions">
-          <a
-            class="header-github"
-            href="https://github.com/christt105/cinegram"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="View on GitHub"
-          >
-            <Github :size="20" />
-          </a>
-        </div>
       </header>
 
       <router-view
@@ -265,7 +253,6 @@ onMounted(() => {
 
 /* Main Content */
 .main-content {
-  --header-h: 88px;
   flex-grow: 1;
   padding: var(--sp-md) var(--sp-lg);
   display: flex;
@@ -276,18 +263,11 @@ onMounted(() => {
 }
 
 .header {
-  position: sticky;
-  top: 0;
-  z-index: 20;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: var(--sp-lg);
   gap: var(--sp-md);
-  margin: calc(-1 * var(--sp-md)) calc(-1 * var(--sp-lg)) var(--sp-md);
-  padding: var(--sp-md) var(--sp-lg);
-  background: var(--glass-bg-strong);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
 .search-bar {
@@ -326,50 +306,12 @@ onMounted(() => {
   color: var(--on-surface-variant);
 }
 
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* Shown only on mobile, where the sidebar (and its footer link) collapses. */
-.header-github {
-  display: none;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  background: var(--surface-container);
-  border: 1px solid var(--glass-border);
-  color: var(--on-surface-variant);
-  transition: all 0.2s ease;
-}
-
-.header-github:hover {
-  color: var(--primary);
-  border-color: var(--glass-border-hover);
-}
-
 .content-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   gap: var(--sp-md);
   margin-bottom: var(--sp-md);
-}
-
-/* Sticky filter bar only in the media libraries (below the sticky search header). */
-.media-view .content-header {
-  position: sticky;
-  top: var(--header-h);
-  z-index: 19;
-  margin: 0 calc(-1 * var(--sp-lg)) var(--sp-md);
-  padding: var(--sp-md) var(--sp-lg);
-  background: var(--glass-bg-strong);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
 .content-header h1 {
@@ -539,34 +481,23 @@ onMounted(() => {
   }
 
   .main-content {
-    --header-h: 72px;
     padding: var(--sp-sm);
     padding-bottom: 90px;
   }
 
   .header {
     flex-direction: row;
-    margin: calc(-1 * var(--sp-sm)) calc(-1 * var(--sp-sm)) var(--sp-sm);
-    padding: var(--sp-sm);
+    margin-bottom: var(--sp-md);
   }
 
   .search-bar {
     max-width: 100%;
   }
 
-  .header-github {
-    display: inline-flex;
-  }
-
   .content-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
-  }
-
-  .media-view .content-header {
-    margin: 0 calc(-1 * var(--sp-sm)) var(--sp-md);
-    padding: var(--sp-sm);
   }
 
   .filters {
