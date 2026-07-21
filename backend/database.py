@@ -1,60 +1,34 @@
 from sqlmodel import SQLModel, create_engine, Session
 import os
 
+from sqlalchemy import event
+
 DB_PATH = os.getenv("DATABASE_PATH", "/data/database.db")
 DATABASE_URL = f"sqlite:///{DB_PATH}"
 
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False, "timeout": 15}
+)
+
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA journal_mode=WAL;")
+    cursor.execute("PRAGMA busy_timeout=5000;")
+    cursor.close()
 
 def init_db():
+    """
+    Initializes the database schema.
+    Creates all tables defined in models if they do not exist.
+    Future schema changes should be managed using a migration tool (e.g. Alembic).
+    """
+    import models
+    _ = models  # Access module to register table schemas and satisfy static analysis
     SQLModel.metadata.create_all(engine)
-    # Auto-migration fallback for SQLite
-    from sqlmodel import text
-    with Session(engine) as session:
-        for column, col_type in [("poster_path", "VARCHAR"), ("overview", "VARCHAR"), ("release_year", "INTEGER"), ("tvdb_id", "INTEGER")]:
-            try:
-                session.execute(text(f"ALTER TABLE series ADD COLUMN {column} {col_type};"))
-                session.commit()
-            except Exception:
-                pass
-        try:
-            session.execute(text("ALTER TABLE collection ADD COLUMN technical_metadata TEXT;"))
-            session.commit()
-        except Exception:
-            pass
-        try:
-            # Clear duplicate season_id mappings for episode collections
-            session.execute(text("UPDATE collection SET season_id = NULL WHERE episode_id IS NOT NULL;"))
-            session.commit()
-        except Exception:
-            pass
-        try:
-            session.execute(text("ALTER TABLE movie ADD COLUMN created_at TIMESTAMP;"))
-            session.commit()
-        except Exception:
-            pass
-        try:
-            session.execute(text("ALTER TABLE series ADD COLUMN created_at TIMESTAMP;"))
-            session.commit()
-        except Exception:
-            pass
-        for table in ("movie", "series"):
-            try:
-                session.execute(text(f"ALTER TABLE {table} ADD COLUMN manually_added BOOLEAN DEFAULT 0;"))
-                session.commit()
-            except Exception:
-                pass
-        try:
-            session.execute(text("UPDATE movie SET created_at = datetime('now') WHERE created_at IS NULL;"))
-            session.commit()
-        except Exception:
-            pass
-        try:
-            session.execute(text("UPDATE series SET created_at = datetime('now') WHERE created_at IS NULL;"))
-            session.commit()
-        except Exception:
-            pass
 
 def get_session():
     with Session(engine) as session:
         yield session
+

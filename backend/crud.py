@@ -3,7 +3,7 @@ from sqlalchemy.exc import NoResultFound
 from models import File, Collection, Movie, Series, Season, Episode
 from database import engine
 from sqlmodel import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from logger import logger
 from tmdb import TMDB
@@ -159,12 +159,13 @@ def get_or_create_collection(session: Session, filename: str, mime_type: str, te
 def create_file(session: Session, message_id, filename, filesize, mime_type, created_at, tmdb_id=None, technical_metadata=None):
     collection = get_or_create_collection(session, filename, mime_type, technical_metadata)
 
+    file_created_at = datetime.fromisoformat(created_at) if created_at else datetime.now(timezone.utc)
     file = File(
         message_id=message_id,
         filename=filename,
         filesize=filesize,
         mime_type=mime_type,
-        created_at=datetime.fromisoformat(created_at) if created_at else None,
+        created_at=file_created_at,
         collection_id=collection.id
     )
     session.add(file)
