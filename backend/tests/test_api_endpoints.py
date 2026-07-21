@@ -84,3 +84,18 @@ def test_movies_and_series_crud(client):
     s_res = client.get("/series")
     assert s_res.status_code == 200
     assert s_res.json() == []
+
+
+def test_task_endpoints(client):
+    dl_res = client.get("/tasks/downloads")
+    assert dl_res.status_code == 200
+    assert dl_res.json() == []
+
+    ul_res = client.get("/tasks/uploads")
+    assert ul_res.status_code == 200
+    assert ul_res.json() == []
+
+    clear_res = client.delete("/tasks/completed")
+    assert clear_res.status_code == 200
+    assert clear_res.json()["cleared_downloads"] == 0
+

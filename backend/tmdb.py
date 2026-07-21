@@ -5,7 +5,9 @@ import difflib
 import unicodedata
 import tmdbsimple as tmdb
 
+from functools import lru_cache
 from config import TMDB_API_KEY, TMDB_CONTENT_LANGUAGE
+from logger import logger
 
 tmdb.REQUESTS_TIMEOUT = 15
 
@@ -177,23 +179,35 @@ class TMDB:
         
         return {}
 
-    def get_tv(self, tmdbid):
-        try_series = None
+    @staticmethod
+    @lru_cache(maxsize=512)
+    def _cached_get_tv(tmdbid: int, language: str):
         try:
-            try_series = tmdb.TV(tmdbid).info(language=TMDB_CONTENT_LANGUAGE)
-            try_series["media_type"] = "tv"
+            info = tmdb.TV(tmdbid).info(language=language)
+            info["media_type"] = "tv"
+            return info
         except Exception as e:
-            print(f"Invalid TMDB ID for series: {tmdbid}. Error: {e}")
-        return try_series
+            logger.error(f"Invalid TMDB ID for series: {tmdbid}. Error: {e}")
+            return None
 
-    def get_movie(self, tmdbid):
-        try_movie = None
+    @staticmethod
+    @lru_cache(maxsize=512)
+    def _cached_get_movie(tmdbid: int, language: str):
         try:
-            try_movie = tmdb.Movies(tmdbid).info(language=TMDB_CONTENT_LANGUAGE)
-            try_movie["media_type"] = "movie"
+            info = tmdb.Movies(tmdbid).info(language=language)
+            info["media_type"] = "movie"
+            return info
         except Exception as e:
-            print(f"Invalid TMDB ID for movie: {tmdbid}. Error: {e}")
-        return try_movie
+            logger.error(f"Invalid TMDB ID for movie: {tmdbid}. Error: {e}")
+            return None
+
+    def get_tv(self, tmdbid: int):
+        res = self._cached_get_tv(tmdbid, TMDB_CONTENT_LANGUAGE)
+        return dict(res) if res else None
+
+    def get_movie(self, tmdbid: int):
+        res = self._cached_get_movie(tmdbid, TMDB_CONTENT_LANGUAGE)
+        return dict(res) if res else None
             
     @staticmethod
     def _normalize(text: str) -> str:

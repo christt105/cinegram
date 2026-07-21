@@ -69,6 +69,8 @@ def upload_endpoint(payload: UploadIn, session: Session = Depends(get_session)):
         "episode_id": collection.episode_id
     }
 
+from routers.search import router as search_router
+
 # Register APIRouters
 app.include_router(movies_router)
 app.include_router(series_router)
@@ -76,3 +78,4 @@ app.include_router(collections_router)
 app.include_router(files_router)
 app.include_router(maintenance_router)
 app.include_router(tasks_router)
+app.include_router(search_router)

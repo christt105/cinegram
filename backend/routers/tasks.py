@@ -1,7 +1,8 @@
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from database import get_session
-from models import Series, Collection, DownloadTask
+from models import Series, Collection, DownloadTask, UploadTask
 
 router = APIRouter(tags=["tasks"])
 
@@ -20,6 +21,38 @@ def enqueue_collection_id(session: Session, collection_id: int):
         session.commit()
         return True
     return False
+
+@router.get("/tasks/downloads", response_model=List[DownloadTask])
+def list_download_tasks(session: Session = Depends(get_session)):
+    """List all download tasks"""
+    return session.exec(select(DownloadTask)).all()
+
+@router.get("/tasks/uploads", response_model=List[UploadTask])
+def list_upload_tasks(session: Session = Depends(get_session)):
+    """List all upload tasks"""
+    return session.exec(select(UploadTask)).all()
+
+@router.delete("/tasks/completed")
+def clear_completed_tasks(session: Session = Depends(get_session)):
+    """Clear completed download and upload tasks from the queue"""
+    completed_downloads = session.exec(
+        select(DownloadTask).where(DownloadTask.status == "completed")
+    ).all()
+    completed_uploads = session.exec(
+        select(UploadTask).where(UploadTask.status == "completed")
+    ).all()
+
+    for dt in completed_downloads:
+        session.delete(dt)
+    for ut in completed_uploads:
+        session.delete(ut)
+
+    session.commit()
+    return {
+        "status": "ok",
+        "cleared_downloads": len(completed_downloads),
+        "cleared_uploads": len(completed_uploads)
+    }
 
 @router.post("/downloads/enqueue/collection/{collection_id}")
 def enqueue_collection_endpoint(collection_id: int, session: Session = Depends(get_session)):
