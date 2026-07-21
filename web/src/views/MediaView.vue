@@ -130,10 +130,31 @@
 </template>
 
 <script lang="ts">
-// Remembers how many cards were revealed per library type, so returning to a
-// list restores the same amount of content and its saved scroll position.
-const visibleCountCache = new Map<string, number>();
 const PAGE_SIZE = 48;
+
+type SortBy = 'latest_added' | 'popular' | 'alphabetical';
+type TelegramFilter = 'all' | 'movies' | 'series';
+type BackupFilter = 'all' | 'backed_up' | 'not_backed_up';
+
+interface ViewState {
+  sortBy: SortBy;
+  telegramFilter: TelegramFilter;
+  backupFilter: BackupFilter;
+  visibleCount: number;
+}
+
+// Remembers the filters and how many cards were revealed per library type, so
+// returning to a list restores the same view and its saved scroll position.
+const viewStateCache = new Map<string, ViewState>();
+
+function getViewState(type: string): ViewState {
+  return viewStateCache.get(type) ?? {
+    sortBy: 'latest_added',
+    telegramFilter: 'all',
+    backupFilter: 'all',
+    visibleCount: PAGE_SIZE,
+  };
+}
 </script>
 
 <script setup lang="ts">
@@ -155,9 +176,10 @@ const props = defineProps<{
 
 const emit = defineEmits(['refresh']);
 
-const sortBy = ref<'latest_added' | 'popular' | 'alphabetical'>('latest_added');
-const telegramFilter = ref<'all' | 'movies' | 'series'>('all');
-const backupFilter = ref<'all' | 'backed_up' | 'not_backed_up'>('all');
+const saved = getViewState(props.type);
+const sortBy = ref<SortBy>(saved.sortBy);
+const telegramFilter = ref<TelegramFilter>(saved.telegramFilter);
+const backupFilter = ref<BackupFilter>(saved.backupFilter);
 const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:${import.meta.env.VITE_BACKEND_PORT || 8005}`;
 
 const title = computed(() => {
@@ -316,18 +338,28 @@ const computedItems = computed(() => {
 });
 
 // Infinite scroll: reveal cards in chunks as a sentinel scrolls into view,
-// keeping the DOM small on large libraries. The revealed count is cached per
-// type so back-navigation restores both the content and its scroll position.
-const visibleCount = ref(visibleCountCache.get(props.type) ?? PAGE_SIZE);
+// keeping the DOM small on large libraries.
+const visibleCount = ref(saved.visibleCount);
 const pagedItems = computed(() => computedItems.value.slice(0, visibleCount.value));
 const hasMore = computed(() => visibleCount.value < computedItems.value.length);
 const sentinel = ref<HTMLElement | null>(null);
 let observer: IntersectionObserver | null = null;
 
+// Persist filters + revealed count so back-navigation restores the exact view.
+const persist = () => {
+  viewStateCache.set(props.type, {
+    sortBy: sortBy.value,
+    telegramFilter: telegramFilter.value,
+    backupFilter: backupFilter.value,
+    visibleCount: visibleCount.value,
+  });
+};
+watch([sortBy, telegramFilter, backupFilter], persist);
+
 const loadMore = () => {
   if (!hasMore.value) return;
   visibleCount.value = Math.min(visibleCount.value + PAGE_SIZE, computedItems.value.length);
-  visibleCountCache.set(props.type, visibleCount.value);
+  persist();
 };
 
 const onIntersect = async (entries: IntersectionObserverEntry[]) => {
@@ -349,9 +381,13 @@ onMounted(() => {
 onBeforeUnmount(() => observer?.disconnect());
 
 // The movies/series/telegram routes reuse this component, so react to type
-// changes by restoring that type's revealed count instead of remounting.
+// changes by restoring that type's saved view instead of remounting.
 watch(() => props.type, (type) => {
-  visibleCount.value = visibleCountCache.get(type) ?? PAGE_SIZE;
+  const state = getViewState(type);
+  sortBy.value = state.sortBy;
+  telegramFilter.value = state.telegramFilter;
+  backupFilter.value = state.backupFilter;
+  visibleCount.value = state.visibleCount;
 });
 
 const handleDelete = async (item: any) => {
