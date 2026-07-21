@@ -135,7 +135,7 @@ const failedCount = computed(() =>
   downloads.value.filter(t => t.status === 'failed').length
 );
 let pollInterval: any = null;
-const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:${import.meta.env.VITE_BACKEND_PORT || 8005}`;
+import { backendUrl } from '../config';
 
 const fetchQueues = async () => {
   isLoading.value = true;

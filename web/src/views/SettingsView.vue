@@ -195,8 +195,7 @@ const props = defineProps<{
   telegramSeries: any[];
 }>();
 
-const jellyfinUrl = import.meta.env.VITE_JELLYFIN_URL || `${window.location.protocol}//${window.location.hostname}:8096`;
-const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:${import.meta.env.VITE_BACKEND_PORT || 8005}`;
+import { jellyfinUrl, backendUrl } from '../config';
 
 const orphans = ref<any[]>([]);
 const loadingOrphans = ref(true);

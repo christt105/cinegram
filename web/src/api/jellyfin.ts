@@ -4,9 +4,7 @@ import { getSystemApi } from '@jellyfin/sdk/lib/utils/api/system-api';
 import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 import { BaseItemKind, ItemFields } from '@jellyfin/sdk/lib/generated-client/models';
 import { ref } from 'vue';
-
-const serverUrl = import.meta.env.VITE_JELLYFIN_URL || `${window.location.protocol}//${window.location.hostname}:8096`;
-const token = import.meta.env.VITE_JELLYFIN_TOKEN || '';
+import { jellyfinUrl as serverUrl, jellyfinToken as token } from '../config';
 
 const jellyfin = new Jellyfin({
     clientInfo: { name: 'Cinegram', version: '2.0.0' },

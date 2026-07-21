@@ -120,7 +120,7 @@ const props = defineProps<{
 const item = ref<any>(null)
 const isLoading = ref(true)
 
-const backendUrl = import.meta.env.VITE_BACKEND_URL || `${window.location.protocol}//${window.location.hostname}:${import.meta.env.VITE_BACKEND_PORT || 8005}`
+import { backendUrl } from '../config'
 
 const fetchItem = async () => {
   isLoading.value = true
