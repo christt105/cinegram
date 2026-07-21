@@ -306,7 +306,7 @@
         
         <!-- Search Bar -->
         <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-          <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Type the series or movie name..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
+          <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Name or TMDB ID..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
           <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Search</button>
         </div>
 
@@ -363,7 +363,7 @@
 
         <!-- Search Bar -->
         <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Type the movie or series name..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
+          <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Name or TMDB ID..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
           <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Search</button>
         </div>
 
@@ -786,7 +786,8 @@ const searchTMDB = async () => {
   isSearchingTMDB.value = true
   searchResultsTMDB.value = []
   try {
-    const res = await fetch(`${backendUrl}/tmdb/search?query=${encodeURIComponent(searchQueryTMDB.value.trim())}`)
+    const mediaType = props.type === 'movies' ? 'movie' : 'tv'
+    const res = await fetch(`${backendUrl}/tmdb/search?query=${encodeURIComponent(searchQueryTMDB.value.trim())}&media_type=${mediaType}`)
     if (res.ok) {
       searchResultsTMDB.value = await res.json()
     }

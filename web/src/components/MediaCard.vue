@@ -6,8 +6,12 @@
         <Clapperboard :size="40" />
       </div>
 
-      <!-- Backup status badge -->
-      <div class="status-badge" :class="media.isOnTelegram ? 'backed-up' : 'pending'">
+      <!-- Collections count (Telegram library) or backup status badge -->
+      <div v-if="showCollectionCount" class="status-badge collections">
+        <Layers :size="12" />
+        {{ media.collectionCount || 0 }} {{ (media.collectionCount || 0) === 1 ? 'collection' : 'collections' }}
+      </div>
+      <div v-else class="status-badge" :class="media.isOnTelegram ? 'backed-up' : 'pending'">
         <component :is="media.isOnTelegram ? CheckCircle : RefreshCw" :size="12" />
         {{ media.isOnTelegram ? 'Backed up' : 'Pending' }}
       </div>
@@ -38,7 +42,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { CheckCircle, RefreshCw, Info, Clapperboard } from 'lucide-vue-next';
+import { CheckCircle, RefreshCw, Info, Clapperboard, Layers } from 'lucide-vue-next';
 import type { Media } from '../api/jellyfin';
 import type { BackendSeason } from '../api/backend';
 
@@ -47,11 +51,15 @@ interface UIMedia extends Media {
   isInJellyfin?: boolean;
   seasons?: BackendSeason[];
   rawId?: number;
+  collectionCount?: number;
 }
 
-const props = defineProps<{
-  media: UIMedia
-}>();
+const props = withDefaults(defineProps<{
+  media: UIMedia,
+  showCollectionCount?: boolean
+}>(), {
+  showCollectionCount: false
+});
 
 defineEmits(['delete', 'download-all', 'download-season', 'download-episode', 'upload']);
 const isHovered = ref(false);
@@ -136,6 +144,12 @@ const goToDetail = () => {
 .status-badge.pending {
   background: rgba(53, 53, 52, 0.8);
   color: var(--on-surface-variant);
+  border: 1px solid var(--outline-variant);
+}
+
+.status-badge.collections {
+  background: rgba(14, 14, 14, 0.72);
+  color: var(--secondary);
   border: 1px solid var(--outline-variant);
 }
 
