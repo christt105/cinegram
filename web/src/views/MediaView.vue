@@ -380,6 +380,15 @@ onMounted(() => {
 
 onBeforeUnmount(() => observer?.disconnect());
 
+// The sentinel only exists once the list has items, which lands after the
+// async fetch resolves — later than onMounted. Track the ref so it gets
+// observed whenever it appears (and unobserved when it goes away).
+watch(sentinel, (el, prev) => {
+  if (!observer) return;
+  if (prev) observer.unobserve(prev);
+  if (el) observer.observe(el);
+});
+
 // The movies/series/telegram routes reuse this component, so react to type
 // changes by restoring that type's saved view instead of remounting.
 watch(() => props.type, (type) => {
