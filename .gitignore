@@ -7,6 +7,9 @@ docker-compose.override.yml
 # Core dumps
 core.*
 
+# Local application data
+appdata/
+
 # Design sources (not tracked; derived assets live in web/public)
 stitch_jellygram_media_manager.zip
 icon.png
