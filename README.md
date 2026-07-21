@@ -66,7 +66,7 @@ All configuration lives in `.env` (see `.env.example` for the template).
 | `TELEGRAM_API_ID`       | Telegram `api_id` from <https://my.telegram.org>.                                               |
 | `TELEGRAM_API_HASH`     | Telegram `api_hash` from <https://my.telegram.org>.                                             |
 | `TELEGRAM_BOT_TOKEN`    | Bot token from [@BotFather](https://t.me/BotFather).                                             |
-| `TELEGRAM_AUTH_USER_ID` | Telegram user ID allowed to command the bot.                                                     |
+| `TELEGRAM_AUTH_USER_ID` | Telegram user ID allowed to command the bot. Accepts a comma-separated list to authorize several users (e.g. `123,456`); the first ID is the owner whose chat stores the media. |
 | `TMDB_API_KEY`          | TMDB API key used for metadata lookups.                                                          |
 | `TMDB_CONTENT_LANGUAGE` | Language for titles and overviews (e.g. `en-US`, `es-ES`, `fr-FR`).                              |
 | `IMPORT_MOVIES_DIR`     | Host path for the movies library, bind-mounted into `bot-net` at `/data/import/movies`.         |
@@ -80,15 +80,29 @@ All configuration lives in `.env` (see `.env.example` for the template).
 
 | Service   | Host port               | Container port |
 | --------- | ----------------------- | -------------- |
-| `web`     | `${WEB_PORT:-5173}`     | `5173`         |
+| `web`     | `${WEB_PORT:-5173}`     | `80`           |
 | `backend` | `${BACKEND_PORT:-8005}` | `8000`         |
 | `bot-net` | `${BOT_NET_PORT:-8088}` | `8080`         |
 
 All three host ports are configurable in `.env`, so you can move any of them if
-it clashes with something else already running on the host. The web panel picks
-up `BACKEND_PORT` / `BOT_NET_PORT` automatically (injected as `VITE_BACKEND_PORT`
-/ `VITE_BOT_NET_PORT`), so the browser talks to the services on whatever ports
-you choose.
+it clashes with something else already running on the host. The web reads
+`JELLYFIN_URL` / `JELLYFIN_TOKEN` / `BACKEND_PORT` / `BOT_NET_PORT` as Vite build
+args, so the browser talks to the services on whatever ports you choose. Because
+Vite inlines these at build time, re-run `docker compose up -d --build web` after
+changing them.
+
+The `web` service is built into a static bundle and served by nginx. A
+`web/Dockerfile.dev` (Vite dev server with hot reload) is kept for local
+development.
+
+## Security
+
+Cinegram has **no built-in authentication** on the web panel or the backend
+API: anyone who can reach those ports can browse and modify the library. Only
+the Telegram bot is access-controlled (via `TELEGRAM_AUTH_USER_ID`). Do **not**
+expose the `web` or `backend` ports directly to the internet. Keep them on your
+LAN and reach them through a VPN, or put them behind a reverse proxy that adds
+authentication and TLS.
 
 ## Bot commands
 
