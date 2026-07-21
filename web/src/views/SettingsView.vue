@@ -39,6 +39,23 @@
       </div>
 
 
+      <!-- About Card -->
+      <div class="glass-panel settings-card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+        <h3>About</h3>
+        <p style="color: var(--text-secondary); font-size: 0.95rem; margin: 0;">
+          Cinegram is open source. Report issues or contribute on GitHub.
+        </p>
+        <a
+          class="glass-button"
+          href="https://github.com/christt105/cinegram"
+          target="_blank"
+          rel="noopener noreferrer"
+          style="display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.6rem 1rem; text-decoration: none; align-self: flex-start;"
+        >
+          <Github :size="18" /> View on GitHub
+        </a>
+      </div>
+
       <!-- Maintenance and Anomalies Card -->
       <div class="glass-panel settings-card" style="grid-column: 1 / -1; margin-top: 1.5rem; padding: 1.5rem;">
         <h3 style="margin-bottom: 0.5rem;">Database & Integrity Maintenance</h3>
@@ -170,6 +187,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
+import { Github } from 'lucide-vue-next';
 
 const props = defineProps<{
   jellyfinItems: any[];
