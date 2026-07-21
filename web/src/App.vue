@@ -49,17 +49,22 @@
     </aside>
 
     <main class="main-content" ref="mainContent">
-      <header class="header">
-        <div class="search-bar" v-if="!['settings', 'item-detail', 'queue'].includes($route.name as string)">
+      <header class="header" v-if="isMediaRoute">
+        <div class="search-bar">
           <Search :size="18" class="search-icon" />
           <input type="text" v-model="searchQuery" placeholder="Search for movies, series..." />
         </div>
-        <div v-else style="flex-grow: 1;"></div>
 
         <div class="header-actions">
-          <div class="user-profile">
-            <User :size="18" />
-          </div>
+          <a
+            class="header-github"
+            href="https://github.com/christt105/cinegram"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View on GitHub"
+          >
+            <Github :size="20" />
+          </a>
         </div>
       </header>
 
@@ -78,9 +83,9 @@
 </template>
 
 <script setup lang="ts">
-import { Film, Tv, Send, Settings, Search, User, List, Github } from 'lucide-vue-next';
+import { Film, Tv, Send, Settings, Search, List, Github } from 'lucide-vue-next';
 import { onMounted, ref, computed, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useJellyfin } from './api/jellyfin';
 import { useBackend } from './api/backend';
 
@@ -91,7 +96,10 @@ const searchQuery = ref('');
 // scrollBehavior can't handle it.
 const mainContent = ref<HTMLElement | null>(null);
 const router = useRouter();
+const route = useRoute();
 const scrollPositions = new Map<string, number>();
+
+const isMediaRoute = computed(() => ['movies', 'series', 'telegram'].includes(route.name as string));
 
 router.beforeEach((to, from) => {
   if (mainContent.value) {
@@ -257,6 +265,7 @@ onMounted(() => {
 
 /* Main Content */
 .main-content {
+  --header-h: 88px;
   flex-grow: 1;
   padding: var(--sp-md) var(--sp-lg);
   display: flex;
@@ -267,11 +276,18 @@ onMounted(() => {
 }
 
 .header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: var(--sp-lg);
   gap: var(--sp-md);
+  margin: calc(-1 * var(--sp-md)) calc(-1 * var(--sp-lg)) var(--sp-md);
+  padding: var(--sp-md) var(--sp-lg);
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
 .search-bar {
@@ -316,21 +332,22 @@ onMounted(() => {
   gap: 12px;
 }
 
-.user-profile {
+/* Shown only on mobile, where the sidebar (and its footer link) collapses. */
+.header-github {
+  display: none;
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  flex-shrink: 0;
   background: var(--surface-container);
   border: 1px solid var(--glass-border);
   color: var(--on-surface-variant);
   transition: all 0.2s ease;
 }
 
-.user-profile:hover {
+.header-github:hover {
   color: var(--primary);
   border-color: var(--glass-border-hover);
 }
@@ -341,6 +358,18 @@ onMounted(() => {
   align-items: flex-end;
   gap: var(--sp-md);
   margin-bottom: var(--sp-md);
+}
+
+/* Sticky filter bar only in the media libraries (below the sticky search header). */
+.media-view .content-header {
+  position: sticky;
+  top: var(--header-h);
+  z-index: 19;
+  margin: 0 calc(-1 * var(--sp-lg)) var(--sp-md);
+  padding: var(--sp-md) var(--sp-lg);
+  background: var(--glass-bg-strong);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
 }
 
 .content-header h1 {
@@ -510,27 +539,34 @@ onMounted(() => {
   }
 
   .main-content {
+    --header-h: 72px;
     padding: var(--sp-sm);
     padding-bottom: 90px;
   }
 
   .header {
     flex-direction: row;
-    margin-bottom: var(--sp-md);
+    margin: calc(-1 * var(--sp-sm)) calc(-1 * var(--sp-sm)) var(--sp-sm);
+    padding: var(--sp-sm);
   }
 
   .search-bar {
     max-width: 100%;
   }
 
-  .user-profile {
-    display: none;
+  .header-github {
+    display: inline-flex;
   }
 
   .content-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
+  }
+
+  .media-view .content-header {
+    margin: 0 calc(-1 * var(--sp-sm)) var(--sp-md);
+    padding: var(--sp-sm);
   }
 
   .filters {
