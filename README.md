@@ -2,9 +2,11 @@
 
 Cinegram is a self-hosted platform that bridges a [Jellyfin](https://jellyfin.org/)
 media library with [Telegram](https://telegram.org/). It automates downloading
-movies and series from Telegram chats/channels, processes and renames them to
+movies and series from Telegram, processes and renames them to
 Jellyfin's naming convention, and can also back up existing Jellyfin files the
-other way around — up to Telegram.
+other way around up to Telegram.
+
+![Preview of the web](./docs/preview.png)
 
 It ships as three services orchestrated with Docker Compose, so a full deployment
 is a single `docker compose up`.
