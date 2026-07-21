@@ -1,10 +1,5 @@
 name: cinegram
 
-# Runs Cinegram from prebuilt images published to GitHub Container Registry,
-# so a deployment needs only this file and a .env — no clone, no build.
-# To build from source instead, add docker-compose.build.yml:
-#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
-
 services:
   bot-net:
     image: ghcr.io/christt105/cinegram-bot-net:${CINEGRAM_TAG:-latest}
@@ -16,7 +11,6 @@ services:
       - "${BOT_NET_PORT:-8088}:8080"
     volumes:
       - ./appdata/bot-net:/data
-      # Import & Download directories (writeable for downloading)
       - ${IMPORT_MOVIES_DIR:?set IMPORT_MOVIES_DIR in .env}:/data/import/movies
       - ${IMPORT_SHOWS_DIR:?set IMPORT_SHOWS_DIR in .env}:/data/import/shows
     environment:
@@ -39,8 +33,6 @@ services:
     restart: unless-stopped
     ports:
       - "${WEB_PORT:-5173}:80"
-    # Injected into the browser at container start (see web/docker-entrypoint.sh),
-    # so ports and the Jellyfin server can change without rebuilding the image.
     environment:
       - JELLYFIN_URL=${JELLYFIN_URL:-}
       - JELLYFIN_TOKEN=${JELLYFIN_TOKEN:-}

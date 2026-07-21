@@ -1,10 +1,5 @@
-// Runtime configuration for the SPA.
-//
-// Values are resolved with the following precedence:
-//   1. window.__CINEGRAM__ — injected at container start by docker-entrypoint.sh
-//      from the container environment, so a prebuilt image is reconfigurable.
-//   2. import.meta.env.VITE_* — Vite build-time variables (used by the dev server).
-//   3. Fallbacks derived from the browser host and the default service ports.
+// Resolves config from window.__CINEGRAM__ (runtime), then VITE_* (build), then
+// the browser host with default ports.
 
 type RuntimeConfig = {
   JELLYFIN_URL?: string;
