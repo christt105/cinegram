@@ -99,3 +99,37 @@ def test_task_endpoints(client):
     assert clear_res.status_code == 200
     assert clear_res.json()["cleared_downloads"] == 0
 
+
+CLIENT_API_CONTRACT = [
+    ("POST", "/uploads/enqueue"),
+    ("GET", "/uploads/queue"),
+    ("GET", "/uploads/pending"),
+    ("DELETE", "/uploads/{task_id}"),
+    ("POST", "/uploads/{task_id}/status"),
+    ("POST", "/uploads/{task_id}/retry"),
+    ("GET", "/downloads/queue"),
+    ("GET", "/downloads/pending"),
+    ("DELETE", "/downloads/{task_id}"),
+    ("POST", "/downloads/{task_id}/status"),
+    ("POST", "/downloads/{task_id}/retry"),
+    ("POST", "/downloads/enqueue/collection/{collection_id}"),
+    ("POST", "/downloads/enqueue/series/{series_id}"),
+    ("POST", "/downloads/enqueue/series/{series_id}/season/{season_number}"),
+    ("POST", "/downloads/enqueue/series/{series_id}/season/{season_number}/episode/{episode_number}"),
+]
+
+
+def test_client_api_contract_is_registered():
+    """Guard against silently removing or renaming routes the web and bot depend on"""
+    registered = {
+        (method, route.path)
+        for route in app.routes
+        for method in getattr(route, "methods", set()) or set()
+    }
+    missing = [
+        (method, path)
+        for method, path in CLIENT_API_CONTRACT
+        if (method, path) not in registered
+    ]
+    assert not missing, f"Missing client-facing routes: {missing}"
+
