@@ -49,3 +49,6 @@ export const jellyfinToken = resolve(
   runtime.JELLYFIN_TOKEN,
   import.meta.env.VITE_JELLYFIN_TOKEN
 );
+
+export const appVersion =
+  (import.meta.env.VITE_APP_VERSION as string | undefined)?.trim() || 'dev';

@@ -18,6 +18,7 @@ public class CommandHandler
         var commands = new ICommand[]
         {
             new StartCommand(bot.Bot),
+            new VersionCommand(bot.Bot),
             new HealthCommand(bot.Bot, bot.ApiClient),
             new MoviesCommand(bot.Bot, bot.ApiClient),
             new SeriesCommand(bot.Bot, bot.ApiClient),

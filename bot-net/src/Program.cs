@@ -1,5 +1,6 @@
 using Bot;
 using Bot.Services;
+using Bot.Utils;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<BotHolder>();
@@ -18,6 +19,8 @@ app.UseCors();
 
 // Health check
 app.MapGet("/", () => Results.Ok(new { status = "ok" }));
+
+app.MapGet("/version", () => Results.Ok(new { version = AppVersion.Current }));
 
 // Trigger preview of a single movie collection (info card + files)
 app.MapPost("/preview/collection/{collectionId:int}", async (int collectionId, IServiceProvider sp) =>

@@ -23,7 +23,7 @@ async def lifespan(app: FastAPI):
     init_db()
     yield
 
-app = FastAPI(title=settings.PROJECT_NAME, lifespan=lifespan)
+app = FastAPI(title=settings.PROJECT_NAME, version=settings.APP_VERSION, lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -38,6 +38,10 @@ tmdb = TMDB()
 @app.get("/")
 def root():
     return {"status": "ok", "message": "Backend is running"}
+
+@app.get("/version")
+def version():
+    return {"name": settings.PROJECT_NAME, "version": settings.APP_VERSION}
 
 @app.post("/upload", response_model=ItemOut)
 def upload_endpoint(payload: UploadIn, session: Session = Depends(get_session)):

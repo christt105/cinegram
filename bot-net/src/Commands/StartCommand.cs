@@ -1,4 +1,5 @@
-﻿using Telegram.Bot.Types;
+﻿using Bot.Utils;
+using Telegram.Bot.Types;
 using Message = WTelegram.Types.Message;
 
 namespace Bot.Commands;
@@ -14,7 +15,7 @@ public class StartCommand : ICommand
 
     public async Task Execute(string[] args, Message msg)
     {
-        const string message = "👋 Hello! I'm your Media Library bot. Send me a file or use /help for commands.";
+        var message = $"👋 Hello! I'm your Media Library bot (v{AppVersion.Current}). Send me a file or use /help for commands.";
         await _bot.SendMessage(msg.Chat.Id, message,
             replyParameters: new ReplyParameters { MessageId = msg.MessageId });
     }

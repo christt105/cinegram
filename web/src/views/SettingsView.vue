@@ -42,6 +42,10 @@
       <!-- About Card -->
       <div class="glass-panel settings-card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
         <h3>About</h3>
+        <div class="status-item" style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">
+          <span class="label" style="color: var(--text-secondary);">Version:</span>
+          <span class="value" style="font-family: monospace;">v{{ appVersion }}</span>
+        </div>
         <p style="color: var(--text-secondary); font-size: 0.95rem; margin: 0;">
           Cinegram is open source. Report issues or contribute on GitHub.
         </p>
@@ -195,7 +199,7 @@ const props = defineProps<{
   telegramSeries: any[];
 }>();
 
-import { jellyfinUrl, backendUrl } from '../config';
+import { jellyfinUrl, backendUrl, appVersion } from '../config';
 
 const orphans = ref<any[]>([]);
 const loadingOrphans = ref(true);
