@@ -67,6 +67,8 @@
         @refresh="fetchItems"
       />
     </main>
+
+    <ScrollToTop :target="mainContent" />
   </div>
 </template>
 
@@ -76,6 +78,7 @@ import { onMounted, ref, computed, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useJellyfin } from './api/jellyfin';
 import { useBackend } from './api/backend';
+import ScrollToTop from './components/ScrollToTop.vue';
 
 const searchQuery = ref('');
 
