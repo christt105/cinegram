@@ -141,6 +141,9 @@ class IdentifyRequest(BaseModel):
 
 class ReidentifyCollectionRequest(BaseModel):
     tmdb_id: int | None = None
+    media_type: str | None = None
+    season_number: int | None = None
+    episode_number: int | None = None
 
 class BatchIdentifyRequest(BaseModel):
     collection_ids: List[int]
