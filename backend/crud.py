@@ -179,7 +179,15 @@ def get_file(session: Session, item_id: int) -> Optional[File]:
 def get_collection(session: Session, item_id: int) -> Optional[File]:
     return session.get(Collection, item_id)
 
-def identify_collection(session: Session, collection_id: int, tmdb: TMDB, forced_tmdb_id: int | None = None) -> bool:
+def identify_collection(
+    session: Session,
+    collection_id: int,
+    tmdb: TMDB,
+    forced_tmdb_id: int | None = None,
+    forced_media_type: str | None = None,
+    forced_season: int | None = None,
+    forced_episode: int | None = None,
+) -> bool:
     logger.info(f"Identifying collection {collection_id}" + (f" (forced tmdb_id={forced_tmdb_id})" if forced_tmdb_id else ""))
 
     collection = get_collection(session, collection_id)
@@ -194,7 +202,7 @@ def identify_collection(session: Session, collection_id: int, tmdb: TMDB, forced
 
     parsed = TMDB.clean_filename(collection.name)
     clean_name = parsed["clean_name"]
-    content_type = parsed["type"]
+    content_type = forced_media_type or parsed["type"]
 
     tmdb_result = None
 
@@ -257,11 +265,14 @@ def identify_collection(session: Session, collection_id: int, tmdb: TMDB, forced
 
     elif media_type == "tv":
         series = get_or_create_series(session, tmdb_result)
-        
-        # Parse season & episode from name
-        parsed = TMDB.clean_filename(collection.name)
-        season_num = parsed.get("season")
-        episode_num = parsed.get("episode")
+
+        if forced_season is not None:
+            season_num = forced_season
+            episode_num = forced_episode
+        else:
+            parsed = TMDB.clean_filename(collection.name)
+            season_num = parsed.get("season")
+            episode_num = parsed.get("episode")
         
         collection.movie_id = None # Clear movie reference if it's TV
         

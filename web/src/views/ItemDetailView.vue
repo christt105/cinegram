@@ -361,38 +361,65 @@
           <button @click="reidentifyCollectionModal.open = false" class="glass-button icon-only" style="padding: 0; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">✕</button>
         </div>
 
-        <!-- Search Bar -->
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Name or TMDB ID..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
-          <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Search</button>
-        </div>
+        <!-- Step 1: Search -->
+        <template v-if="reidentifyCollectionModal.step === 'search'">
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+            <input v-model="searchQueryTMDB" @keyup.enter="searchTMDB" type="text" placeholder="Name or TMDB ID..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
+            <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Search</button>
+          </div>
 
-        <!-- Results List -->
-        <div style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 0.25rem; min-height: 150px;">
-          <div v-if="isSearchingTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">Searching TMDB...</div>
-          <div v-else-if="searchResultsTMDB.length === 0 && searchQueryTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">No results found.</div>
-          <div v-else-if="searchResultsTMDB.length === 0" style="text-align: center; padding: 1.5rem; color: #a1a1aa;">Type a title above and press Search.</div>
+          <div style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 0.25rem; min-height: 150px;">
+            <div v-if="isSearchingTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">Searching TMDB...</div>
+            <div v-else-if="searchResultsTMDB.length === 0 && searchQueryTMDB" style="text-align: center; padding: 2rem; color: #a1a1aa;">No results found.</div>
+            <div v-else-if="searchResultsTMDB.length === 0" style="text-align: center; padding: 1.5rem; color: #a1a1aa;">Type a title above and press Search.</div>
 
-          <div v-else v-for="result in searchResultsTMDB" :key="result.id" class="result-card" style="display: flex; gap: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; transition: background 0.2s;">
-            <img v-if="result.poster_path" :src="'https://image.tmdb.org/t/p/w92' + result.poster_path" style="width: 50px; height: 75px; object-fit: cover; border-radius: 6px; flex-shrink: 0;" />
-            <div v-else style="width: 50px; height: 75px; background: rgba(255,255,255,0.05); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #4b5563; flex-shrink: 0;">🎬</div>
+            <div v-else v-for="result in searchResultsTMDB" :key="result.id" class="result-card" style="display: flex; gap: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; transition: background 0.2s;">
+              <img v-if="result.poster_path" :src="'https://image.tmdb.org/t/p/w92' + result.poster_path" style="width: 50px; height: 75px; object-fit: cover; border-radius: 6px; flex-shrink: 0;" />
+              <div v-else style="width: 50px; height: 75px; background: rgba(255,255,255,0.05); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #4b5563; flex-shrink: 0;">🎬</div>
 
-            <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 0.25rem; min-width: 0;">
-              <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
-                <strong style="color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 250px;">{{ result.title }}</strong>
-                <span style="font-size: 0.75rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; color: #d1d5db;">{{ result.year }}</span>
-                <span :style="{ background: result.media_type === 'movie' ? 'rgba(214, 186, 255, 0.14)' : 'rgba(214, 186, 255, 0.14)', color: result.media_type === 'movie' ? '#d6baff' : '#d6baff' }" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">{{ result.media_type === 'movie' ? 'Movie' : 'Series' }}</span>
+              <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 0.25rem; min-width: 0;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                  <strong style="color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 250px;">{{ result.title }}</strong>
+                  <span style="font-size: 0.75rem; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px; color: #d1d5db;">{{ result.year }}</span>
+                  <span :style="{ background: result.media_type === 'movie' ? 'rgba(214, 186, 255, 0.14)' : 'rgba(74, 222, 128, 0.14)', color: result.media_type === 'movie' ? '#d6baff' : '#4ade80' }" style="font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; text-transform: uppercase;">{{ result.media_type === 'movie' ? 'Movie' : 'Series' }}</span>
+                </div>
+                <p style="margin: 0; font-size: 0.8rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ result.overview }}</p>
               </div>
-              <p style="margin: 0; font-size: 0.8rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ result.overview }}</p>
-            </div>
 
-            <button @click="selectCollectionTMDB(result.id)" :disabled="reidentifyCollectionModal.loading" class="glass-button" style="align-self: center; background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
-              Select
+              <button @click="handleCollectionTMDBSelect(result)" :disabled="reidentifyCollectionModal.loading" class="glass-button" style="align-self: center; background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
+                Select
+              </button>
+            </div>
+          </div>
+        </template>
+
+        <!-- Step 2: Episode placement (TV only) -->
+        <template v-else-if="reidentifyCollectionModal.step === 'episode-select'">
+          <div style="display: flex; flex-direction: column; gap: 1rem; flex-grow: 1;">
+            <p style="margin: 0; font-size: 0.9rem; color: #d1d5db;">
+              Linking to series: <strong style="color: #4ade80;">{{ reidentifyCollectionModal.pendingTitle }}</strong>
+            </p>
+            <p style="margin: 0; font-size: 0.8rem; color: #a1a1aa;">Use season 0 for specials and OVAs.</p>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+              <div style="display: flex; flex-direction: column; gap: 0.4rem; flex: 1; min-width: 120px;">
+                <label style="font-size: 0.8rem; color: #a1a1aa; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Season</label>
+                <input type="number" v-model.number="reidentifyCollectionModal.seasonNumber" min="0" style="padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 1rem; width: 100%; box-sizing: border-box;" />
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 0.4rem; flex: 1; min-width: 120px;">
+                <label style="font-size: 0.8rem; color: #a1a1aa; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Episode <span style="font-weight: 400; text-transform: none;">(empty = season pack)</span></label>
+                <input type="number" v-model.number="reidentifyCollectionModal.episodeNumber" min="1" placeholder="—" style="padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 1rem; width: 100%; box-sizing: border-box;" />
+              </div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.5rem; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem;">
+            <button @click="reidentifyCollectionModal.step = 'search'" class="glass-button" style="padding: 6px 16px;">← Back</button>
+            <button @click="confirmCollectionReidentify" :disabled="reidentifyCollectionModal.loading" class="glass-button" style="background: rgba(74, 222, 128, 0.14); border-color: rgba(74, 222, 128, 0.30); color: #4ade80; padding: 6px 16px;">
+              {{ reidentifyCollectionModal.loading ? 'Saving…' : 'Confirm' }}
             </button>
           </div>
-        </div>
+        </template>
 
-        <div style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem;">
+        <div v-if="reidentifyCollectionModal.step === 'search'" style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem;">
           <button @click="reidentifyCollectionModal.open = false" class="glass-button" style="padding: 6px 16px;">Close</button>
         </div>
       </div>
@@ -747,34 +774,83 @@ const reidentifyCollectionModal = ref({
   open: false,
   collectionId: 0,
   name: '',
-  loading: false
+  loading: false,
+  step: 'search' as 'search' | 'episode-select',
+  pendingTmdbId: 0,
+  pendingTitle: '',
+  seasonNumber: 1,
+  episodeNumber: null as number | null,
 })
 
 const openReidentifyCollection = (col: any) => {
-  reidentifyCollectionModal.value = { open: true, collectionId: col.id, name: col.name, loading: false }
+  reidentifyCollectionModal.value = {
+    open: true,
+    collectionId: col.id,
+    name: col.name,
+    loading: false,
+    step: 'search',
+    pendingTmdbId: 0,
+    pendingTitle: '',
+    seasonNumber: 1,
+    episodeNumber: null,
+  }
   searchQueryTMDB.value = col.name
   searchResultsTMDB.value = []
 }
 
+const handleCollectionTMDBSelect = async (result: any) => {
+  if (result.media_type === 'tv') {
+    reidentifyCollectionModal.value.step = 'episode-select'
+    reidentifyCollectionModal.value.pendingTmdbId = result.id
+    reidentifyCollectionModal.value.pendingTitle = result.title
+    reidentifyCollectionModal.value.seasonNumber = 1
+    reidentifyCollectionModal.value.episodeNumber = null
+  } else {
+    reidentifyCollectionModal.value.loading = true
+    try {
+      const res = await fetch(`${backendUrl}/collections/${reidentifyCollectionModal.value.collectionId}/reidentify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tmdb_id: result.id, media_type: 'movie' })
+      })
+      if (res.ok) {
+        reidentifyCollectionModal.value.open = false
+        alert('✅ Collection re-identified successfully.')
+        fetchItem()
+      } else {
+        alert('❌ Error re-identifying: ' + await res.text())
+      }
+    } catch {
+      alert('Connection error.')
+    } finally {
+      reidentifyCollectionModal.value.loading = false
+    }
+  }
+}
 
-const selectCollectionTMDB = async (tmdbId: number) => {
+const confirmCollectionReidentify = async () => {
   reidentifyCollectionModal.value.loading = true
   try {
+    const body: Record<string, unknown> = {
+      tmdb_id: reidentifyCollectionModal.value.pendingTmdbId,
+      media_type: 'tv',
+      season_number: reidentifyCollectionModal.value.seasonNumber,
+    }
+    const ep = reidentifyCollectionModal.value.episodeNumber
+    if (ep != null && ep >= 1) body.episode_number = ep
     const res = await fetch(`${backendUrl}/collections/${reidentifyCollectionModal.value.collectionId}/reidentify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tmdb_id: tmdbId })
+      body: JSON.stringify(body)
     })
     if (res.ok) {
       reidentifyCollectionModal.value.open = false
       alert('✅ Collection re-identified successfully.')
       fetchItem()
     } else {
-      const errText = await res.text()
-      alert('❌ Error re-identifying: ' + errText)
+      alert('❌ Error: ' + await res.text())
     }
-  } catch (err) {
-    console.error(err)
+  } catch {
     alert('Connection error.')
   } finally {
     reidentifyCollectionModal.value.loading = false
@@ -786,7 +862,9 @@ const searchTMDB = async () => {
   isSearchingTMDB.value = true
   searchResultsTMDB.value = []
   try {
-    const mediaType = props.type === 'movies' ? 'movie' : 'tv'
+    const mediaType = reidentifyCollectionModal.value.open
+      ? 'multi'
+      : (props.type === 'movies' ? 'movie' : 'tv')
     const res = await fetch(`${backendUrl}/tmdb/search?query=${encodeURIComponent(searchQueryTMDB.value.trim())}&media_type=${mediaType}`)
     if (res.ok) {
       searchResultsTMDB.value = await res.json()

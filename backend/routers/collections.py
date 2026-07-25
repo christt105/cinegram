@@ -164,6 +164,14 @@ def reidentify_collection_endpoint(
     session.add(db_collection)
     session.commit()
 
-    identify_collection(session, collection_id, tmdb, forced_tmdb_id=request.tmdb_id)
+    identify_collection(
+        session,
+        collection_id,
+        tmdb,
+        forced_tmdb_id=request.tmdb_id,
+        forced_media_type=request.media_type,
+        forced_season=request.season_number,
+        forced_episode=request.episode_number,
+    )
     session.refresh(db_collection)
     return db_collection
