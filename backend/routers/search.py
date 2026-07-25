@@ -2,13 +2,13 @@ from typing import List
 from fastapi import APIRouter, Query
 from tmdb import TMDB
 
-router = APIRouter(prefix="/search", tags=["search"])
+router = APIRouter(prefix="/tmdb", tags=["tmdb"])
 tmdb = TMDB()
 
-@router.get("", response_model=List[dict])
+@router.get("/search", response_model=List[dict])
 def search_media(
-    q: str = Query(..., min_length=1, description="Search query string or TMDB ID"),
-    type: str = Query("multi", enum=["multi", "movie", "tv"], description="Media type to search")
+    query: str = Query(..., min_length=1, description="Search query string or TMDB ID"),
+    media_type: str = Query("multi", enum=["multi", "movie", "tv"], description="Media type to search")
 ):
     """Search movies or series on TMDB by title or numeric TMDB ID."""
-    return tmdb.search(q, media_type=type)
+    return tmdb.search(query, media_type=media_type)
