@@ -101,6 +101,7 @@ def test_task_endpoints(client):
 
 
 CLIENT_API_CONTRACT = [
+    ("GET", "/tmdb/search"),
     ("POST", "/uploads/enqueue"),
     ("GET", "/uploads/queue"),
     ("GET", "/uploads/pending"),
