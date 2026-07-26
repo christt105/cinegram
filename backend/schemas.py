@@ -154,3 +154,10 @@ class BatchDeleteRequest(BaseModel):
 
 class FileUpdate(BaseModel):
     collection_id: Optional[int] = None
+
+class BatchFileDeleteRequest(BaseModel):
+    file_ids: List[int]
+
+class BatchFileMoveRequest(BaseModel):
+    file_ids: List[int]
+    collection_id: int
