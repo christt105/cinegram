@@ -157,6 +157,10 @@ def get_or_create_collection(session: Session, filename: str, mime_type: str, te
     return collection
 
 def create_file(session: Session, message_id, filename, filesize, mime_type, created_at, tmdb_id=None, technical_metadata=None):
+    existing = session.exec(select(File).where(File.message_id == message_id)).first()
+    if existing:
+        return existing, session.get(Collection, existing.collection_id)
+
     collection = get_or_create_collection(session, filename, mime_type, technical_metadata)
 
     file_created_at = datetime.fromisoformat(created_at) if created_at else datetime.now(timezone.utc)

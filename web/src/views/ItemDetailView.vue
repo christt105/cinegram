@@ -67,7 +67,11 @@
                 <span v-if="getTechMeta(col)" class="col-meta">{{ getTechMeta(col) }}</span>
 
                 <ul v-if="col.files && col.files.length" class="file-list">
-                  <li v-for="f in col.files" :key="f.id">
+                  <li v-for="f in col.files" :key="f.id"
+                      :class="{ 'file-selected': selectingCollectionId === col.id && isFileSelected(f.id) }"
+                      :style="selectingCollectionId === col.id ? { cursor: 'pointer' } : {}"
+                      @click="selectingCollectionId === col.id ? toggleFileSelection(f.id) : null">
+                    <input v-if="selectingCollectionId === col.id" type="checkbox" :checked="isFileSelected(f.id)" @click.stop @change="toggleFileSelection(f.id)" style="flex-shrink:0;" />
                     <span class="file-name">{{ f.filename }}</span>
                     <span class="file-size">{{ formatSize(f.filesize) }}</span>
                   </li>
@@ -75,21 +79,24 @@
                 <span v-else class="col-meta muted">No file details available.</span>
               </div>
               <div class="col-actions">
-                <button @click="sendCollectionPreview(col.id)" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;" :disabled="sendingPreview === col.id" :title="'Send Info & Files to Telegram'">
+                <button @click="toggleSelectMode(col.id)" class="glass-button" :style="selectingCollectionId === col.id ? 'background: rgba(74,222,128,0.14); border-color: rgba(74,222,128,0.30); color: #4ade80;' : 'background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); color: #a1a1aa;'">
+                  {{ selectingCollectionId === col.id ? 'Cancel' : 'Select' }}
+                </button>
+                <button v-if="selectingCollectionId !== col.id" @click="sendCollectionPreview(col.id)" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;" :disabled="sendingPreview === col.id" :title="'Send Info & Files to Telegram'">
                   <span v-if="sendingPreview === col.id">⏳</span>
                   <span v-else>📨</span>
                   <span style="margin-left: 4px;">{{ sendingPreview === col.id ? 'Sending...' : 'Send' }}</span>
                 </button>
-                <button @click="downloadCollection(col.id)" class="glass-button primary">
+                <button v-if="selectingCollectionId !== col.id" @click="downloadCollection(col.id)" class="glass-button primary">
                   <DownloadCloud :size="16" /> Download
                 </button>
-                <button @click="openReidentifyCollection(col)" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;">
+                <button v-if="selectingCollectionId !== col.id" @click="openReidentifyCollection(col)" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;">
                   <Search :size="16" /> Re-identify
                 </button>
-                <button @click="openEditModal(col, null, null)" class="glass-button" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;">
+                <button v-if="selectingCollectionId !== col.id" @click="openEditModal(col, null, null)" class="glass-button" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;">
                   <Edit3 :size="16" /> Edit
                 </button>
-                <button @click="deleteCollection(col.id)" class="glass-button danger">
+                <button v-if="selectingCollectionId !== col.id" @click="deleteCollection(col.id)" class="glass-button danger">
                   <Trash2 :size="16" /> Delete
                 </button>
               </div>
@@ -134,26 +141,33 @@
                     <span v-if="col.audio_languages" class="col-meta">Audio: {{ col.audio_languages }}</span>
                     <span v-if="getTechMeta(col)" class="col-meta">{{ getTechMeta(col) }}</span>
                     <ul v-if="col.files && col.files.length" class="file-list">
-                      <li v-for="f in col.files" :key="f.id">
+                      <li v-for="f in col.files" :key="f.id"
+                          :class="{ 'file-selected': selectingCollectionId === col.id && isFileSelected(f.id) }"
+                          :style="selectingCollectionId === col.id ? { cursor: 'pointer' } : {}"
+                          @click="selectingCollectionId === col.id ? toggleFileSelection(f.id) : null">
+                        <input v-if="selectingCollectionId === col.id" type="checkbox" :checked="isFileSelected(f.id)" @click.stop @change="toggleFileSelection(f.id)" style="flex-shrink:0;" />
                         <span class="file-name">{{ f.filename }}</span>
                         <span class="file-size">{{ formatSize(f.filesize) }}</span>
                       </li>
                     </ul>
                   </div>
                   <div class="col-actions" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                    <button @click="sendCollectionPreview(col.id)" class="glass-button btn-sm" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;" :disabled="sendingPreview === col.id" title="Send to Telegram">
+                    <button @click="toggleSelectMode(col.id)" class="glass-button btn-sm" :style="selectingCollectionId === col.id ? 'background: rgba(74,222,128,0.14); border-color: rgba(74,222,128,0.30); color: #4ade80;' : 'background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12); color: #a1a1aa;'">
+                      {{ selectingCollectionId === col.id ? 'Cancel' : 'Select' }}
+                    </button>
+                    <button v-if="selectingCollectionId !== col.id" @click="sendCollectionPreview(col.id)" class="glass-button btn-sm" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;" :disabled="sendingPreview === col.id" title="Send to Telegram">
                       <span>{{ sendingPreview === col.id ? '⏳' : '📨' }}</span>
                     </button>
-                    <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm">
+                    <button v-if="selectingCollectionId !== col.id" @click="downloadCollection(col.id)" class="glass-button primary btn-sm">
                       <DownloadCloud :size="14" /> Download Pack
                     </button>
-                    <button @click="openReidentifyCollection(col)" class="glass-button btn-sm" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;">
+                    <button v-if="selectingCollectionId !== col.id" @click="openReidentifyCollection(col)" class="glass-button btn-sm" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;">
                       <Search :size="14" /> Re-id
                     </button>
-                    <button @click="openEditModal(col, season.season_number, null)" class="glass-button btn-sm" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;">
+                    <button v-if="selectingCollectionId !== col.id" @click="openEditModal(col, season.season_number, null)" class="glass-button btn-sm" style="background: rgba(255, 255, 255, 0.08); border-color: rgba(255, 255, 255, 0.15); color: #fff;">
                       <Edit3 :size="14" /> Edit
                     </button>
-                    <button @click="deleteCollection(col.id)" class="glass-button danger btn-sm">
+                    <button v-if="selectingCollectionId !== col.id" @click="deleteCollection(col.id)" class="glass-button danger btn-sm">
                       <Trash2 :size="14" /> Delete
                     </button>
                   </div>
@@ -196,6 +210,64 @@
           </div>
         </div>
         
+      </div>
+    </div>
+
+    <!-- Selection action bar -->
+    <Transition name="slide-up">
+      <div v-if="selectingCollectionId !== null" class="selection-bar">
+        <span class="selection-count">{{ selectedFileIds.length }} selected</span>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button @click="deleteSelectedFiles" class="glass-button danger btn-sm" :disabled="selectedFileIds.length === 0">
+            <Trash2 :size="14" /> Delete
+          </button>
+          <button @click="openMoveToModal" class="glass-button btn-sm" :disabled="selectedFileIds.length === 0 || siblingCollections.length === 0" style="background: rgba(214,186,255,0.14); border-color: rgba(214,186,255,0.30); color: #d6baff;">
+            Move to...
+          </button>
+          <button @click="openNewColModal" class="glass-button btn-sm" :disabled="selectedFileIds.length === 0" style="background: rgba(74,222,128,0.14); border-color: rgba(74,222,128,0.30); color: #4ade80;">
+            New collection
+          </button>
+          <button @click="cancelSelection" class="glass-button btn-sm">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Move to collection modal -->
+    <div v-if="moveToModal.open" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px);">
+      <div class="glass-panel" style="width: 100%; max-width: 480px; padding: 1.5rem; border-radius: 16px; background: rgba(17,24,39,0.95); border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 1rem;">
+        <h3 style="margin: 0; font-size: 1.2rem; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">Move {{ selectedFileIds.length }} file(s) to...</h3>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 50vh; overflow-y: auto;">
+          <button v-for="col in siblingCollections" :key="col.id"
+            @click="confirmMoveFiles(col.id)"
+            class="glass-button"
+            style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; text-align: left; background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08);">
+            <span style="font-weight: 500; color: #fff;">{{ col.name || col.quality || 'Collection #' + col.id }}</span>
+            <span style="font-size: 0.8rem; color: #a1a1aa;">{{ col.files?.length || 0 }} files</span>
+          </button>
+          <div v-if="siblingCollections.length === 0" style="color: #a1a1aa; text-align: center; padding: 1.5rem;">No other collections available.</div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem;">
+          <button @click="moveToModal.open = false" class="glass-button">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- New collection from selection modal -->
+    <div v-if="newColModal.open" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px);">
+      <div class="glass-panel" style="width: 100%; max-width: 400px; padding: 1.5rem; border-radius: 16px; background: rgba(17,24,39,0.95); border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 1rem;">
+        <h3 style="margin: 0; font-size: 1.2rem; color: #fff; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">New collection from {{ selectedFileIds.length }} file(s)</h3>
+        <div>
+          <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Collection name</label>
+          <input v-model="newColModal.name" @keyup.enter="confirmNewCollection" type="text" placeholder="e.g. Extended Cut" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem;">
+          <button @click="newColModal.open = false" class="glass-button">Cancel</button>
+          <button @click="confirmNewCollection" class="glass-button" :disabled="!newColModal.name.trim() || newColModal.loading" style="background: rgba(74,222,128,0.14); border-color: rgba(74,222,128,0.30); color: #4ade80;">
+            {{ newColModal.loading ? 'Creating...' : 'Create & Move' }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -428,7 +500,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { DownloadCloud, Trash2, Edit3, Copy, Check, Search } from 'lucide-vue-next'
 import { findJellyfinItemByTmdbId } from '../api/jellyfin'
 
@@ -899,6 +971,161 @@ const selectTMDBReidentify = async (newTmdbId: number) => {
   }
 }
 
+// ========================
+// File multiselect
+// ========================
+
+const selectingCollectionId = ref<number | null>(null)
+const selectedFileIds = ref<number[]>([])
+
+const isFileSelected = (id: number) => selectedFileIds.value.includes(id)
+
+const toggleSelectMode = (colId: number) => {
+  if (selectingCollectionId.value === colId) {
+    selectingCollectionId.value = null
+    selectedFileIds.value = []
+  } else {
+    selectingCollectionId.value = colId
+    selectedFileIds.value = []
+  }
+}
+
+const toggleFileSelection = (fileId: number) => {
+  const idx = selectedFileIds.value.indexOf(fileId)
+  if (idx >= 0) selectedFileIds.value.splice(idx, 1)
+  else selectedFileIds.value.push(fileId)
+}
+
+const cancelSelection = () => {
+  selectingCollectionId.value = null
+  selectedFileIds.value = []
+}
+
+const siblingCollections = computed(() => {
+  if (!item.value || selectingCollectionId.value === null) return []
+  if (props.type === 'movies') {
+    return (item.value.collections || []).filter((c: any) => c.id !== selectingCollectionId.value)
+  }
+  const all: any[] = []
+  for (const season of item.value.seasons || []) {
+    for (const col of season.collections || []) {
+      if (col.id !== selectingCollectionId.value) all.push(col)
+    }
+    for (const ep of season.episodes || []) {
+      for (const col of ep.collections || []) {
+        if (col.id !== selectingCollectionId.value) all.push(col)
+      }
+    }
+  }
+  return all
+})
+
+const getSourceCollection = () => {
+  if (!item.value || selectingCollectionId.value === null) return null
+  if (props.type === 'movies') {
+    return (item.value.collections || []).find((c: any) => c.id === selectingCollectionId.value) || null
+  }
+  for (const season of item.value.seasons || []) {
+    for (const col of season.collections || []) {
+      if (col.id === selectingCollectionId.value) return col
+    }
+    for (const ep of season.episodes || []) {
+      for (const col of ep.collections || []) {
+        if (col.id === selectingCollectionId.value) return col
+      }
+    }
+  }
+  return null
+}
+
+const deleteSelectedFiles = async () => {
+  if (!selectedFileIds.value.length) return
+  if (!confirm(`Delete ${selectedFileIds.value.length} file(s)? Empty collections will be removed automatically.`)) return
+  try {
+    const res = await fetch(`${backendUrl}/files/batch-delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file_ids: selectedFileIds.value })
+    })
+    if (res.ok) {
+      cancelSelection()
+      fetchItem()
+    } else {
+      alert('Error deleting files.')
+    }
+  } catch {
+    alert('Connection error.')
+  }
+}
+
+const moveToModal = ref<{ open: boolean; targetCollectionId: number | null }>({ open: false, targetCollectionId: null })
+
+const openMoveToModal = () => {
+  moveToModal.value = { open: true, targetCollectionId: null }
+}
+
+const confirmMoveFiles = async (targetId: number) => {
+  try {
+    const res = await fetch(`${backendUrl}/files/batch-move`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file_ids: selectedFileIds.value, collection_id: targetId })
+    })
+    if (res.ok) {
+      moveToModal.value.open = false
+      cancelSelection()
+      fetchItem()
+    } else {
+      alert('Error moving files.')
+    }
+  } catch {
+    alert('Connection error.')
+  }
+}
+
+const newColModal = ref({ open: false, name: '', loading: false })
+
+const openNewColModal = () => {
+  newColModal.value = { open: true, name: '', loading: false }
+}
+
+const confirmNewCollection = async () => {
+  if (!newColModal.value.name.trim()) return
+  newColModal.value.loading = true
+  const source = getSourceCollection()
+  if (!source) { newColModal.value.loading = false; return }
+  try {
+    const createRes = await fetch(`${backendUrl}/collections`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: newColModal.value.name.trim(),
+        movie_id: source.movie_id ?? null,
+        season_id: source.season_id ?? null,
+        episode_id: source.episode_id ?? null,
+      })
+    })
+    if (!createRes.ok) { alert('Error creating collection.'); newColModal.value.loading = false; return }
+    const newCol = await createRes.json()
+    const moveRes = await fetch(`${backendUrl}/files/batch-move`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file_ids: selectedFileIds.value, collection_id: newCol.id })
+    })
+    if (moveRes.ok) {
+      newColModal.value.open = false
+      cancelSelection()
+      fetchItem()
+    } else {
+      alert('Error moving files to new collection.')
+    }
+  } catch {
+    alert('Connection error.')
+  } finally {
+    newColModal.value.loading = false
+  }
+}
+
 const deleteItem = async () => {
   const confirmMsg = props.type === 'movies'
     ? "Are you sure you want to delete this movie? All collections will be unlinked."
@@ -1120,6 +1347,47 @@ onMounted(() => {
 .poster-option:hover {
   transform: scale(1.05);
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.file-selected {
+  background: rgba(74, 222, 128, 0.08);
+}
+
+.file-list li:has(input[type="checkbox"]) {
+  gap: 0.5rem;
+}
+
+.selection-bar {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(17, 24, 39, 0.95);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  backdrop-filter: blur(12px);
+  z-index: 500;
+  white-space: nowrap;
+}
+
+.selection-count {
+  font-weight: 600;
+  color: #fff;
+  font-size: 0.9rem;
+  min-width: 80px;
+}
+
+.slide-up-enter-active, .slide-up-leave-active {
+  transition: all 0.2s ease;
+}
+.slide-up-enter-from, .slide-up-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(12px);
 }
 
 .tmdb-link:hover {
