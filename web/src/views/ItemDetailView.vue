@@ -73,6 +73,7 @@
                       @click="selectingCollectionId === col.id ? toggleFileSelection(f.id) : null">
                     <input v-if="selectingCollectionId === col.id" type="checkbox" :checked="isFileSelected(f.id)" @click.stop @change="toggleFileSelection(f.id)" style="flex-shrink:0;" />
                     <span class="file-name">{{ f.filename }}</span>
+                    <span class="file-date">{{ formatDate(f.created_at) }}</span>
                     <span class="file-size">{{ formatSize(f.filesize) }}</span>
                   </li>
                 </ul>
@@ -147,6 +148,7 @@
                           @click="selectingCollectionId === col.id ? toggleFileSelection(f.id) : null">
                         <input v-if="selectingCollectionId === col.id" type="checkbox" :checked="isFileSelected(f.id)" @click.stop @change="toggleFileSelection(f.id)" style="flex-shrink:0;" />
                         <span class="file-name">{{ f.filename }}</span>
+                        <span class="file-date">{{ formatDate(f.created_at) }}</span>
                         <span class="file-size">{{ formatSize(f.filesize) }}</span>
                       </li>
                     </ul>
@@ -519,6 +521,17 @@ const formatSize = (bytes: number) => {
   const mb = bytes / (1024 * 1024)
   if (mb >= 1024) return (mb / 1024).toFixed(2) + ' GB'
   return mb.toFixed(0) + ' MB'
+}
+
+const formatDate = (dt: string | Date | null | undefined) => {
+  if (!dt) return '—'
+  const d = new Date(dt as string)
+  const yyyy = d.getFullYear()
+  const MM = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const HH = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${yyyy}-${MM}-${dd} ${HH}:${mm}`
 }
 
 const editingCollection = ref<any>(null)
@@ -1303,6 +1316,13 @@ onMounted(() => {
   color: var(--on-surface);
   overflow-wrap: anywhere;
   min-width: 0;
+}
+.file-date {
+  color: var(--on-surface-variant);
+  font-size: 0.75rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  opacity: 0.6;
 }
 .file-size {
   color: var(--on-surface-variant);
