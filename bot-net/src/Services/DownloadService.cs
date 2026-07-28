@@ -136,8 +136,14 @@ public class DownloadService
             }
 
             // 2. Check and extract if it's an archive
-            var archivePath = Directory.GetFiles(tempDir, "*.*")
-                .FirstOrDefault(f => f.EndsWith(".7z.001") || f.EndsWith(".zip.001") || f.EndsWith(".zip") || f.EndsWith(".7z"));
+            var allFiles = Directory.GetFiles(tempDir, "*.*");
+            var archivePath =
+                allFiles.FirstOrDefault(f => f.EndsWith(".part1.rar")) ??
+                allFiles.FirstOrDefault(f => f.EndsWith(".rar")) ??
+                allFiles.FirstOrDefault(f => f.EndsWith(".7z.001")) ??
+                allFiles.FirstOrDefault(f => f.EndsWith(".zip.001")) ??
+                allFiles.FirstOrDefault(f => f.EndsWith(".zip")) ??
+                allFiles.FirstOrDefault(f => f.EndsWith(".7z"));
             
             if (archivePath != null)
             {
