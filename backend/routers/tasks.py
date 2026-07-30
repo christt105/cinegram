@@ -8,7 +8,7 @@ from models import Series, Season, Episode, Movie, Collection, DownloadTask, Upl
 
 router = APIRouter(tags=["tasks"])
 
-def enqueue_collection_id(session: Session, collection_id: int):
+def enqueue_collection_id(session: Session, collection_id: int, name_suffix: Optional[str] = None):
     coll = session.get(Collection, collection_id)
     if not coll or len(coll.files) == 0:
         return False
@@ -18,7 +18,12 @@ def enqueue_collection_id(session: Session, collection_id: int):
         .where(DownloadTask.status.in_(["pending", "downloading"]))
     ).first()
     if not existing:
-        task = DownloadTask(collection_id=collection_id, status="pending", progress=0)
+        task = DownloadTask(
+            collection_id=collection_id,
+            name_suffix=name_suffix or None,
+            status="pending",
+            progress=0
+        )
         session.add(task)
         session.commit()
         return True
@@ -56,9 +61,16 @@ def clear_completed_tasks(session: Session = Depends(get_session)):
         "cleared_uploads": len(completed_uploads)
     }
 
+class DownloadEnqueueIn(BaseModel):
+    name_suffix: Optional[str] = None
+
 @router.post("/downloads/enqueue/collection/{collection_id}")
-def enqueue_collection_endpoint(collection_id: int, session: Session = Depends(get_session)):
-    success = enqueue_collection_id(session, collection_id)
+def enqueue_collection_endpoint(
+    collection_id: int,
+    payload: Optional[DownloadEnqueueIn] = None,
+    session: Session = Depends(get_session)
+):
+    success = enqueue_collection_id(session, collection_id, payload.name_suffix if payload else None)
     if not success:
         return {"status": "ignored", "message": "Collection already in queue or empty"}
     return {"status": "ok", "message": "Enqueued collection"}
@@ -184,6 +196,7 @@ def list_pending_downloads(session: Session = Depends(get_session)):
             "season_number": season_num,
             "episode_number": episode_num,
             "quality": coll.quality or "1080p",
+            "name_suffix": t.name_suffix,
             "tmdb_id": tmdb_id,
             "tvdb_id": tvdb_id,
             "files": [
@@ -241,6 +254,7 @@ class DownloadStatusIn(BaseModel):
     status: str
     progress: int
     error_message: Optional[str] = None
+    local_path: Optional[str] = None
 
 @router.post("/downloads/{task_id}/status")
 def update_download_status(task_id: int, payload: DownloadStatusIn, session: Session = Depends(get_session)):
@@ -254,6 +268,11 @@ def update_download_status(task_id: int, payload: DownloadStatusIn, session: Ses
         task.error_message = payload.error_message
     if payload.status in ["completed", "failed"]:
         task.completed_at = datetime.now(timezone.utc)
+    if payload.local_path:
+        collection = session.get(Collection, task.collection_id)
+        if collection:
+            collection.local_path = payload.local_path
+            session.add(collection)
     session.add(task)
     session.commit()
     return {"status": "ok"}

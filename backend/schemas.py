@@ -52,6 +52,7 @@ class CollectionOut(BaseModel):
     tags: Optional[str]
     notes: Optional[str]
     technical_metadata: Optional[str] = None
+    local_path: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -120,7 +121,9 @@ class CollectionUpdate(BaseModel):
     subtitle_languages: Optional[str] = None
     tags: Optional[str] = None
     notes: Optional[str] = None
-    
+    technical_metadata: Optional[str] = None
+    local_path: Optional[str] = None
+
     season_number: Optional[int] = None
     episode_number: Optional[int] = None
     clear_episode: Optional[bool] = None
