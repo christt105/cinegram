@@ -65,6 +65,9 @@
                 <span v-if="col.quality && col.name" class="col-meta">Quality: {{ col.quality }}</span>
                 <span v-if="col.audio_languages" class="col-meta">Audio: {{ col.audio_languages }}</span>
                 <span v-if="getTechMeta(col)" class="col-meta">{{ getTechMeta(col) }}</span>
+                <span v-if="col.local_path" class="col-meta" style="color: #4ade80;" :title="col.local_path">
+                  ⬇ On disk: {{ shortPath(col.local_path) }}
+                </span>
 
                 <ul v-if="col.files && col.files.length" class="file-list">
                   <li v-for="f in col.files" :key="f.id"
@@ -88,8 +91,14 @@
                   <span v-else>📨</span>
                   <span style="margin-left: 4px;">{{ sendingPreview === col.id ? 'Sending...' : 'Send' }}</span>
                 </button>
-                <button v-if="selectingCollectionId !== col.id" @click="downloadCollection(col.id)" class="glass-button primary">
+                <button v-if="selectingCollectionId !== col.id" @click="openDownloadModal(col)" class="glass-button primary">
                   <DownloadCloud :size="16" /> Download
+                </button>
+                <button v-if="selectingCollectionId !== col.id" @click="openProbeModal(col)" class="glass-button" style="background: rgba(96, 165, 250, 0.14); border-color: rgba(96, 165, 250, 0.30); color: #60a5fa;" title="Read technical data from a file already on disk">
+                  <FileSearch :size="16" /> Probe file
+                </button>
+                <button v-if="selectingCollectionId !== col.id && col.local_path" @click="deleteLocalCopy(col)" class="glass-button" :disabled="deletingLocalCopy === col.id" style="background: rgba(251, 146, 60, 0.14); border-color: rgba(251, 146, 60, 0.30); color: #fb923c;" title="Delete the file from disk, keeping the Telegram collection">
+                  <HardDrive :size="16" /> {{ deletingLocalCopy === col.id ? 'Deleting…' : 'Delete local' }}
                 </button>
                 <button v-if="selectingCollectionId !== col.id" @click="openReidentifyCollection(col)" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;">
                   <Search :size="16" /> Re-identify
@@ -141,6 +150,9 @@
                     </div>
                     <span v-if="col.audio_languages" class="col-meta">Audio: {{ col.audio_languages }}</span>
                     <span v-if="getTechMeta(col)" class="col-meta">{{ getTechMeta(col) }}</span>
+                    <span v-if="col.local_path" class="col-meta" style="color: #4ade80;" :title="col.local_path">
+                      ⬇ On disk: {{ shortPath(col.local_path) }}
+                    </span>
                     <ul v-if="col.files && col.files.length" class="file-list">
                       <li v-for="f in col.files" :key="f.id"
                           :class="{ 'file-selected': selectingCollectionId === col.id && isFileSelected(f.id) }"
@@ -160,8 +172,14 @@
                     <button v-if="selectingCollectionId !== col.id" @click="sendCollectionPreview(col.id)" class="glass-button btn-sm" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;" :disabled="sendingPreview === col.id" title="Send to Telegram">
                       <span>{{ sendingPreview === col.id ? '⏳' : '📨' }}</span>
                     </button>
-                    <button v-if="selectingCollectionId !== col.id" @click="downloadCollection(col.id)" class="glass-button primary btn-sm">
+                    <button v-if="selectingCollectionId !== col.id" @click="openDownloadModal(col)" class="glass-button primary btn-sm">
                       <DownloadCloud :size="14" /> Download Pack
+                    </button>
+                    <button v-if="selectingCollectionId !== col.id" @click="openProbeModal(col)" class="glass-button btn-sm" style="background: rgba(96, 165, 250, 0.14); border-color: rgba(96, 165, 250, 0.30); color: #60a5fa;" title="Read technical data from a file already on disk">
+                      <FileSearch :size="14" /> Probe
+                    </button>
+                    <button v-if="selectingCollectionId !== col.id && col.local_path" @click="deleteLocalCopy(col)" class="glass-button btn-sm" :disabled="deletingLocalCopy === col.id" style="background: rgba(251, 146, 60, 0.14); border-color: rgba(251, 146, 60, 0.30); color: #fb923c;" title="Delete the file from disk, keeping the Telegram collection">
+                      <HardDrive :size="14" /> {{ deletingLocalCopy === col.id ? '…' : 'Local' }}
                     </button>
                     <button v-if="selectingCollectionId !== col.id" @click="openReidentifyCollection(col)" class="glass-button btn-sm" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;">
                       <Search :size="14" /> Re-id
@@ -189,10 +207,17 @@
                     <div style="display: flex; flex-direction: column;">
                       <span style="font-size: 0.85rem; color: #d1d5db; font-weight: 500;">{{ col.name || col.quality || 'Auto' }}</span>
                       <span style="font-size: 0.75rem; color: #888;">{{ col.files?.length || 0 }} files</span>
+                      <span v-if="col.local_path" style="font-size: 0.75rem; color: #4ade80;" :title="col.local_path">⬇ On disk</span>
                     </div>
                     <div style="display: flex; gap: 0.25rem; flex-wrap: wrap; justify-content: flex-end;">
-                      <button @click="downloadCollection(col.id)" class="glass-button primary btn-sm icon-only" title="Download">
+                      <button @click="openDownloadModal(col)" class="glass-button primary btn-sm icon-only" title="Download">
                         <DownloadCloud :size="14" />
+                      </button>
+                      <button @click="openProbeModal(col)" class="glass-button btn-sm icon-only" style="background: rgba(96, 165, 250, 0.14); border-color: rgba(96, 165, 250, 0.30); color: #60a5fa;" title="Read technical data from a file already on disk">
+                        <FileSearch :size="14" />
+                      </button>
+                      <button v-if="col.local_path" @click="deleteLocalCopy(col)" :disabled="deletingLocalCopy === col.id" class="glass-button btn-sm icon-only" style="background: rgba(251, 146, 60, 0.14); border-color: rgba(251, 146, 60, 0.30); color: #fb923c;" title="Delete the file from disk, keeping the Telegram collection">
+                        <HardDrive :size="14" />
                       </button>
                       <button @click="openReidentifyCollection(col)" class="glass-button btn-sm icon-only" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;" title="Re-identify">
                         <Search :size="14" />
@@ -235,6 +260,68 @@
         </div>
       </div>
     </Transition>
+
+    <!-- Download with version suffix modal -->
+    <div v-if="downloadModal.open" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px); padding: 1rem;">
+      <div class="glass-panel" style="width: 100%; max-width: 460px; padding: 1.5rem; border-radius: 16px; background: rgba(17,24,39,0.95); border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 1rem;">
+        <div style="border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
+          <h3 style="margin: 0; font-size: 1.2rem; color: #fff;">Download</h3>
+          <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #d6baff;">{{ downloadModal.label }}</p>
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Version suffix (optional)</label>
+          <input v-model="downloadModal.suffix" @keyup.enter="confirmDownload" type="text" placeholder="e.g. Erai BDRip" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
+          <p style="margin: 0.5rem 0 0 0; font-size: 0.75rem; color: #a1a1aa;">
+            Added to the filename so this version does not overwrite another one of the same movie.
+            Jellyfin shows them as alternate versions.
+          </p>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem;">
+          <button @click="downloadModal.open = false" class="glass-button">Cancel</button>
+          <button @click="confirmDownload" :disabled="downloadModal.loading" class="glass-button primary">
+            {{ downloadModal.loading ? 'Queueing…' : 'Download' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Probe a local file into the collection modal -->
+    <div v-if="probeModal.open" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px); padding: 1rem;">
+      <div class="glass-panel" style="width: 100%; max-width: 620px; padding: 1.5rem; border-radius: 16px; background: rgba(17,24,39,0.95); border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
+          <div>
+            <h3 style="margin: 0; font-size: 1.2rem; color: #fff;">Technical data from a local file</h3>
+            <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #d6baff;">{{ probeModal.label }}</p>
+          </div>
+          <button @click="probeModal.open = false" class="glass-button icon-only" style="padding: 0; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">✕</button>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <input v-model="probeModal.query" @keyup.enter="searchLocalFiles" type="text" placeholder="Filter by name…" style="flex: 1; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
+          <button @click="searchLocalFiles" :disabled="probeModal.loading" class="glass-button">
+            <Search :size="16" />
+          </button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 50vh; overflow-y: auto;">
+          <div v-if="probeModal.loading" style="color: #a1a1aa; text-align: center; padding: 1.5rem;">Scanning the library…</div>
+          <template v-else>
+            <button v-for="file in probeModal.files" :key="file.path"
+              @click="probeLocalFile(file.path)"
+              :disabled="probeModal.submitting"
+              class="glass-button"
+              style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.75rem 1rem; text-align: left; background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08);">
+              <span style="display: flex; flex-direction: column; overflow: hidden;">
+                <span style="font-weight: 500; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ file.filename }}</span>
+                <span style="font-size: 0.75rem; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ file.path }}</span>
+              </span>
+              <span style="font-size: 0.8rem; color: #a1a1aa; flex-shrink: 0;">{{ formatSize(file.filesize) }}</span>
+            </button>
+            <div v-if="probeModal.files.length === 0" style="color: #a1a1aa; text-align: center; padding: 1.5rem;">
+              No video files found in the library.
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
 
     <!-- Move to collection modal -->
     <div v-if="moveToModal.open" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px);">
@@ -503,7 +590,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { DownloadCloud, Trash2, Edit3, Copy, Check, Search } from 'lucide-vue-next'
+import { DownloadCloud, Trash2, Edit3, Copy, Check, Search, FileSearch, HardDrive } from 'lucide-vue-next'
 import { findJellyfinItemByTmdbId } from '../api/jellyfin'
 
 const props = defineProps<{
@@ -689,16 +776,44 @@ const saveCollectionChanges = async () => {
   }
 }
 
-const downloadCollection = async (collectionId: number) => {
+const downloadModal = ref({
+  open: false,
+  collectionId: 0,
+  label: '',
+  suffix: '',
+  loading: false
+})
+
+const openDownloadModal = (col: any) => {
+  downloadModal.value = {
+    open: true,
+    collectionId: col.id,
+    label: col.name || col.quality || 'Collection #' + col.id,
+    suffix: '',
+    loading: false
+  }
+}
+
+const confirmDownload = async () => {
+  downloadModal.value.loading = true
   try {
-    const res = await fetch(`${backendUrl}/downloads/enqueue/collection/${collectionId}`, { method: 'POST' })
+    const res = await fetch(`${backendUrl}/downloads/enqueue/collection/${downloadModal.value.collectionId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name_suffix: downloadModal.value.suffix.trim() || null })
+    })
     if (res.ok) {
-      alert("Download added to queue.")
+      const data = await res.json()
+      alert(data.status === 'ignored' ? data.message : 'Download added to queue.')
+      downloadModal.value.open = false
     } else {
       alert("Error adding download.")
     }
   } catch (err) {
     console.error(err)
+    alert("Connection error.")
+  } finally {
+    downloadModal.value.loading = false
   }
 }
 
@@ -755,6 +870,89 @@ const sendSeasonPreview = async (seasonNumber: number) => {
     sendingSeasonPreview.value = null
   }
 }
+
+const probeModal = ref({
+  open: false,
+  collectionId: 0,
+  label: '',
+  query: '',
+  files: [] as { path: string; filename: string; filesize: number }[],
+  loading: false,
+  submitting: false
+})
+
+const openProbeModal = (col: any) => {
+  probeModal.value = {
+    open: true,
+    collectionId: col.id,
+    label: col.name || col.quality || 'Collection #' + col.id,
+    query: '',
+    files: [],
+    loading: false,
+    submitting: false
+  }
+  searchLocalFiles()
+}
+
+const searchLocalFiles = async () => {
+  probeModal.value.loading = true
+  try {
+    const query = encodeURIComponent(probeModal.value.query.trim())
+    const res = await fetch(`${botNetUrl}/local/files?q=${query}`)
+    probeModal.value.files = res.ok ? await res.json() : []
+    if (!res.ok) alert('Error listing local files.')
+  } catch (err) {
+    console.error(err)
+    alert('Connection error.')
+  } finally {
+    probeModal.value.loading = false
+  }
+}
+
+const probeLocalFile = async (path: string) => {
+  probeModal.value.submitting = true
+  try {
+    const res = await fetch(`${botNetUrl}/probe/collection/${probeModal.value.collectionId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path })
+    })
+    if (res.ok) {
+      probeModal.value.open = false
+      fetchItem()
+    } else {
+      alert('❌ Error reading the file: ' + await res.text())
+    }
+  } catch (err) {
+    console.error(err)
+    alert('❌ Connection error.')
+  } finally {
+    probeModal.value.submitting = false
+  }
+}
+
+const deletingLocalCopy = ref<number | null>(null)
+
+const deleteLocalCopy = async (col: any) => {
+  if (!confirm(`Delete this file from disk?\n\n${col.local_path}\n\nThe Telegram collection is kept, so you can download it again later.`)) return
+
+  deletingLocalCopy.value = col.id
+  try {
+    const res = await fetch(`${botNetUrl}/local/collection/${col.id}`, { method: 'DELETE' })
+    if (res.ok) {
+      fetchItem()
+    } else {
+      alert('❌ Error deleting the local copy: ' + await res.text())
+    }
+  } catch (err) {
+    console.error(err)
+    alert('❌ Connection error.')
+  } finally {
+    deletingLocalCopy.value = null
+  }
+}
+
+const shortPath = (path: string) => path.split('/').slice(-2).join('/')
 
 const getTechMeta = (col: any) => {
     if (!col.technical_metadata) return null;

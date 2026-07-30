@@ -14,6 +14,8 @@ export interface TelegramCollection {
   id: number;
   name: string;
   quality: string;
+  technical_metadata?: string | null;
+  local_path?: string | null;
   files: TelegramFile[];
 }
 
