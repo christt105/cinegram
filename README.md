@@ -58,7 +58,7 @@ Cinegram runs from prebuilt images on the GitHub Container Registry, so a deploy
    ```
 4. Open the web panel at `http://<host>:5173`.
 
-Docker pulls the `web`, `backend`, and `bot-net` images from `ghcr.io/christt105/cinegram-*`. To update later, run `docker compose pull && docker compose up -d`. Pin a specific release by setting `CINEGRAM_TAG=v1.0.0` in `.env` (defaults to `latest`).
+Docker pulls the `web`, `backend`, and `bot-net` images from `ghcr.io/christt105/cinegram-*`. To update later, run `docker compose pull && docker compose up -d`. Pin a specific release by setting `CINEGRAM_TAG=1.0.0` in `.env` — image tags carry no leading `v` (defaults to `latest`).
 
 ### Build from source
 
@@ -91,7 +91,7 @@ All configuration lives in `.env` (see `.env.example` for the template).
 | `WEB_PORT`              | Host port for the web panel (defaults `5173`). Change it if the port is already in use.          |
 | `BACKEND_PORT`          | Host port for the backend API (defaults `8005`). The web container reads it at start.           |
 | `BOT_NET_PORT`          | Host port for the `bot-net` worker (defaults `8088`). The web container reads it at start.       |
-| `CINEGRAM_TAG`          | Image tag to deploy (defaults `latest`; pin to a release like `v1.0.0`).                         |
+| `CINEGRAM_TAG`          | Image tag to deploy (defaults `latest`; pin to a release like `1.0.0`, or `1.2.0-rc.1` to try a prerelease). |
 
 ## Service ports
 
