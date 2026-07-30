@@ -28,4 +28,6 @@ public class Collection
     [JsonPropertyName("notes")] public string? Notes { get; set; }
 
     [JsonPropertyName("technical_metadata")] public string? TechnicalMetadata { get; set; }
+
+    [JsonPropertyName("local_path")] public string? LocalPath { get; set; }
 }

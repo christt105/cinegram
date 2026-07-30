@@ -259,6 +259,22 @@ public class ApiClient : IDisposable
 
         return await response.Content.ReadFromJsonAsync<Collection>(_jsonOptions);
     }
+
+    /// <summary>
+    /// Clears a collection's local path. Needs its own method because
+    /// <see cref="UpdateCollectionRequest"/> drops null fields, so it cannot express
+    /// "set this back to empty".
+    /// </summary>
+    public async Task<bool> ClearCollectionLocalPathAsync(int collectionId)
+    {
+        var payload = new Dictionary<string, string?> { ["local_path"] = null };
+        var response = await _httpClient.PatchAsync(
+            $"/collections/{collectionId}",
+            JsonContent.Create(payload, options: _jsonOptions)
+        );
+        return response.IsSuccessStatusCode;
+    }
+
     public async Task<List<Collection>?> GetOrphansAsync()
     {
         return await GetSafeAsync<List<Collection>>("/maintenance/orphans");
@@ -268,13 +284,14 @@ public class ApiClient : IDisposable
         return await GetSafeAsync<List<DownloadTask>>("/downloads/pending");
     }
 
-    public async Task<bool> UpdateDownloadStatusAsync(int taskId, string status, int progress, string? errorMessage = null)
+    public async Task<bool> UpdateDownloadStatusAsync(int taskId, string status, int progress, string? errorMessage = null, string? localPath = null)
     {
         var payload = new
         {
             status = status,
             progress = progress,
-            error_message = errorMessage
+            error_message = errorMessage,
+            local_path = localPath
         };
         var response = await _httpClient.PostAsJsonAsync($"/downloads/{taskId}/status", payload);
         return response.IsSuccessStatusCode;

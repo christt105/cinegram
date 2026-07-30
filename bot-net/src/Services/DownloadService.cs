@@ -155,9 +155,8 @@ public class DownloadService
             }
 
             // 3. Find the main video file
-            var videoExtensions = new[] { ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm" };
             var videoFiles = Directory.GetFiles(tempDir, "*.*", SearchOption.AllDirectories)
-                .Where(f => videoExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                .Where(MediaLibrary.IsVideo)
                 .ToList();
 
             if (videoFiles.Count == 0)
@@ -168,11 +167,11 @@ public class DownloadService
             var extension = Path.GetExtension(mainVideo);
 
             // 4. Construct Jellyfin naming paths
-            var moviesDir = Environment.GetEnvironmentVariable("JELLYFIN_MOVIES_DIR") ?? "/data/jellyfin/movies";
-            var showsDir = Environment.GetEnvironmentVariable("JELLYFIN_SHOWS_DIR") ?? "/data/jellyfin/shows";
+            var moviesDir = MediaLibrary.MoviesDir;
+            var showsDir = MediaLibrary.ShowsDir;
             string fullPath;
 
-            var qSuffix = !string.IsNullOrEmpty(task.Quality) ? $" - [{task.Quality}]" : "";
+            var qSuffix = MediaNaming.BuildVersionTag(task.Quality, task.NameSuffix);
 
             if (task.MediaType == "movie")
             {
@@ -210,9 +209,16 @@ public class DownloadService
                 fullPath = Path.Combine(showsDir, dirName, seasonDir, fileName);
             }
 
-            Log.Info($"[Downloader] Moving video to final path: {fullPath}");
             var finalDir = Path.GetDirectoryName(fullPath)!;
             Directory.CreateDirectory(finalDir);
+
+            var collection = await _apiClient.GetCollectionAsync(task.CollectionId);
+            var resolvedPath = MediaNaming.ResolveFreePath(fullPath, collection?.LocalPath);
+            if (resolvedPath != fullPath)
+                Log.Info($"[Downloader] {fullPath} is taken by another collection, using {resolvedPath} instead.");
+            fullPath = resolvedPath;
+
+            Log.Info($"[Downloader] Moving video to final path: {fullPath}");
             System.IO.File.Move(mainVideo, fullPath, overwrite: true);
 
             // Fix permissions so Jellyfin (or other host users) can modify/delete the files
@@ -236,8 +242,11 @@ public class DownloadService
                 Log.Error($"[Downloader] Failed to set permissions for {fullPath}", ex);
             }
 
-            // 5. Update Status
-            await _apiClient.UpdateDownloadStatusAsync(task.TaskId, "completed", 100);
+            // 5. Read technical metadata from the file we just landed
+            await StoreTechnicalMetadata(task.CollectionId, fullPath);
+
+            // 6. Update Status
+            await _apiClient.UpdateDownloadStatusAsync(task.TaskId, "completed", 100, localPath: fullPath);
             Log.Info($"[Downloader] Download task {task.TaskId} completed successfully.");
         }
         catch (Exception ex)
@@ -247,7 +256,7 @@ public class DownloadService
         }
         finally
         {
-            // 6. Cleanup temp folder
+            // 7. Cleanup temp folder
             try
             {
                 if (Directory.Exists(tempDir))
@@ -259,6 +268,23 @@ public class DownloadService
             {
                 Log.Error($"[Downloader] Failed to clean up temp folder: {tempDir}", ex);
             }
+        }
+    }
+
+    private async Task StoreTechnicalMetadata(int collectionId, string filePath)
+    {
+        try
+        {
+            var metadata = await MediaProbe.ReadMetadataAsync(filePath);
+            await _apiClient.PatchCollectionAsync(collectionId, new UpdateCollectionRequest
+            {
+                TechnicalMetadata = metadata
+            });
+            Log.Info($"[Downloader] Stored technical metadata for collection {collectionId}.");
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[Downloader] Failed to store technical metadata for collection {collectionId}", ex);
         }
     }
 
