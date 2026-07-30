@@ -79,7 +79,7 @@ class Collection(SQLModel, table=True):
     tags: Optional[str] = None
     notes: Optional[str] = None
     technical_metadata: Optional[str] = None
-    local_path: Optional[str] = None  # Where the downloaded file lives on disk
+    local_path: Optional[str] = None
 
     movie_id: Optional[int] = Field(default=None, foreign_key="movie.id")
     season_id: Optional[int] = Field(default=None, foreign_key="season.id")
@@ -114,7 +114,7 @@ class File(SQLModel, table=True):
 class DownloadTask(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     collection_id: int = Field(foreign_key="collection.id")
-    name_suffix: Optional[str] = None  # Version tag appended to the final filename
+    name_suffix: Optional[str] = None
     status: str = "pending" # pending, downloading, completed, failed
     progress: int = 0
     error_message: Optional[str] = None
