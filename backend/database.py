@@ -1,10 +1,13 @@
-from sqlmodel import SQLModel, create_engine, Session
+from sqlmodel import create_engine, Session
 import os
 
-from sqlalchemy import event
+from sqlalchemy import event, inspect
 
 DB_PATH = os.getenv("DATABASE_PATH", "/data/database.db")
 DATABASE_URL = f"sqlite:///{DB_PATH}"
+
+ALEMBIC_INI = os.path.join(os.path.dirname(os.path.abspath(__file__)), "alembic.ini")
+BASELINE_REVISION = "0001_baseline"
 
 engine = create_engine(
     DATABASE_URL,
@@ -18,15 +21,29 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor.execute("PRAGMA busy_timeout=5000;")
     cursor.close()
 
+def needs_baseline_stamp(connection) -> bool:
+    """
+    True for a database created before Alembic was adopted: it already holds the
+    baseline tables but has no version table, so the baseline must be stamped
+    instead of executed.
+    """
+    tables = inspect(connection).get_table_names()
+    return "alembic_version" not in tables and "collection" in tables
+
 def init_db():
     """
-    Initializes the database schema.
-    Creates all tables defined in models if they do not exist.
-    Future schema changes should be managed using a migration tool (e.g. Alembic).
+    Brings the database schema up to date by running the Alembic migrations.
+    Creates the schema from scratch on an empty database.
     """
-    import models
-    _ = models  # Access module to register table schemas and satisfy static analysis
-    SQLModel.metadata.create_all(engine)
+    from alembic import command
+    from alembic.config import Config
+
+    config = Config(ALEMBIC_INI)
+    with engine.begin() as connection:
+        config.attributes["connection"] = connection
+        if needs_baseline_stamp(connection):
+            command.stamp(config, BASELINE_REVISION)
+        command.upgrade(config, "head")
 
 def get_session():
     with Session(engine) as session:

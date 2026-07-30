@@ -1,0 +1,99 @@
+from alembic import command
+from alembic.autogenerate import compare_metadata
+from alembic.config import Config
+from alembic.runtime.migration import MigrationContext
+from sqlalchemy import create_engine, inspect
+from sqlmodel import SQLModel
+
+import database
+import models
+from database import ALEMBIC_INI, BASELINE_REVISION, needs_baseline_stamp
+
+_ = models  # Access module to register table schemas and satisfy static analysis
+
+
+def upgrade_to(connection, revision):
+    config = Config(ALEMBIC_INI)
+    config.attributes["connection"] = connection
+    command.upgrade(config, revision)
+
+
+def build_legacy_database(engine):
+    """
+    Replicates a database created before Alembic was adopted: the baseline schema
+    with data in it and no version table.
+    """
+    with engine.begin() as connection:
+        upgrade_to(connection, BASELINE_REVISION)
+    with engine.begin() as connection:
+        connection.exec_driver_sql("DROP TABLE alembic_version")
+        connection.exec_driver_sql(
+            "INSERT INTO movie (id, tmdb_id, title, release_year, manually_added, created_at)"
+            " VALUES (1, 635302, 'Mugen Train', 2020, 0, '2026-07-29 00:00:00')"
+        )
+        connection.exec_driver_sql(
+            "INSERT INTO collection (name, quality, movie_id)"
+            " VALUES ('Mugen Train BDRip', '1080p', 1)"
+        )
+
+
+def test_fresh_database_upgrades_to_head(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'fresh.db'}")
+    with engine.begin() as connection:
+        upgrade_to(connection, "head")
+
+    with engine.connect() as connection:
+        tables = inspect(connection).get_table_names()
+    assert "alembic_version" in tables
+    assert {"movie", "series", "season", "episode", "collection", "file"} <= set(tables)
+
+
+def test_migrated_schema_matches_the_models(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'fresh.db'}")
+    with engine.begin() as connection:
+        upgrade_to(connection, "head")
+
+    with engine.connect() as connection:
+        context = MigrationContext.configure(connection)
+        assert compare_metadata(context, SQLModel.metadata) == []
+
+
+def test_legacy_database_needs_a_baseline_stamp(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
+    build_legacy_database(engine)
+
+    with engine.connect() as connection:
+        assert needs_baseline_stamp(connection) is True
+
+
+def test_empty_database_is_not_stamped(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'empty.db'}")
+
+    with engine.connect() as connection:
+        assert needs_baseline_stamp(connection) is False
+
+
+def test_init_db_adopts_a_legacy_database_without_losing_data(tmp_path, monkeypatch):
+    engine = create_engine(f"sqlite:///{tmp_path / 'legacy.db'}")
+    build_legacy_database(engine)
+    monkeypatch.setattr(database, "engine", engine)
+
+    database.init_db()
+
+    with engine.connect() as connection:
+        assert needs_baseline_stamp(connection) is False
+        assert connection.exec_driver_sql("select count(*) from movie").scalar() == 1
+        assert connection.exec_driver_sql("select count(*) from collection").scalar() == 1
+        context = MigrationContext.configure(connection)
+        assert compare_metadata(context, SQLModel.metadata) == []
+
+
+def test_init_db_is_idempotent(tmp_path, monkeypatch):
+    engine = create_engine(f"sqlite:///{tmp_path / 'fresh.db'}")
+    monkeypatch.setattr(database, "engine", engine)
+
+    database.init_db()
+    database.init_db()
+
+    with engine.connect() as connection:
+        assert connection.exec_driver_sql("select count(*) from alembic_version").scalar() == 1
