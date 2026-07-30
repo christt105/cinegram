@@ -178,7 +178,7 @@ public class UploadService
                 string? technicalMetadata = null;
                 try
                 {
-                    technicalMetadata = await ExtractMetadataAsync(videoFile);
+                    technicalMetadata = await MediaProbe.ReadMetadataAsync(videoFile);
                 }
                 catch (Exception ex)
                 {
@@ -442,30 +442,4 @@ public class UploadService
             _ => "video/octet-stream"
         };
 
-    private static async Task<string> ExtractMetadataAsync(string filePath)
-    {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = "ffprobe",
-            Arguments = $"-v quiet -print_format json -show_format -show_streams \"{filePath}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        
-        using var process = Process.Start(startInfo);
-        if (process == null) throw new Exception("Failed to start ffprobe process.");
-        
-        var output = await process.StandardOutput.ReadToEndAsync();
-        await process.WaitForExitAsync();
-        
-        if (process.ExitCode != 0)
-        {
-            var error = await process.StandardError.ReadToEndAsync();
-            throw new Exception($"ffprobe failed with exit code {process.ExitCode}: {error}");
-        }
-        
-        return output;
-    }
 }

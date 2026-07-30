@@ -1,15 +1,13 @@
 using System.Text.RegularExpressions;
 using Bot.Models;
 using Bot.Services;
+using Bot.Utils;
 using Telegram.Bot.Types;
 
 namespace Bot.Handlers;
 
 public partial class ImportHandler
 {
-    private static readonly string[] VideoExtensions =
-        [".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm"];
-
     [GeneratedRegex(@"\[tmdbid-(\d+)\]", RegexOptions.IgnoreCase)]
     private static partial Regex TmdbIdPattern();
 
@@ -122,9 +120,7 @@ public partial class ImportHandler
     {
         if (!Directory.Exists(dir)) return;
 
-        foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories)
-                     .Where(f => VideoExtensions.Contains(
-                         Path.GetExtension(f), StringComparer.OrdinalIgnoreCase)))
+        foreach (var file in MediaLibrary.EnumerateVideos(dir))
         {
             result.Add((file, extractTmdb ? ExtractTmdbId(file) : null));
         }
