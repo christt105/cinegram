@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Bot.Models;
 using Bot.Services;
 using Bot.Utils;
@@ -6,11 +5,8 @@ using Telegram.Bot.Types;
 
 namespace Bot.Handlers;
 
-public partial class ImportHandler
+public class ImportHandler
 {
-    [GeneratedRegex(@"\[tmdbid-(\d+)\]", RegexOptions.IgnoreCase)]
-    private static partial Regex TmdbIdPattern();
-
     private readonly WTelegram.Bot _bot;
     private readonly ApiClient _apiClient;
 
@@ -122,21 +118,8 @@ public partial class ImportHandler
 
         foreach (var file in MediaLibrary.EnumerateVideos(dir))
         {
-            result.Add((file, extractTmdb ? ExtractTmdbId(file) : null));
+            result.Add((file, extractTmdb ? MediaNameParser.ParseTmdbId(file) : null));
         }
-    }
-
-    // Walks up the directory tree from the file looking for [tmdbid-X] in any folder name.
-    private static int? ExtractTmdbId(string filePath)
-    {
-        var dir = Path.GetDirectoryName(filePath);
-        while (!string.IsNullOrEmpty(dir))
-        {
-            var match = TmdbIdPattern().Match(Path.GetFileName(dir) ?? "");
-            if (match.Success) return int.Parse(match.Groups[1].Value);
-            dir = Path.GetDirectoryName(dir);
-        }
-        return null;
     }
 
     private static string GuessMime(string path) =>

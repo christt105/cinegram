@@ -21,9 +21,10 @@ public class LocalMediaService
 
     /// <summary>
     /// Lists video files in the library, optionally filtered by an accent-insensitive
-    /// substring of their path.
+    /// substring of their path and by the ids of the title they are filed under. Filtering
+    /// by id is what lets a collection be shown only the copies of its own title.
     /// </summary>
-    public List<LocalFile> ListFiles(string? query = null, int limit = DefaultLimit)
+    public List<LocalFile> ListFiles(string? query = null, int? tmdbId = null, int? tvdbId = null, int limit = DefaultLimit)
     {
         var normalizedQuery = TextNormalizer.Normalize(query);
 
@@ -31,14 +32,28 @@ public class LocalMediaService
             .SelectMany(MediaLibrary.EnumerateVideos)
             .Where(path => normalizedQuery.Length == 0
                            || TextNormalizer.Normalize(path).Contains(normalizedQuery))
+            .Where(path => MediaNameParser.MatchesIds(path, tmdbId, tvdbId))
             .OrderBy(path => path, StringComparer.Ordinal)
             .Take(limit)
-            .Select(path =>
-            {
-                var info = new FileInfo(path);
-                return new LocalFile { Path = path, Filename = info.Name, Filesize = info.Length };
-            })
+            .Select(Describe)
             .ToList();
+    }
+
+    private static LocalFile Describe(string path)
+    {
+        var info = new FileInfo(path);
+
+        return new LocalFile
+        {
+            Path = path,
+            Filename = info.Name,
+            Filesize = info.Length,
+            ModifiedAt = info.LastWriteTimeUtc,
+            VersionTag = MediaNameParser.ParseVersionTag(path),
+            Quality = MediaNameParser.ParseQuality(path),
+            TmdbId = MediaNameParser.ParseTmdbId(path),
+            TvdbId = MediaNameParser.ParseTvdbId(path)
+        };
     }
 
     /// <summary>

@@ -287,7 +287,7 @@
 
     <!-- Probe a local file into the collection modal -->
     <div v-if="probeModal.open" class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px); padding: 1rem;">
-      <div class="glass-panel" style="width: 100%; max-width: 620px; padding: 1.5rem; border-radius: 16px; background: rgba(17,24,39,0.95); border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 1rem;">
+      <div class="glass-panel" style="width: 100%; max-width: 680px; padding: 1.5rem; border-radius: 16px; background: rgba(17,24,39,0.95); border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 1rem;">
         <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
           <div>
             <h3 style="margin: 0; font-size: 1.2rem; color: #fff;">Technical data from a local file</h3>
@@ -301,22 +301,32 @@
             <Search :size="16" />
           </button>
         </div>
-        <div style="display: flex; flex-direction: column; gap: 0.5rem; max-height: 50vh; overflow-y: auto;">
+        <label v-if="probeModal.tmdbId || probeModal.tvdbId" class="probe-scope">
+          <input type="checkbox" v-model="probeModal.onlyThisTitle" @change="searchLocalFiles" />
+          Only the copies of this title
+        </label>
+        <div class="probe-results">
           <div v-if="probeModal.loading" style="color: #a1a1aa; text-align: center; padding: 1.5rem;">Scanning the library…</div>
           <template v-else>
             <button v-for="file in probeModal.files" :key="file.path"
               @click="probeLocalFile(file.path)"
               :disabled="probeModal.submitting"
-              class="glass-button"
-              style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.75rem 1rem; text-align: left; background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.08);">
-              <span style="display: flex; flex-direction: column; overflow: hidden;">
-                <span style="font-weight: 500; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ file.filename }}</span>
-                <span style="font-size: 0.75rem; color: #888; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ file.path }}</span>
+              class="glass-button probe-file"
+              :class="{ 'probe-file-current': file.path === probeModal.currentPath }">
+              <span class="probe-file-name">{{ file.filename }}</span>
+              <span class="probe-file-badges">
+                <span v-if="file.quality" class="probe-badge quality">{{ file.quality }}</span>
+                <span v-if="file.version_tag" class="probe-badge version">{{ file.version_tag }}</span>
+                <span class="probe-badge">{{ formatSize(file.filesize) }}</span>
+                <span class="probe-badge">{{ formatDate(file.modified_at) }}</span>
+                <span v-if="file.path === probeModal.currentPath" class="probe-badge current">In use</span>
               </span>
-              <span style="font-size: 0.8rem; color: #a1a1aa; flex-shrink: 0;">{{ formatSize(file.filesize) }}</span>
+              <span class="probe-file-path">{{ folderOf(file.path) }}</span>
             </button>
             <div v-if="probeModal.files.length === 0" style="color: #a1a1aa; text-align: center; padding: 1.5rem;">
-              No video files found in the library.
+              {{ probeModal.onlyThisTitle
+                ? 'No copies of this title on disk. Untick the filter to browse the whole library.'
+                : 'No video files found in the library.' }}
             </div>
           </template>
         </div>
@@ -871,22 +881,44 @@ const sendSeasonPreview = async (seasonNumber: number) => {
   }
 }
 
+type LocalFile = {
+  path: string
+  filename: string
+  filesize: number
+  modified_at: string
+  version_tag: string | null
+  quality: string | null
+  tmdb_id: number | null
+  tvdb_id: number | null
+}
+
 const probeModal = ref({
   open: false,
   collectionId: 0,
   label: '',
   query: '',
-  files: [] as { path: string; filename: string; filesize: number }[],
+  currentPath: null as string | null,
+  tmdbId: null as number | null,
+  tvdbId: null as number | null,
+  onlyThisTitle: false,
+  files: [] as LocalFile[],
   loading: false,
   submitting: false
 })
 
 const openProbeModal = (col: any) => {
+  const tmdbId = item.value?.tmdb_id ?? null
+  const tvdbId = item.value?.tvdb_id ?? null
+
   probeModal.value = {
     open: true,
     collectionId: col.id,
     label: col.name || col.quality || 'Collection #' + col.id,
     query: '',
+    currentPath: col.local_path ?? null,
+    tmdbId,
+    tvdbId,
+    onlyThisTitle: Boolean(tmdbId || tvdbId),
     files: [],
     loading: false,
     submitting: false
@@ -897,8 +929,15 @@ const openProbeModal = (col: any) => {
 const searchLocalFiles = async () => {
   probeModal.value.loading = true
   try {
-    const query = encodeURIComponent(probeModal.value.query.trim())
-    const res = await fetch(`${botNetUrl}/local/files?q=${query}`)
+    const params = new URLSearchParams()
+    const query = probeModal.value.query.trim()
+    if (query) params.set('q', query)
+    if (probeModal.value.onlyThisTitle) {
+      if (probeModal.value.tmdbId) params.set('tmdb_id', String(probeModal.value.tmdbId))
+      if (probeModal.value.tvdbId) params.set('tvdb_id', String(probeModal.value.tvdbId))
+    }
+
+    const res = await fetch(`${botNetUrl}/local/files?${params.toString()}`)
     probeModal.value.files = res.ok ? await res.json() : []
     if (!res.ok) alert('Error listing local files.')
   } catch (err) {
@@ -953,6 +992,8 @@ const deleteLocalCopy = async (col: any) => {
 }
 
 const shortPath = (path: string) => path.split('/').slice(-2).join('/')
+
+const folderOf = (path: string) => path.split('/').slice(0, -1).join('/') || path
 
 const getTechMeta = (col: any) => {
     if (!col.technical_metadata) return null;
@@ -1606,6 +1647,87 @@ onMounted(() => {
 .slide-up-enter-from, .slide-up-leave-to {
   opacity: 0;
   transform: translateX(-50%) translateY(12px);
+}
+
+.probe-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  color: #a1a1aa;
+  cursor: pointer;
+}
+
+.probe-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.probe-file {
+  display: flex !important;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.probe-file-current {
+  background: rgba(74, 222, 128, 0.08);
+  border-color: rgba(74, 222, 128, 0.45);
+}
+
+.probe-file-name {
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.probe-file-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.probe-badge {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #d4d4d8;
+  white-space: nowrap;
+}
+
+.probe-badge.quality {
+  background: rgba(96, 165, 250, 0.18);
+  color: #93c5fd;
+  font-weight: 700;
+}
+
+.probe-badge.version {
+  background: rgba(214, 186, 255, 0.16);
+  color: #d6baff;
+}
+
+.probe-badge.current {
+  background: rgba(74, 222, 128, 0.18);
+  color: #4ade80;
+  font-weight: 700;
+}
+
+.probe-file-path {
+  font-size: 0.72rem;
+  color: #71717a;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .tmdb-link:hover {

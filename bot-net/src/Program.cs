@@ -1,6 +1,7 @@
 using Bot;
 using Bot.Services;
 using Bot.Utils;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddSingleton<BotHolder>();
@@ -39,10 +40,14 @@ app.MapPost("/preview/series/{seriesId:int}/season/{seasonNumber:int}", async (i
 });
 
 // List the video files sitting in the mounted library directories
-app.MapGet("/local/files", (string? q, IServiceProvider sp) =>
+app.MapGet("/local/files", (
+    string? q,
+    [FromQuery(Name = "tmdb_id")] int? tmdbId,
+    [FromQuery(Name = "tvdb_id")] int? tvdbId,
+    IServiceProvider sp) =>
 {
     var localMedia = ActivatorUtilities.CreateInstance<LocalMediaService>(sp);
-    return Results.Ok(localMedia.ListFiles(q));
+    return Results.Ok(localMedia.ListFiles(q, tmdbId, tvdbId));
 });
 
 // Read a local file with ffprobe and store it as a collection's technical metadata
