@@ -61,7 +61,7 @@ jobs:
         run: npm run build
 
   botnet-tests:
-    name: Bot-Net Build (.NET 8)
+    name: Bot-Net Build & Tests (.NET 8)
     runs-on: ubuntu-latest
 
     steps:
@@ -74,7 +74,10 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore bot-net/src/Bot.csproj
+        run: dotnet restore bot-net/tests/Bot.Tests/Bot.Tests.csproj
 
       - name: Build Bot-Net
-        run: dotnet build bot-net/src/Bot.csproj --configuration Release --no-restore
+        run: dotnet build bot-net/src/Bot.csproj --configuration Release
+
+      - name: Run Tests
+        run: dotnet test bot-net/tests/Bot.Tests/Bot.Tests.csproj --configuration Release
