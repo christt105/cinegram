@@ -33,7 +33,7 @@ public class CommandHandler
         };
 
         if (bot.UserClient != null)
-            commands.Add(new AuthCommand(bot.Bot, bot.UserClient, bot.PendingActionHandler));
+            commands.Add(new AuthCommand(bot.Bot, bot.UserClient));
 
         commands.Add(new HelpCommand(bot.Bot, commands.ToArray()));
 

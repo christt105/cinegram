@@ -5,7 +5,8 @@ namespace Bot.Services;
 /// <summary>
 /// Wraps a WTelegram.Client user session alongside the bot.
 /// Used for file transfers when the owner has Telegram Premium (4 GB limit, higher speed).
-/// Auth is performed interactively via the /auth bot command.
+/// The session is created out of band by <see cref="Bot.Utils.ConsoleAuth"/>; this service only
+/// restores it, because Telegram invalidates login codes sent through a chat.
 /// </summary>
 public class UserClientService : IDisposable
 {
@@ -14,21 +15,13 @@ public class UserClientService : IDisposable
 
     private int _apiId;
     private string _apiHash = "";
-    private string _phoneNumber = "";
-
-    // Auth flow signals
-    private TaskCompletionSource<bool>? _codeRequested;
-    private TaskCompletionSource<string>? _codeInput;
-    private TaskCompletionSource<bool>? _passwordRequested;
-    private TaskCompletionSource<string>? _passwordInput;
-    private TaskCompletionSource<Exception?>? _loginFinished;
-
-    private bool _resumeMode;
 
     public bool IsAuthenticated { get; private set; }
     public bool IsPremium { get; private set; }
 
-    private const string SessionPath = "/data/user_client.session";
+    public const string SessionPath = "/data/user_client.session";
+
+    public const string ReauthInstructions = "docker compose run --rm -it bot-net auth";
 
     public long SplitLimitBytes
     {
@@ -56,29 +49,11 @@ public class UserClientService : IDisposable
     {
         "api_id" => _apiId.ToString(),
         "api_hash" => _apiHash,
-        "phone_number" => _phoneNumber,
-        "verification_code" => GetCode(),
-        "password" => GetPassword(),
+        "phone_number" or "verification_code" or "password" =>
+            throw new InvalidOperationException(
+                $"The saved session is missing or expired; re-authenticate with `{ReauthInstructions}`"),
         _ => null
     };
-
-    private string GetCode()
-    {
-        if (_resumeMode)
-            throw new Exception("Session requires re-authentication; run /auth");
-
-        _codeRequested?.TrySetResult(true);
-        return _codeInput!.Task.GetAwaiter().GetResult();
-    }
-
-    private string GetPassword()
-    {
-        if (_resumeMode)
-            throw new Exception("Session requires re-authentication; run /auth");
-
-        _passwordRequested?.TrySetResult(true);
-        return _passwordInput!.Task.GetAwaiter().GetResult();
-    }
 
     private void DisposeClient()
     {
@@ -99,9 +74,8 @@ public class UserClientService : IDisposable
 
         _apiId = apiId;
         _apiHash = apiHash;
-        _resumeMode = true;
 
-        _sessionStream = File.Open(SessionPath, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+        _sessionStream = File.Open(SessionPath, FileMode.Open, FileAccess.ReadWrite);
         _client = new WTelegram.Client(ConfigFunc, _sessionStream);
 
         try
@@ -118,92 +92,6 @@ public class UserClientService : IDisposable
             DisposeClient();
             return false;
         }
-    }
-
-    /// <summary>
-    /// Starts an interactive login flow. Returns when Telegram has dispatched
-    /// the verification code (i.e. the user can now call ProvideCodeAsync).
-    /// </summary>
-    public async Task BeginLoginAsync(int apiId, string apiHash, string phoneNumber)
-    {
-        DisposeClient();
-        IsAuthenticated = false;
-        IsPremium = false;
-
-        _apiId = apiId;
-        _apiHash = apiHash;
-        _phoneNumber = phoneNumber;
-        _resumeMode = false;
-
-        _codeRequested = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _codeInput = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _passwordRequested = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _passwordInput = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
-        _loginFinished = new TaskCompletionSource<Exception?>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        _sessionStream = File.Open(SessionPath, FileMode.Create, FileAccess.ReadWrite);
-        _client = new WTelegram.Client(ConfigFunc, _sessionStream);
-
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                var user = await _client.LoginUserIfNeeded();
-                IsAuthenticated = true;
-                IsPremium = (user.flags & User.Flags.premium) != 0;
-                Log.Info($"[UserClient] Login complete. Premium={IsPremium}");
-                _loginFinished.TrySetResult(null);
-            }
-            catch (Exception ex)
-            {
-                Log.Error("[UserClient] Login failed", ex);
-                _loginFinished.TrySetResult(ex);
-            }
-        });
-
-        await _codeRequested!.Task;
-    }
-
-    /// <summary>
-    /// Submits the verification code.
-    /// Returns true if a 2FA password is also needed, false if login is complete.
-    /// Throws on auth failure.
-    /// </summary>
-    public async Task<bool> ProvideCodeAsync(string code, int timeoutSeconds = 60)
-    {
-        _codeInput!.TrySetResult(code);
-
-        var timeout = Task.Delay(TimeSpan.FromSeconds(timeoutSeconds));
-        await Task.WhenAny(_passwordRequested!.Task, _loginFinished!.Task, timeout);
-
-        if (timeout.IsCompleted && !_loginFinished!.Task.IsCompleted && !_passwordRequested!.Task.IsCompleted)
-            throw new TimeoutException("Timed out waiting for Telegram after submitting the code.");
-
-        if (_loginFinished!.Task.IsCompleted)
-        {
-            var ex = await _loginFinished.Task;
-            if (ex != null) throw ex;
-            return false; // login complete, no 2FA
-        }
-
-        return true; // 2FA needed
-    }
-
-    /// <summary>
-    /// Submits the 2FA cloud password. Throws on failure.
-    /// </summary>
-    public async Task ProvidePasswordAsync(string password, int timeoutSeconds = 60)
-    {
-        _passwordInput!.TrySetResult(password);
-
-        var timeout = Task.Delay(TimeSpan.FromSeconds(timeoutSeconds));
-        await Task.WhenAny(_loginFinished!.Task, timeout);
-
-        if (timeout.IsCompleted && !_loginFinished!.Task.IsCompleted)
-            throw new TimeoutException("Timed out waiting for Telegram after submitting the password.");
-
-        var ex = await _loginFinished.Task;
-        if (ex != null) throw ex;
     }
 
     // ── File operations ─────────────────────────────────────────────────────

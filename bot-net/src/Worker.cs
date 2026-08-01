@@ -45,7 +45,7 @@ public class Worker : BackgroundService
 
             // Try to resume a saved user session (non-fatal if unavailable)
             if (!await userClient.TryResumeSessionAsync(apiId, apiHash))
-                Log.Info("[Startup] No saved user session. Use /auth to authenticate.");
+                Log.Info($"[Startup] No saved user session. Authenticate with `{UserClientService.ReauthInstructions}`.");
 
             var downloadService = new DownloadService(bot, apiClient, _queue, userClient);
             _ = downloadService.PollAndProcessAsync(stoppingToken);
