@@ -45,10 +45,16 @@ public class UserClientService : IDisposable
         }
     }
 
+    /// <summary>
+    /// Only ever resumes: "-1" tells WTelegram to accept whichever account the saved session
+    /// belongs to, so it validates the session without asking for the phone number. Being asked
+    /// for a credential means the session is unusable and a new one has to be created out of band.
+    /// </summary>
     private string? ConfigFunc(string what) => what switch
     {
         "api_id" => _apiId.ToString(),
         "api_hash" => _apiHash,
+        "user_id" => "-1",
         "phone_number" or "verification_code" or "password" =>
             throw new InvalidOperationException(
                 $"The saved session is missing or expired; re-authenticate with `{ReauthInstructions}`"),
