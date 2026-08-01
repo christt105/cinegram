@@ -170,46 +170,26 @@ public class DownloadService
             var mainVideo = videoFiles.OrderByDescending(f => new FileInfo(f).Length).First();
             var extension = Path.GetExtension(mainVideo);
 
-            // 5. Construct Jellyfin naming paths
+            // 5. Construct the same paths mnamer would have used
             var moviesDir = MediaLibrary.MoviesDir;
             var showsDir = MediaLibrary.ShowsDir;
             string fullPath;
 
-            var qSuffix = MediaNaming.BuildVersionTag(task.Quality, task.NameSuffix);
+            var versionTag = MediaNaming.BuildVersionTag(task.Quality, task.NameSuffix);
 
             if (task.MediaType == "movie")
             {
-                string dirName;
-                if (task.TmdbId != null)
-                {
-                    dirName = task.Year != null ? $"{task.Title} ({task.Year}) [tmdbid-{task.TmdbId}]" : $"{task.Title} [tmdbid-{task.TmdbId}]";
-                }
-                else
-                {
-                    dirName = task.Year != null ? $"{task.Title} ({task.Year})" : task.Title;
-                }
-                var fileName = task.Year != null ? $"{task.Title} ({task.Year}){qSuffix}{extension}" : $"{task.Title}{qSuffix}{extension}";
+                var dirName = MnamerNaming.MovieDirectory(task.Title, task.Year, task.TmdbId);
+                var fileName = MnamerNaming.MovieFile(task.Title, task.Year, versionTag, extension);
                 fullPath = Path.Combine(moviesDir, dirName, fileName);
             }
             else
             {
-                string dirName;
-                if (task.TvdbId != null)
-                {
-                    dirName = $"{task.Title} [tvdbid-{task.TvdbId}]";
-                }
-                else if (task.TmdbId != null)
-                {
-                    dirName = $"{task.Title} [tmdbid-{task.TmdbId}]";
-                }
-                else
-                {
-                    dirName = task.Year != null ? $"{task.Title} ({task.Year})" : task.Title;
-                }
-                var seasonDir = $"Season {task.SeasonNumber:D2}";
-                var fileName = task.Year != null 
-                    ? $"{task.Title} ({task.Year}) - S{task.SeasonNumber:D2}E{task.EpisodeNumber:D2}{qSuffix}{extension}" 
-                    : $"{task.Title} - S{task.SeasonNumber:D2}E{task.EpisodeNumber:D2}{qSuffix}{extension}";
+                var seasonNumber = task.SeasonNumber ?? 1;
+                var dirName = MnamerNaming.ShowDirectory(task.Title, task.TvdbId, task.TmdbId);
+                var seasonDir = MnamerNaming.SeasonDirectory(seasonNumber);
+                var fileName = MnamerNaming.EpisodeFile(
+                    task.Title, seasonNumber, task.EpisodeNumber ?? 0, versionTag, extension);
                 fullPath = Path.Combine(showsDir, dirName, seasonDir, fileName);
             }
 
