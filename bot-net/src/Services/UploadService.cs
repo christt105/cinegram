@@ -119,13 +119,16 @@ public class UploadService
             Log.Info($"[Uploader] Starting task {task.Id} ({task.Title})");
             Directory.CreateDirectory(tempDir);
 
-            // 1. Translate host path to container path
-            var localPath = TranslatePath(task.Path);
+            // 1. Translate the path Jellyfin reported into a container path
+            var localPath = PathTranslator.Translate(task.Path);
             Log.Info($"[Uploader] Translated path: {task.Path} -> {localPath}");
 
             if (!File.Exists(localPath) && !Directory.Exists(localPath))
             {
-                throw new Exception($"Local file or directory not found: {localPath}");
+                var hint = localPath == task.Path
+                    ? " — no JELLYFIN_PATH_MAP or IMPORT_*_DIR prefix matched the path Jellyfin reported"
+                    : "";
+                throw new Exception($"Local file or directory not found: {localPath}{hint}");
             }
 
             // 2. Discover video files to upload
@@ -387,25 +390,6 @@ public class UploadService
                 Log.Error($"[Uploader] Failed to clean up temp folder: {tempDir}", ex);
             }
         }
-    }
-
-    private string TranslatePath(string hostPath)
-    {
-        var mappings = new[]
-        {
-            (Prefix: Environment.GetEnvironmentVariable("IMPORT_MOVIES_DIR"), Target: "/data/import/movies"),
-            (Prefix: Environment.GetEnvironmentVariable("IMPORT_SHOWS_DIR"), Target: "/data/import/shows"),
-        };
-
-        foreach (var (prefix, target) in mappings)
-        {
-            if (!string.IsNullOrEmpty(prefix) && hostPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            {
-                return hostPath.Replace(prefix, target, StringComparison.OrdinalIgnoreCase);
-            }
-        }
-
-        return hostPath;
     }
 
     private static async Task SplitAndPackage(string filePath, string archivePath)

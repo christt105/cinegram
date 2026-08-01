@@ -87,11 +87,26 @@ All configuration lives in `.env` (see `.env.example` for the template).
 | `TMDB_CONTENT_LANGUAGE` | Language for titles and overviews (e.g. `en-US`, `es-ES`, `fr-FR`).                              |
 | `IMPORT_MOVIES_DIR`     | Host path for the movies library, bind-mounted into `bot-net` at `/data/import/movies`.         |
 | `IMPORT_SHOWS_DIR`      | Host path for the shows library, bind-mounted into `bot-net` at `/data/import/shows`.            |
+| `JELLYFIN_PATH_MAP`     | Maps the paths Jellyfin reports onto `bot-net`'s own paths, as `jellyfin_path:container_path` pairs separated by commas. Only needed when Jellyfin sees the library under different paths than the host — see [Path mapping](#path-mapping). |
 | `PUID` / `PGID`         | User/group IDs the `backend` and `bot-net` containers run as, so they can write to the host media directories (defaults `1000:1000`). |
 | `WEB_PORT`              | Host port for the web panel (defaults `5173`). Change it if the port is already in use.          |
 | `BACKEND_PORT`          | Host port for the backend API (defaults `8005`). The web container reads it at start.           |
 | `BOT_NET_PORT`          | Host port for the `bot-net` worker (defaults `8088`). The web container reads it at start.       |
 | `CINEGRAM_TAG`          | Image tag to deploy (defaults `latest`; pin to a release like `v1.2.0`, or to `pr-18` to try a pull request). |
+
+## Path mapping
+
+When you back up media from Jellyfin to Telegram, Jellyfin hands `bot-net` the path of the file **as Jellyfin sees it**. `bot-net` then has to open that file through its own bind mounts (`/data/import/movies` and `/data/import/shows`).
+
+If Jellyfin runs directly on the host, or in a container that mounts the library at the same paths as the host, nothing to do: the `IMPORT_MOVIES_DIR` / `IMPORT_SHOWS_DIR` prefixes already match what Jellyfin reports.
+
+If Jellyfin runs in its own container with different mount points, they don't match and uploads fail with `Local file or directory not found`. Set `JELLYFIN_PATH_MAP` to bridge the two views. For a Jellyfin that mounts the same library at `/media/disco/Peliculas` and `/media/disco/Series`:
+
+```bash
+JELLYFIN_PATH_MAP=/media/disco/Peliculas:/data/import/movies,/media/disco/Series:/data/import/shows
+```
+
+Each entry is `path_as_jellyfin_reports_it:path_inside_bot-net`, and the right-hand side is one of `bot-net`'s two mount points. Entries are tried in order, before falling back to `IMPORT_*_DIR`. To find the left-hand side, look at any item's path in Jellyfin (Administration → the item → the file path), or read it off the `Translated path:` line in `docker compose logs bot-net` after a failed upload.
 
 ## Service ports
 
@@ -141,6 +156,7 @@ Make sure to back up the `./appdata` directory when migrating servers or updatin
 ## Troubleshooting
 
 - **Permission errors writing to media folders**: Ensure `PUID` and `PGID` in `.env` match the Linux user/group that owns `IMPORT_MOVIES_DIR` and `IMPORT_SHOWS_DIR`.
+- **Uploads to Telegram fail with `Local file or directory not found`**: Jellyfin reports the file under a path `bot-net` cannot resolve. Set `JELLYFIN_PATH_MAP` — see [Path mapping](#path-mapping).
 - **Web UI settings or backend port updates not taking effect**: the web reads them at container start. Recreate the web container after changing `.env`:
   ```bash
   docker compose up -d web
