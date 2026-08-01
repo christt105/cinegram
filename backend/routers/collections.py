@@ -7,7 +7,7 @@ from schemas import (
     CollectionOut, CollectionUpdate, CollectionCreate,
     IdentifyRequest, ReidentifyCollectionRequest
 )
-from crud import prune_orphaned_media, identify_collection
+from crud import prune_orphaned_media, identify_collection, extract_quality_from_metadata
 from tmdb import TMDB
 
 router = APIRouter(prefix="/collections", tags=["collections"])
@@ -124,6 +124,11 @@ def update_collection(
     update_data = collection_update.dict(exclude_unset=True)
     for virtual_field in ["season_number", "episode_number", "clear_episode"]:
         update_data.pop(virtual_field, None)
+
+    if update_data.get("technical_metadata") and "quality" not in update_data:
+        extracted_quality = extract_quality_from_metadata(update_data["technical_metadata"])
+        if extracted_quality:
+            update_data["quality"] = extracted_quality
 
     for key, value in update_data.items():
         setattr(db_collection, key, value)

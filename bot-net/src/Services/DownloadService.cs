@@ -53,9 +53,17 @@ public class DownloadService
         try
         {
             Log.Info($"[Downloader] Starting task {task.TaskId} ({task.Title})");
+
+            // 1. Refuse payloads we could not unpack, before spending the bandwidth on them
+            var announcedNames = task.Files.Select(f => f.Filename).ToList();
+            if (!ArchiveDetector.CanProduceVideo(announcedNames))
+                throw new Exception(
+                    $"Nothing to extract from {DescribeFiles(announcedNames)}: expected a video file " +
+                    "or a supported archive (rar, zip, 7z, or their split volumes).");
+
             Directory.CreateDirectory(tempDir);
 
-            // 1. Download all files
+            // 2. Download all files
             var totalSize = task.Files.Sum(f => f.Filesize);
             long totalDownloaded = 0;
             long lastReportedTime = DateTime.UtcNow.Ticks;
@@ -135,16 +143,10 @@ public class DownloadService
                 Log.Info($"[Downloader] Finished downloading {file.Filename}");
             }
 
-            // 2. Check and extract if it's an archive
+            // 3. Check and extract if it's an archive
             var allFiles = Directory.GetFiles(tempDir, "*.*");
-            var archivePath =
-                allFiles.FirstOrDefault(f => f.EndsWith(".part1.rar")) ??
-                allFiles.FirstOrDefault(f => f.EndsWith(".rar")) ??
-                allFiles.FirstOrDefault(f => f.EndsWith(".7z.001")) ??
-                allFiles.FirstOrDefault(f => f.EndsWith(".zip.001")) ??
-                allFiles.FirstOrDefault(f => f.EndsWith(".zip")) ??
-                allFiles.FirstOrDefault(f => f.EndsWith(".7z"));
-            
+            var archivePath = ArchiveDetector.FindEntry(allFiles);
+
             if (archivePath != null)
             {
                 Log.Info($"[Downloader] Archive found: {archivePath}. Extracting...");
@@ -154,65 +156,53 @@ public class DownloadService
                 Log.Info("[Downloader] Extraction complete.");
             }
 
-            // 3. Find the main video file
-            var videoExtensions = new[] { ".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm" };
+            // 4. Find the main video file
             var videoFiles = Directory.GetFiles(tempDir, "*.*", SearchOption.AllDirectories)
-                .Where(f => videoExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                .Where(MediaLibrary.IsVideo)
                 .ToList();
 
             if (videoFiles.Count == 0)
-                throw new Exception("No video files found in downloaded files.");
+                throw new Exception(archivePath != null
+                    ? $"{Path.GetFileName(archivePath)} extracted without any video file inside."
+                    : $"No video file in {DescribeFiles(allFiles.Select(Path.GetFileName)!)}.");
 
             // Pick the largest video file as the main media file
             var mainVideo = videoFiles.OrderByDescending(f => new FileInfo(f).Length).First();
             var extension = Path.GetExtension(mainVideo);
 
-            // 4. Construct Jellyfin naming paths
-            var moviesDir = Environment.GetEnvironmentVariable("JELLYFIN_MOVIES_DIR") ?? "/data/jellyfin/movies";
-            var showsDir = Environment.GetEnvironmentVariable("JELLYFIN_SHOWS_DIR") ?? "/data/jellyfin/shows";
+            // 5. Construct the same paths mnamer would have used
+            var moviesDir = MediaLibrary.MoviesDir;
+            var showsDir = MediaLibrary.ShowsDir;
             string fullPath;
 
-            var qSuffix = !string.IsNullOrEmpty(task.Quality) ? $" - [{task.Quality}]" : "";
+            var versionTag = MediaNaming.BuildVersionTag(task.Quality, task.NameSuffix);
 
             if (task.MediaType == "movie")
             {
-                string dirName;
-                if (task.TmdbId != null)
-                {
-                    dirName = task.Year != null ? $"{task.Title} ({task.Year}) [tmdbid-{task.TmdbId}]" : $"{task.Title} [tmdbid-{task.TmdbId}]";
-                }
-                else
-                {
-                    dirName = task.Year != null ? $"{task.Title} ({task.Year})" : task.Title;
-                }
-                var fileName = task.Year != null ? $"{task.Title} ({task.Year}){qSuffix}{extension}" : $"{task.Title}{qSuffix}{extension}";
+                var dirName = MnamerNaming.MovieDirectory(task.Title, task.Year, task.TmdbId);
+                var fileName = MnamerNaming.MovieFile(task.Title, task.Year, versionTag, extension);
                 fullPath = Path.Combine(moviesDir, dirName, fileName);
             }
             else
             {
-                string dirName;
-                if (task.TvdbId != null)
-                {
-                    dirName = $"{task.Title} [tvdbid-{task.TvdbId}]";
-                }
-                else if (task.TmdbId != null)
-                {
-                    dirName = $"{task.Title} [tmdbid-{task.TmdbId}]";
-                }
-                else
-                {
-                    dirName = task.Year != null ? $"{task.Title} ({task.Year})" : task.Title;
-                }
-                var seasonDir = $"Season {task.SeasonNumber:D2}";
-                var fileName = task.Year != null 
-                    ? $"{task.Title} ({task.Year}) - S{task.SeasonNumber:D2}E{task.EpisodeNumber:D2}{qSuffix}{extension}" 
-                    : $"{task.Title} - S{task.SeasonNumber:D2}E{task.EpisodeNumber:D2}{qSuffix}{extension}";
+                var seasonNumber = task.SeasonNumber ?? 1;
+                var dirName = MnamerNaming.ShowDirectory(task.Title, task.TvdbId, task.TmdbId);
+                var seasonDir = MnamerNaming.SeasonDirectory(seasonNumber);
+                var fileName = MnamerNaming.EpisodeFile(
+                    task.Title, seasonNumber, task.EpisodeNumber ?? 0, versionTag, extension);
                 fullPath = Path.Combine(showsDir, dirName, seasonDir, fileName);
             }
 
-            Log.Info($"[Downloader] Moving video to final path: {fullPath}");
             var finalDir = Path.GetDirectoryName(fullPath)!;
             Directory.CreateDirectory(finalDir);
+
+            var collection = await _apiClient.GetCollectionAsync(task.CollectionId);
+            var resolvedPath = MediaNaming.ResolveFreePath(fullPath, collection?.LocalPath);
+            if (resolvedPath != fullPath)
+                Log.Info($"[Downloader] {fullPath} is taken by another collection, using {resolvedPath} instead.");
+            fullPath = resolvedPath;
+
+            Log.Info($"[Downloader] Moving video to final path: {fullPath}");
             System.IO.File.Move(mainVideo, fullPath, overwrite: true);
 
             // Fix permissions so Jellyfin (or other host users) can modify/delete the files
@@ -236,8 +226,11 @@ public class DownloadService
                 Log.Error($"[Downloader] Failed to set permissions for {fullPath}", ex);
             }
 
-            // 5. Update Status
-            await _apiClient.UpdateDownloadStatusAsync(task.TaskId, "completed", 100);
+            // 6. Read technical metadata from the file we just landed
+            await StoreTechnicalMetadata(task.CollectionId, fullPath);
+
+            // 7. Update Status
+            await _apiClient.UpdateDownloadStatusAsync(task.TaskId, "completed", 100, localPath: fullPath);
             Log.Info($"[Downloader] Download task {task.TaskId} completed successfully.");
         }
         catch (Exception ex)
@@ -247,7 +240,7 @@ public class DownloadService
         }
         finally
         {
-            // 6. Cleanup temp folder
+            // 8. Cleanup temp folder
             try
             {
                 if (Directory.Exists(tempDir))
@@ -260,6 +253,36 @@ public class DownloadService
                 Log.Error($"[Downloader] Failed to clean up temp folder: {tempDir}", ex);
             }
         }
+    }
+
+    private async Task StoreTechnicalMetadata(int collectionId, string filePath)
+    {
+        try
+        {
+            var metadata = await MediaProbe.ReadMetadataAsync(filePath);
+            await _apiClient.PatchCollectionAsync(collectionId, new UpdateCollectionRequest
+            {
+                TechnicalMetadata = metadata
+            });
+            Log.Info($"[Downloader] Stored technical metadata for collection {collectionId}.");
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[Downloader] Failed to store technical metadata for collection {collectionId}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Names a handful of files for an error message the owner reads in Telegram, so a
+    /// rejected download says which files it choked on without pasting a whole season.
+    /// </summary>
+    private static string DescribeFiles(IEnumerable<string> filenames)
+    {
+        var names = filenames.ToList();
+        if (names.Count == 0) return "an empty download";
+
+        var listed = string.Join(", ", names.Take(3));
+        return names.Count > 3 ? $"{listed} (+{names.Count - 3} more)" : listed;
     }
 
     private static async Task ExtractArchive(string archivePath, string outputDir)

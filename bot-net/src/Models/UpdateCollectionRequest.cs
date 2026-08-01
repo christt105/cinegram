@@ -39,4 +39,12 @@ public class UpdateCollectionRequest
     [JsonPropertyName("notes")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Notes { get; set; }
+
+    [JsonPropertyName("technical_metadata")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TechnicalMetadata { get; set; }
+
+    [JsonPropertyName("local_path")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? LocalPath { get; set; }
 }

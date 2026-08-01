@@ -1,4 +1,5 @@
 using Bot.Handlers;
+using Bot.Utils;
 using Telegram.Bot.Types;
 using Message = WTelegram.Types.Message;
 
@@ -12,8 +13,8 @@ public class ImportCommand : ICommand
 
     public async Task Execute(string[] args, Message msg)
     {
-        var moviesDir = Environment.GetEnvironmentVariable("IMPORT_MOVIES_DIR") ?? "/data/import/movies";
-        var showsDir = Environment.GetEnvironmentVariable("IMPORT_SHOWS_DIR") ?? "/data/import/shows";
+        var moviesDir = MediaLibrary.MoviesDir;
+        var showsDir = MediaLibrary.ShowsDir;
 
         await _dispatcher.Bot.SendMessage(msg.Chat.Id,
             $"🔍 Scanning for media files…\nMovies: {moviesDir}\nShows: {showsDir}");
