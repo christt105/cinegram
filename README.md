@@ -100,10 +100,10 @@ When you back up media from Jellyfin to Telegram, Jellyfin hands `bot-net` the p
 
 If Jellyfin runs directly on the host, or in a container that mounts the library at the same paths as the host, nothing to do: the `IMPORT_MOVIES_DIR` / `IMPORT_SHOWS_DIR` prefixes already match what Jellyfin reports.
 
-If Jellyfin runs in its own container with different mount points, they don't match and uploads fail with `Local file or directory not found`. Set `JELLYFIN_PATH_MAP` to bridge the two views. For a Jellyfin that mounts the same library at `/media/disco/Peliculas` and `/media/disco/Series`:
+If Jellyfin runs in its own container with different mount points, they don't match and uploads fail with `Local file or directory not found`. Set `JELLYFIN_PATH_MAP` to bridge the two views. For a Jellyfin that mounts the library at `/media/library/movies` and `/media/library/shows`:
 
 ```bash
-JELLYFIN_PATH_MAP=/media/disco/Peliculas:/data/import/movies,/media/disco/Series:/data/import/shows
+JELLYFIN_PATH_MAP=/media/library/movies:/data/import/movies,/media/library/shows:/data/import/shows
 ```
 
 Each entry is `path_as_jellyfin_reports_it:path_inside_bot-net`, and the right-hand side is one of `bot-net`'s two mount points. Entries are tried in order, before falling back to `IMPORT_*_DIR`. To find the left-hand side, look at any item's path in Jellyfin (Administration → the item → the file path), or read it off the `Translated path:` line in `docker compose logs bot-net` after a failed upload.
