@@ -719,6 +719,7 @@ const toggleSeasonExpanded = (season: any) => {
 
 const fetchItem = async () => {
   isLoading.value = true
+  const isInitialLoad = item.value === null
   try {
     const endpoint = props.type === 'movies' ? `/movies/${props.id}` : `/series/${props.id}`
     const res = await fetch(`${backendUrl}${endpoint}`)
@@ -731,8 +732,10 @@ const fetchItem = async () => {
             season.episodes.sort((a: any, b: any) => a.episode_number - b.episode_number)
           }
         })
-        const latestSeason = data.seasons[data.seasons.length - 1]
-        expandedSeasonIds.value = latestSeason ? new Set([latestSeason.id]) : new Set()
+        if (isInitialLoad) {
+          const latestSeason = data.seasons[data.seasons.length - 1]
+          expandedSeasonIds.value = latestSeason ? new Set([latestSeason.id]) : new Set()
+        }
       }
       item.value = data
       if (data.tmdb_id) {
