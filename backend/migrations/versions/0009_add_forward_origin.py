@@ -1,7 +1,7 @@
 """add document_id and fwd_from_* to file
 
-Revision ID: 0008_forward_origin
-Revises: 0007_season_local_metadata
+Revision ID: 0009_forward_origin
+Revises: 0008_watched_file_guess_tvdb_id
 Create Date: 2026-09-03
 
 """
@@ -11,8 +11,8 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = '0008_forward_origin'
-down_revision: Union[str, Sequence[str], None] = '0007_season_local_metadata'
+revision: str = '0009_forward_origin'
+down_revision: Union[str, Sequence[str], None] = '0008_watched_file_guess_tvdb_id'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
