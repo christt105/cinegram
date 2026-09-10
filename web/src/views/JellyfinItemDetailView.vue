@@ -55,7 +55,7 @@
 
       <div class="item-actions">
         <!-- Series have seasons and episodes -->
-        <div v-if="type === 'series'" class="seasons-section">
+        <div v-if="type === 'series' && item.seasons && item.seasons.length > 0" class="seasons-section">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem;">
             <h2 style="font-size: 2rem; margin:0;">Seasons</h2>
             <button @click="uploadItem(item, 'series')" class="glass-button primary">
