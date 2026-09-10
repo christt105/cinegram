@@ -20,9 +20,9 @@ import models  # noqa: F401  registers the table schemas
 from database import engine
 from models import File
 
-# Telegram's copyright policy can act directly on public channels and chats, unlike private
-# pointers, so a source of either of these types is the highest-priority thing to consider
-# re-uploading.
+# A public channel or chat can be moderated or purged by Telegram for a variety of reasons
+# (copyright claims among them), unlike private pointers, so a source of either of these
+# types is the highest-priority thing to consider re-uploading.
 PUBLIC_TYPES = {"channel", "chat"}
 
 
@@ -64,9 +64,10 @@ def render(groups: dict) -> str:
     lines.append(f"{'TOTAL':<45} {'':<12} {total_files:>6} {format_size(total_size):>10}")
     lines.append("")
     lines.append(
-        "* public channels/chats are the highest-priority risk: Telegram's copyright policy "
-        "can act on them directly, and it isn't documented what happens to a private pointer "
-        "when the blob it points to is purged."
+        "* public channels/chats are the highest-priority risk: they can be moderated or "
+        "purged by Telegram for a variety of reasons (copyright claims among them), and it "
+        "isn't documented what happens to a private pointer when the blob it points to is "
+        "purged."
     )
     return "\n".join(lines)
 
