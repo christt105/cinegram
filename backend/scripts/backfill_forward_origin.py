@@ -69,8 +69,8 @@ def run(bot_net_url: str, dry_run: bool = False) -> dict:
                 if not dry_run:
                     session.add(file)
 
-        if not dry_run:
-            session.commit()
+            if not dry_run:
+                session.commit()
 
     return stats
 

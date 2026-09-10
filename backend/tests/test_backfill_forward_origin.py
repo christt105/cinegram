@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+import httpx
 import pytest
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine, select
@@ -112,6 +113,38 @@ def test_dry_run_does_not_write_to_the_database(db_engine, monkeypatch):
     with Session(db_engine) as session:
         file20 = session.exec(select(File).where(File.message_id == 20)).one()
     assert file20.document_id is None
+
+
+def test_run_commits_completed_batches_before_a_later_batch_fails(db_engine, monkeypatch):
+    for message_id in range(backfill.BATCH_SIZE + 1):
+        seed_file(db_engine, message_id)
+
+    calls = []
+
+    def fake_post(url, json, timeout):
+        calls.append(json)
+        if len(calls) == 1:
+            return FakeResponse({
+                str(message_id): {
+                    "document_id": message_id,
+                    "fwd_from_type": None,
+                    "fwd_from_id": None,
+                    "fwd_from_name": None,
+                    "fwd_from_hidden": False
+                }
+                for message_id in json
+            })
+        raise httpx.ConnectError("boom", request=None)
+
+    monkeypatch.setattr(backfill.httpx, "post", fake_post)
+
+    with pytest.raises(httpx.ConnectError):
+        backfill.run("http://bot-net:8080")
+
+    with Session(db_engine) as session:
+        still_pending = backfill.pending_files(session)
+
+    assert [f.message_id for f in still_pending] == [backfill.BATCH_SIZE]
 
 
 def test_batches_splits_evenly_and_leaves_a_remainder():
