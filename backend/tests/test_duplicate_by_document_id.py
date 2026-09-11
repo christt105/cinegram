@@ -51,7 +51,6 @@ def test_first_upload_of_a_document_id_is_not_a_duplicate(client):
 def test_reforwarding_the_same_document_id_is_flagged_as_duplicate(client):
     first = upload(client, 8002, "Postres.zip.001", document_id=222)
 
-    # Re-forwarded message: new message_id, same underlying blob.
     result = upload(client, 8099, "Postres.zip.001", document_id=222)
     assert result["duplicate"] is True
     assert result["collection_id"] == first["collection_id"]
@@ -62,7 +61,6 @@ def test_a_duplicate_forward_does_not_add_a_second_file_to_the_collection(client
     upload(client, 8004, "Postres.zip.002", document_id=334)
     upload(client, 8005, "Postres.zip.003", document_id=335)
 
-    # Someone re-forwards the same 3 parts a second time.
     upload(client, 8103, "Postres.zip.001", document_id=333)
     upload(client, 8104, "Postres.zip.002", document_id=334)
     upload(client, 8105, "Postres.zip.003", document_id=335)
