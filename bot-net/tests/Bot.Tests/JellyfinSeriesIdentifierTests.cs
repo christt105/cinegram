@@ -11,10 +11,11 @@ public class JellyfinSeriesIdentifierTests
     private const string SeriesFolder = "/data/media/shows/El Instituto [tmdbid-249039]";
     private const int TmdbId = 249039;
 
-    private static JellyfinItem Item(string id, string path, string? tmdbId = null)
+    private static JellyfinItem Item(string id, string path, string? tmdbId = null, string? tvdbId = null)
     {
         var providerIds = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (tmdbId is not null) providerIds["Tmdb"] = tmdbId;
+        if (tvdbId is not null) providerIds["Tvdb"] = tvdbId;
 
         return new JellyfinItem(id, Path.GetFileName(path), path, providerIds);
     }
@@ -26,6 +27,7 @@ public class JellyfinSeriesIdentifierTests
         public int PollCount { get; private set; }
         public int SearchCount { get; private set; }
         public string? AppliedToItemId { get; private set; }
+        public JsonElement? AppliedResult { get; private set; }
         public JsonElement? SearchResult { get; set; } = JsonDocument.Parse("""{"Name":"El Instituto"}""").RootElement;
         public Exception? ApplyThrows { get; set; }
         public IReadOnlyList<JellyfinItem> SteadyState { get; set; } = [];
@@ -52,6 +54,7 @@ public class JellyfinSeriesIdentifierTests
             if (ApplyThrows is not null) throw ApplyThrows;
 
             AppliedToItemId = itemId;
+            AppliedResult = result.Clone();
             return Task.CompletedTask;
         }
     }
@@ -204,6 +207,26 @@ public class JellyfinSeriesIdentifierTests
 
         Assert.Equal(JellyfinSeriesIdentifier.Outcome.Applied, outcome);
         Assert.Equal("abc123", client.AppliedToItemId);
+    }
+
+    [Fact]
+    public async Task IdentifyAsync_PreservesAnExistingTvdbIdWhileUpdatingTheTmdbId()
+    {
+        var client = new FakeJellyfinClient
+        {
+            SteadyState = [Item("abc123", SeriesFolder, tmdbId: "111111", tvdbId: "77777")],
+            SearchResult = JsonDocument.Parse(
+                """{"Name":"El Instituto","ProviderIds":{"Tmdb":"249039"}}""").RootElement
+        };
+        var (identifier, _) = Build(client);
+
+        var outcome = await identifier.IdentifyAsync(SeriesFolder, TmdbId, "El Instituto");
+
+        Assert.Equal(JellyfinSeriesIdentifier.Outcome.Applied, outcome);
+        Assert.NotNull(client.AppliedResult);
+        var providerIds = client.AppliedResult!.Value.GetProperty("ProviderIds");
+        Assert.Equal("249039", providerIds.GetProperty("Tmdb").GetString());
+        Assert.Equal("77777", providerIds.GetProperty("Tvdb").GetString());
     }
 
     [Fact]

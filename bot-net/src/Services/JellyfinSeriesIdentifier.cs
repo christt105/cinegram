@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using Bot.Models;
 using Bot.Utils;
 
@@ -117,7 +119,8 @@ public class JellyfinSeriesIdentifier
                 return Outcome.NoRemoteMatch;
             }
 
-            await _client.ApplyRemoteSearchAsync(item.Id, match.Value, cancellationToken);
+            var merged = MergeProviderIds(match.Value, item.ProviderIds);
+            await _client.ApplyRemoteSearchAsync(item.Id, merged, cancellationToken);
             Log.Info($"[Jellyfin] Applied tmdb {tmdbId} to item {item.Id} ({title}).");
             return Outcome.Applied;
         }
@@ -129,6 +132,37 @@ public class JellyfinSeriesIdentifier
                 "Check its identification by hand.");
             return Outcome.Failed;
         }
+    }
+
+    /// <summary>
+    /// Jellyfin's Apply endpoint replaces the item's whole ProviderIds dictionary with whatever is
+    /// on the applied RemoteSearchResult (see ProviderIdsExtensions.SetProviderIds), it does not
+    /// merge. A tmdb-only search result would otherwise silently wipe a correct id the item already
+    /// carries for another provider (most commonly Tvdb), so every id the item already had is
+    /// carried over here, with the freshly searched ids overwriting only the keys they actually
+    /// provide.
+    /// </summary>
+    private static JsonElement MergeProviderIds(
+        JsonElement match, IReadOnlyDictionary<string, string> existingProviderIds)
+    {
+        var merged = new Dictionary<string, string>(existingProviderIds, StringComparer.OrdinalIgnoreCase);
+
+        if (match.TryGetProperty("ProviderIds", out var idsElement) && idsElement.ValueKind == JsonValueKind.Object)
+        {
+            foreach (var provider in idsElement.EnumerateObject())
+            {
+                if (provider.Value.ValueKind == JsonValueKind.String)
+                    merged[provider.Name] = provider.Value.GetString()!;
+            }
+        }
+
+        var node = JsonNode.Parse(match.GetRawText())!.AsObject();
+        var mergedIds = new JsonObject();
+        foreach (var (key, value) in merged) mergedIds[key] = value;
+        node["ProviderIds"] = mergedIds;
+
+        using var document = JsonDocument.Parse(node.ToJsonString());
+        return document.RootElement.Clone();
     }
 
     /// <summary>
