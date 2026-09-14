@@ -125,6 +125,12 @@ public class JellyfinSeriesIdentifier
             Log.Info($"[Jellyfin] Applied tmdb {tmdbId} to item {item.Id} ({title}).");
             return Outcome.Applied;
         }
+        catch (Exception ex) when (ex is ObjectDisposedException or OperationCanceledException)
+        {
+            Log.Warning(
+                $"[Jellyfin] Abandoned applying tmdb {tmdbId} to {title}: the app is shutting down ({ex.GetType().Name}).");
+            return Outcome.Failed;
+        }
         catch (Exception ex)
         {
             Log.Error($"[Jellyfin] Could not apply tmdb {tmdbId} to {title}", ex);
@@ -187,6 +193,12 @@ public class JellyfinSeriesIdentifier
                 var item = FindByFolder(series, seriesFolder);
                 if (item is not null) return item;
             }
+            catch (Exception ex) when (ex is ObjectDisposedException or OperationCanceledException)
+            {
+                Log.Warning(
+                    $"[Jellyfin] Poll for {title} abandoned: the app is shutting down ({ex.GetType().Name}).");
+                return null;
+            }
             catch (Exception ex)
             {
                 Log.Warning($"[Jellyfin] Poll for {title} failed, retrying: {ex.Message}");
@@ -194,7 +206,17 @@ public class JellyfinSeriesIdentifier
 
             if (spent + delay > Budget) return null;
 
-            await _delay(delay, cancellationToken);
+            try
+            {
+                await _delay(delay, cancellationToken);
+            }
+            catch (Exception ex) when (ex is ObjectDisposedException or OperationCanceledException)
+            {
+                Log.Warning(
+                    $"[Jellyfin] Poll for {title} abandoned: the app is shutting down ({ex.GetType().Name}).");
+                return null;
+            }
+
             spent += delay;
             delay = TimeSpan.FromTicks(Math.Min((long)(delay.Ticks * 1.5), MaxDelay.Ticks));
         }

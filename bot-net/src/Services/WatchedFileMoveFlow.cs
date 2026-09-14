@@ -32,7 +32,7 @@ public static class WatchedFileMoveFlow
     /// </summary>
     public static async Task<MoveOutcome?> MoveAndReportAsync(
         ApiClient apiClient, int watchedFileId, WatchedFileResolution? resolution,
-        JellyfinSeriesIdentifier? jellyfin = null)
+        JellyfinSeriesIdentifier? jellyfin = null, CancellationToken cancellationToken = default)
     {
         if (resolution is null)
         {
@@ -69,7 +69,7 @@ public static class WatchedFileMoveFlow
                 if (ok)
                 {
                     await apiClient.PatchWatchedFileStatusAsync(watchedFileId, "moved", movedPath: destPath);
-                    QueueJellyfinIdentification(jellyfin, resolution, destPath);
+                    QueueJellyfinIdentification(jellyfin, resolution, destPath, cancellationToken);
                     return new MoveOutcome(true, WatchedFileMessages.BuildMovedText(resolution.Filename, destPath));
                 }
 
@@ -105,24 +105,25 @@ public static class WatchedFileMoveFlow
     /// ids have not misidentified one, while series go through TheTVDB first.
     /// </summary>
     private static void QueueJellyfinIdentification(
-        JellyfinSeriesIdentifier? jellyfin, WatchedFileResolution resolution, string destPath)
+        JellyfinSeriesIdentifier? jellyfin, WatchedFileResolution resolution, string destPath,
+        CancellationToken cancellationToken)
     {
         if (jellyfin is null || resolution.MediaType != "tv") return;
 
         var seriesFolder = SeriesFolderOf(destPath);
         if (seriesFolder is null) return;
 
-        jellyfin.QueueIdentification(seriesFolder, resolution.TmdbId, resolution.Title);
+        jellyfin.QueueIdentification(seriesFolder, resolution.TmdbId, resolution.Title, cancellationToken);
     }
 
     public static async Task ExecuteAsync(
         WTelegram.Bot bot, ApiClient apiClient, WatchedFileMessageRegistry registry,
         Message message, int watchedFileId, WatchedFileResolution? resolution,
-        JellyfinSeriesIdentifier? jellyfin = null)
+        JellyfinSeriesIdentifier? jellyfin = null, CancellationToken cancellationToken = default)
     {
         registry.TryUntrack(watchedFileId, out _);
 
-        var outcome = await MoveAndReportAsync(apiClient, watchedFileId, resolution, jellyfin);
+        var outcome = await MoveAndReportAsync(apiClient, watchedFileId, resolution, jellyfin, cancellationToken);
         if (outcome is null) return;
 
         await bot.EditMessageText(message.Chat.Id, message.MessageId, outcome.Value.Text);
