@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Bot.Models;
@@ -95,8 +96,8 @@ public class JellyfinSeriesIdentifier
                 $"[Jellyfin] No item appeared for {seriesFolder} within {Budget.TotalSeconds:F0}s. " +
                 $"{title} keeps whatever identification Jellyfin gives it on its next scan.");
             await NotifyAsync(
-                $"⚠️ Could not force the TMDB id of <b>{title}</b> in Jellyfin: no library item showed up for " +
-                $"<code>{seriesFolder}</code>. Check its identification by hand.");
+                $"⚠️ Could not force the TMDB id of <b>{EscapeHtml(title)}</b> in Jellyfin: no library item showed " +
+                $"up for <code>{EscapeHtml(seriesFolder)}</code>. Check its identification by hand.");
             return Outcome.ItemNotFound;
         }
 
@@ -114,7 +115,7 @@ public class JellyfinSeriesIdentifier
             {
                 Log.Warning($"[Jellyfin] Remote search returned no match for tmdb {tmdbId} ({title}).");
                 await NotifyAsync(
-                    $"⚠️ Jellyfin found no metadata match for <b>{title}</b> (tmdb {tmdbId}). " +
+                    $"⚠️ Jellyfin found no metadata match for <b>{EscapeHtml(title)}</b> (tmdb {tmdbId}). " +
                     "Check its identification by hand.");
                 return Outcome.NoRemoteMatch;
             }
@@ -128,11 +129,13 @@ public class JellyfinSeriesIdentifier
         {
             Log.Error($"[Jellyfin] Could not apply tmdb {tmdbId} to {title}", ex);
             await NotifyAsync(
-                $"⚠️ Could not force the TMDB id of <b>{title}</b> in Jellyfin: {ex.Message}. " +
+                $"⚠️ Could not force the TMDB id of <b>{EscapeHtml(title)}</b> in Jellyfin: {EscapeHtml(ex.Message)}. " +
                 "Check its identification by hand.");
             return Outcome.Failed;
         }
     }
+
+    private static string EscapeHtml(string text) => WebUtility.HtmlEncode(text);
 
     /// <summary>
     /// Jellyfin's Apply endpoint replaces the item's whole ProviderIds dictionary with whatever is

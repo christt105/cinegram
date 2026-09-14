@@ -247,6 +247,24 @@ public class JellyfinSeriesIdentifierTests
     }
 
     [Fact]
+    public async Task IdentifyAsync_EscapesHtmlSpecialCharsInTheTitleOfAWarning()
+    {
+        var client = new FakeJellyfinClient
+        {
+            SteadyState = [Item("abc123", SeriesFolder)],
+            SearchResult = null
+        };
+        var (identifier, recorder) = Build(client);
+
+        var outcome = await identifier.IdentifyAsync(SeriesFolder, TmdbId, "Q & Adam <the Ampersand>");
+
+        Assert.Equal(JellyfinSeriesIdentifier.Outcome.NoRemoteMatch, outcome);
+        var notification = Assert.Single(recorder.Notifications);
+        Assert.Contains("Q &amp; Adam &lt;the Ampersand&gt;", notification);
+        Assert.DoesNotContain("Q & Adam <the Ampersand>", notification);
+    }
+
+    [Fact]
     public async Task IdentifyAsync_WarnsWhenApplyFails()
     {
         var client = new FakeJellyfinClient
