@@ -81,8 +81,8 @@ All configuration lives in `.env` (see `.env.example` for the template).
 
 | Variable                | Description                                                                                     |
 | ----------------------- | ----------------------------------------------------------------------------------------------- |
-| `JELLYFIN_URL`          | Base URL of your Jellyfin server (e.g. `http://your-jellyfin-host:8096`). Read by the web container at start; if left empty the web falls back to the browser host on port 8096. Also used by the bot to identify series it moves. |
-| `JELLYFIN_TOKEN`        | Jellyfin API token, used by the web client and by the bot to force the TMDB id of a confirmed series. Without it the bot relies on the id tag in the folder name alone. |
+| `JELLYFIN_URL`          | Base URL of your Jellyfin server (e.g. `http://your-jellyfin-host:8096`). Read by the web container at start; if left empty the web falls back to the browser host on port 8096. Also used by `bot-net` to identify series it moves and for its startup path check (see [Path mapping](#path-mapping)). |
+| `JELLYFIN_TOKEN`        | Jellyfin API token, used by the web client and by `bot-net` to force the TMDB id of a confirmed series and for its startup path check. Without it the bot relies on the id tag in the folder name alone, and the path check is skipped. |
 | `TELEGRAM_API_ID`       | Telegram `api_id` from <https://my.telegram.org>.                                               |
 | `TELEGRAM_API_HASH`     | Telegram `api_hash` from <https://my.telegram.org>.                                             |
 | `TELEGRAM_BOT_TOKEN`    | Bot token from [@BotFather](https://t.me/BotFather).                                             |
@@ -114,6 +114,14 @@ JELLYFIN_PATH_MAP=/media/library/movies:/data/media/movies,/media/library/shows:
 ```
 
 Each entry is `path_as_jellyfin_reports_it:path_inside_bot-net`, and the right-hand side is one of `bot-net`'s two library subdirectories. Entries are tried in order, before falling back to `MEDIA_ROOT`/`MOVIES_SUBDIR`/`SHOWS_SUBDIR`. To find the left-hand side, look at any item's path in Jellyfin (Administration → the item → the file path), or read it off the `Translated path:` line in `docker compose logs bot-net` after a failed upload.
+
+You don't have to wait for a failed upload to find out whether the mapping is right. At startup `bot-net` asks Jellyfin where its movie and show libraries live, translates each location the same way an upload would, and logs the outcome:
+
+```bash
+docker compose logs bot-net | grep "library path check"
+```
+
+A healthy deployment reports `Jellyfin library path check: 2/2 locations resolve inside bot-net`. Anything else prints one warning per library naming the reported path, what it translated to and the `JELLYFIN_PATH_MAP` entry that would fix it. Libraries of other kinds (music, photos) are not checked, since `bot-net` never reads from them. The check needs `JELLYFIN_URL` and `JELLYFIN_TOKEN` to be set; without them, or if Jellyfin is unreachable, it logs a warning saying so and the worker starts as usual.
 
 ## Importing from the downloads folder
 
@@ -149,6 +157,15 @@ The `web` service is a static bundle served by nginx, with the runtime config wr
 ## Security
 
 Cinegram has **no built-in authentication** on the web panel or the backend API: anyone who can reach those ports can browse and modify the library. Only the Telegram bot is access-controlled (via `TELEGRAM_AUTH_USER_ID`). Do **not** expose the `web` or `backend` ports directly to the internet. Keep them on your LAN and reach them through a VPN, or put them behind a reverse proxy that adds authentication and TLS.
+
+## Forwarding does not copy the file
+
+Most files end up in Cinegram by being forwarded to the bot from another chat, group, or channel, rather than uploaded fresh. Telegram forwarding does not copy the underlying blob: it only points a new message at the same one the original sender uploaded. Two consequences follow from that:
+
+- **You don't own most of what you "have".** A forwarded file stays tied to whoever originally uploaded it. The underlying blob can be removed by Telegram for a variety of reasons (copyright claims among them) on public groups and channels, and it is not documented (or safe to assume) what happens to a private pointer when that happens. Re-uploading a file through Cinegram is the only way to make it independent, since that creates a genuinely new blob.
+- **Hiding the sender when forwarding makes this worse, not better.** It does not change how the file is stored, it only deletes the one piece of information (`fwd_from`) that would tell you what the file depends on. Forward normally.
+
+Every `file` row stores `document_id` (Telegram's identifier for the underlying blob, identical across every forward of it) and, when the upload was a forward, `fwd_from_type` / `fwd_from_id` / `fwd_from_name` / `fwd_from_hidden` (who it came from). These are populated automatically for new uploads. Existing rows from before this was tracked stay empty until backfilled with `backend/scripts/backfill_forward_origin.py`, which re-fetches each historical message from Telegram to fill both columns in; `backend/scripts/forward_origin_report.py` then summarizes exposure by source, so you can see how much of your archive depends on channels or chats you don't control.
 
 ## Bot commands
 
@@ -207,7 +224,8 @@ Make sure to back up the `./appdata` directory when migrating servers or updatin
 ## Troubleshooting
 
 - **Permission errors writing to media folders**: Ensure `PUID` and `PGID` in `.env` match the Linux user/group that owns `MEDIA_ROOT`.
-- **Uploads to Telegram fail with `Local file or directory not found`**: Jellyfin reports the file under a path `bot-net` cannot resolve. Set `JELLYFIN_PATH_MAP` — see [Path mapping](#path-mapping).
+- **Uploads to Telegram fail with `Local file or directory not found`**: Jellyfin reports the file under a path `bot-net` cannot resolve. Set `JELLYFIN_PATH_MAP` — see [Path mapping](#path-mapping). The startup log says whether the mapping resolves, so check it there first: `docker compose logs bot-net | grep "library path check"`.
+- **`JELLYFIN_PATH_MAP` changes seem to have no effect**: the containers keep the environment they were created with, so editing `.env` is not enough. Recreate `bot-net` with `docker compose up -d bot-net` and confirm the new value took with the startup path check above.
 - **"Incomplete login attempt" from Telegram when authenticating a user account**: the verification code was typed into a Telegram chat, which invalidates it. Log in from the server terminal instead — see [Telegram user account](#telegram-user-account-optional).
 - **Web UI settings or backend port updates not taking effect**: the web reads them at container start. Recreate the web container after changing `.env`:
   ```bash

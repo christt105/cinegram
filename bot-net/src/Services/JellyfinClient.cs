@@ -1,25 +1,32 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using Bot.Models;
+using Bot.Utils;
 
 namespace Bot.Services;
 
 /// <summary>
-/// Minimal Jellyfin API client built on a plain HttpClient: three endpoints do not justify
-/// pulling in a generated SDK the way the web frontend does.
+/// Minimal Jellyfin API client built on a plain HttpClient: the handful of endpoints bot-net
+/// needs do not justify pulling in a generated SDK the way the web frontend does.
 /// </summary>
 public class JellyfinClient : IJellyfinClient, IDisposable
 {
     private const string SeriesQuery = "Items?recursive=true&includeItemTypes=Series&fields=Path,ProviderIds";
 
     private readonly HttpClient _http;
+    private readonly JsonSerializerOptions _jsonOptions;
 
-    public JellyfinClient(string baseUrl, string token, HttpMessageHandler? handler = null)
+    public JellyfinClient(string baseUrl, string token, TimeSpan? timeout = null, HttpMessageHandler? handler = null)
     {
         _http = handler is null ? new HttpClient() : new HttpClient(handler);
         _http.BaseAddress = new Uri($"{baseUrl.TrimEnd('/')}/");
         _http.DefaultRequestHeaders.Add("X-Emby-Token", token);
-        _http.Timeout = TimeSpan.FromSeconds(30);
+        _http.Timeout = timeout ?? TimeSpan.FromSeconds(30);
+
+        _jsonOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true
+        };
     }
 
     /// <summary>
@@ -92,6 +99,41 @@ public class JellyfinClient : IJellyfinClient, IDisposable
         response.EnsureSuccessStatusCode();
     }
 
+    /// <summary>
+    /// Reads the movie and show libraries Jellyfin knows about, one entry per configured folder.
+    /// Libraries of any other kind (music, photos, ...) are left out: bot-net never reads from
+    /// them, so their paths not resolving here is not a misconfiguration.
+    /// </summary>
+    public async Task<IReadOnlyList<LibraryLocation>> GetLibraryLocationsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var folders = await _http.GetFromJsonAsync<List<VirtualFolder>>(
+            "Library/VirtualFolders", _jsonOptions, cancellationToken) ?? [];
+
+        var locations = new List<LibraryLocation>();
+
+        foreach (var folder in folders)
+        {
+            var kind = KindOf(folder.CollectionType);
+            if (kind is null) continue;
+
+            foreach (var path in folder.Locations ?? [])
+            {
+                if (string.IsNullOrWhiteSpace(path)) continue;
+                locations.Add(new LibraryLocation(folder.Name ?? "unnamed", kind.Value, path));
+            }
+        }
+
+        return locations;
+    }
+
+    private static LibraryKind? KindOf(string? collectionType) => collectionType?.ToLowerInvariant() switch
+    {
+        "movies" => LibraryKind.Movies,
+        "tvshows" => LibraryKind.Shows,
+        _ => null
+    };
+
     private static JellyfinItem? ToItem(JsonElement element)
     {
         if (!element.TryGetProperty("Id", out var id) || id.ValueKind != JsonValueKind.String) return null;
@@ -116,5 +158,12 @@ public class JellyfinClient : IJellyfinClient, IDisposable
         }
 
         return new JellyfinItem(id.GetString()!, name, path, providerIds);
+    }
+
+    private sealed class VirtualFolder
+    {
+        public string? Name { get; set; }
+        public string? CollectionType { get; set; }
+        public List<string>? Locations { get; set; }
     }
 }
