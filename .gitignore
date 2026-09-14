@@ -1,5 +1,6 @@
 .env
 __pycache__/
+.claude/
 
 # Local compose overrides (host-specific paths)
 docker-compose.override.yml
