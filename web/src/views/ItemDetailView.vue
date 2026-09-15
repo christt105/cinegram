@@ -39,6 +39,9 @@
             <button @click="reidentifyItem" class="glass-button" style="background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff;">
               🔍 Re-identify (TMDB ID)
             </button>
+            <button v-if="type === 'series'" @click="matchWithJellyfin" class="glass-button" :disabled="matchingWithJellyfin" style="background: rgba(96, 165, 250, 0.14); border-color: rgba(96, 165, 250, 0.30); color: #60a5fa;" title="Match every episode against the video files already on disk and read their technical data">
+              <FolderSync :size="16" /> {{ matchingWithJellyfin ? 'Matching…' : 'Match with Jellyfin' }}
+            </button>
             <button @click="changePoster" class="glass-button" style="background: rgba(34, 197, 94, 0.14); border-color: rgba(34, 197, 94, 0.30); color: #7ee2a8;">
               🖼️ Change Poster
             </button>
@@ -613,7 +616,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { DownloadCloud, Trash2, Edit3, Copy, Check, Search, FileSearch, HardDrive, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { DownloadCloud, Trash2, Edit3, Copy, Check, Search, FileSearch, HardDrive, ChevronDown, ChevronRight, FolderSync } from 'lucide-vue-next'
 import { findJellyfinItemByTmdbId } from '../api/jellyfin'
 
 const props = defineProps<{
@@ -942,6 +945,36 @@ const sendSeasonPreview = async (seasonNumber: number) => {
     alert('❌ Connection error.')
   } finally {
     sendingSeasonPreview.value = null
+  }
+}
+
+const matchingWithJellyfin = ref(false)
+
+const matchWithJellyfin = async () => {
+  matchingWithJellyfin.value = true
+  try {
+    const res = await fetch(`${botNetUrl}/probe/series/${props.id}`, { method: 'POST' })
+    if (res.ok) {
+      const plan = await res.json()
+      const matched = plan.matches?.length ?? 0
+      const skipped = plan.skips ?? []
+      let message = `✅ Matched ${matched} episode${matched === 1 ? '' : 's'} with Jellyfin.`
+      if (skipped.length > 0) {
+        message += `\n\nSkipped ${skipped.length}:\n` + skipped
+          .map((s: any) => `S${String(s.season).padStart(2, '0')}E${String(s.episode).padStart(2, '0')}: ${s.reason}`)
+          .join('\n')
+      }
+      alert(message)
+      fetchItem()
+    } else {
+      const err = await res.text()
+      alert('❌ Error matching with Jellyfin: ' + err)
+    }
+  } catch (err) {
+    console.error(err)
+    alert('❌ Connection error.')
+  } finally {
+    matchingWithJellyfin.value = false
   }
 }
 

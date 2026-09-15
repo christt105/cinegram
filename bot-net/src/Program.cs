@@ -61,6 +61,15 @@ app.MapPost("/probe/collection/{collectionId:int}", async (int collectionId, Pro
     return ok ? Results.Ok(new { status = "ok" }) : Results.Problem(error);
 });
 
+// Match a series' episodes against local files under its library folder and probe the
+// unambiguous ones straight into their collection
+app.MapPost("/probe/series/{seriesId:int}", async (int seriesId, IServiceProvider sp) =>
+{
+    var localMedia = ActivatorUtilities.CreateInstance<LocalMediaService>(sp);
+    var (ok, error, plan) = await localMedia.MatchSeriesAsync(seriesId);
+    return ok ? Results.Ok(plan) : Results.Problem(error);
+});
+
 // Look up document_id and forward origin for historical messages, for the backend's backfill script
 app.MapPost("/messages/forward-origin", async (int[] messageIds, IServiceProvider sp) =>
 {
