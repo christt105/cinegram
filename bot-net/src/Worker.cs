@@ -23,6 +23,8 @@ public class Worker : BackgroundService
                 Log.Warning($"[Startup] Required system dependencies are missing: {string.Join(", ", missing)}. Make sure they are installed and available in the PATH.");
             }
 
+            _ = JellyfinPathAudit.RunAsync(stoppingToken);
+
             var apiId = int.Parse(Environment.GetEnvironmentVariable("TELEGRAM_API_ID")!);
             var apiHash = Environment.GetEnvironmentVariable("TELEGRAM_API_HASH")!;
             var botToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN")!;
@@ -33,6 +35,7 @@ public class Worker : BackgroundService
             await using var connection = new SqliteConnection(@"Data Source=/data/bot.sqlite");
             using var apiClient = new ApiClient(backendUrl);
             using var userClient = new UserClientService();
+            using var jellyfinClient = JellyfinClient.FromEnvironment();
 
             var bot = new WTelegram.Bot(botToken, apiId, apiHash, connection);
             TransferTuning.Apply(bot.Client, "Bot", defaultParallelTransfers: 4);
@@ -40,7 +43,7 @@ public class Worker : BackgroundService
             // Register so PreviewService and HTTP endpoints can use the live bot instance
             _botHolder.Register(bot, apiClient, authUserId);
 
-            var botDispatcher = new BotDispatcher(bot, apiClient, _queue, userClient);
+            var botDispatcher = new BotDispatcher(bot, apiClient, _queue, userClient, jellyfinClient);
 
             await botDispatcher.InitBot();
 
@@ -70,7 +73,8 @@ public class Worker : BackgroundService
             var watchedFolderService = new WatchedFolderService(apiClient);
             _ = watchedFolderService.RunAsync(stoppingToken);
 
-            var watchNotificationService = new WatchNotificationService(bot, apiClient, botDispatcher.WatchedFileMessages);
+            var watchNotificationService = new WatchNotificationService(
+                bot, apiClient, botDispatcher.WatchedFileMessages, botDispatcher.JellyfinSeries);
             _ = watchNotificationService.PollAndProcessAsync(stoppingToken);
 
             _ = _queue.StartProcessing(stoppingToken);

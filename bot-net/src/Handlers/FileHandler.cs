@@ -48,13 +48,20 @@ public class FileHandler
             fileName = $"video_{msg.MessageId}.mp4";
         }
 
+        var forward = ForwardMetadata.Extract(msg.ForwardOrigin, msg.TLMessage);
+
         var uploadFile = new UploadFile
         {
             MessageId = msg.MessageId,
             FileName = fileName,
             FileSize = fileSize,
             UploadDate = msg.Date.ToString("O"),
-            MimeType = mimeType ?? "video/mp4"
+            MimeType = mimeType ?? "video/mp4",
+            DocumentId = forward.DocumentId,
+            FwdFromType = forward.FromType,
+            FwdFromId = forward.FromId,
+            FwdFromName = forward.FromName,
+            FwdFromHidden = forward.Hidden
         };
 
         var message = @$"📥 New file received:
@@ -81,7 +88,17 @@ Starting to process...";
         var result = await _apiClient.UploadAsync(file);
 
         Log.Info(JsonSerializer.Serialize(result));
-        
+
+        if (result.Duplicate)
+        {
+            var message = @$"⚠️ Already in the library, this is a re-forward of a file you already have:
+Id: {file.MessageId}
+Name: {file.FileName}
+Collection ID: {result.CollectionId}";
+            await _bot.EditMessageText(answer.Chat.Id, answer.MessageId, message);
+            return;
+        }
+
         if (result.MovieId == null && result.EpisodeId == null && result.SeasonId == null && result.CollectionId.HasValue)
         {
             var message = @$"⚠️ Could not automatically identify the file.
