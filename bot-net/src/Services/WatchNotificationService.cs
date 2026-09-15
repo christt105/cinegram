@@ -24,12 +24,16 @@ public class WatchNotificationService
     private readonly WTelegram.Bot _bot;
     private readonly ApiClient _apiClient;
     private readonly WatchedFileMessageRegistry _registry;
+    private readonly JellyfinSeriesIdentifier? _jellyfin;
 
-    public WatchNotificationService(WTelegram.Bot bot, ApiClient apiClient, WatchedFileMessageRegistry registry)
+    public WatchNotificationService(
+        WTelegram.Bot bot, ApiClient apiClient, WatchedFileMessageRegistry registry,
+        JellyfinSeriesIdentifier? jellyfin = null)
     {
         _bot = bot;
         _apiClient = apiClient;
         _registry = registry;
+        _jellyfin = jellyfin;
     }
 
     public async Task PollAndProcessAsync(CancellationToken stoppingToken)
@@ -40,8 +44,8 @@ public class WatchNotificationService
             {
                 await NotifyPendingAsync();
                 await ReconcileRemovedAsync();
-                await ProcessWebResolvedAsync("confirmed");
-                await ProcessWebResolvedAsync("corrected");
+                await ProcessWebResolvedAsync("confirmed", stoppingToken);
+                await ProcessWebResolvedAsync("corrected", stoppingToken);
             }
             catch (Exception ex)
             {
@@ -129,7 +133,7 @@ public class WatchNotificationService
     /// outcome to show it, so a move that blows up mid-way leaves the row listed for the next cycle
     /// to retry, message reference and all.
     /// </summary>
-    private async Task ProcessWebResolvedAsync(string status)
+    private async Task ProcessWebResolvedAsync(string status, CancellationToken stoppingToken)
     {
         var rows = await _apiClient.GetWatchedFilesAsync(status);
         if (rows is null || rows.Count == 0) return;
@@ -144,7 +148,8 @@ public class WatchNotificationService
             }
 
             Log.Info($"[WatchNotification] Picking up {row.Filename} (row {row.Id}, {status} from the web).");
-            var outcome = await WatchedFileMoveFlow.MoveAndReportAsync(_apiClient, row.Id, resolution);
+            var outcome = await WatchedFileMoveFlow.MoveAndReportAsync(
+                _apiClient, row.Id, resolution, _jellyfin, stoppingToken);
             if (outcome is null)
             {
                 Log.Info($"[WatchNotification] {row.Filename} (row {row.Id}) is already being moved, leaving it.");

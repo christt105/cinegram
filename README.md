@@ -81,8 +81,8 @@ All configuration lives in `.env` (see `.env.example` for the template).
 
 | Variable                | Description                                                                                     |
 | ----------------------- | ----------------------------------------------------------------------------------------------- |
-| `JELLYFIN_URL`          | Base URL of your Jellyfin server (e.g. `http://your-jellyfin-host:8096`). Read by the web container at start; if left empty the web falls back to the browser host on port 8096. `bot-net` also uses it for its startup path check (see [Path mapping](#path-mapping)). |
-| `JELLYFIN_TOKEN`        | Jellyfin API token, used by the web client and by `bot-net`'s startup path check.                |
+| `JELLYFIN_URL`          | Base URL of your Jellyfin server (e.g. `http://your-jellyfin-host:8096`). Read by the web container at start; if left empty the web falls back to the browser host on port 8096. Also used by `bot-net` to identify series it moves and for its startup path check (see [Path mapping](#path-mapping)). |
+| `JELLYFIN_TOKEN`        | Jellyfin API token, used by the web client and by `bot-net` to force the TMDB id of a confirmed series and for its startup path check. Without it the bot relies on the id tag in the folder name alone, and the path check is skipped. |
 | `TELEGRAM_API_ID`       | Telegram `api_id` from <https://my.telegram.org>.                                               |
 | `TELEGRAM_API_HASH`     | Telegram `api_hash` from <https://my.telegram.org>.                                             |
 | `TELEGRAM_BOT_TOKEN`    | Bot token from [@BotFather](https://t.me/BotFather).                                             |
