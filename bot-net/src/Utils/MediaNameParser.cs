@@ -23,6 +23,9 @@ public static partial class MediaNameParser
     [GeneratedRegex(@"(?<![a-z0-9])(\d{3,4}p|4k|8k)(?![a-z0-9])", RegexOptions.IgnoreCase)]
     private static partial Regex QualityPattern();
 
+    [GeneratedRegex(@"S(\d{2,4})E(\d{2,4})", RegexOptions.IgnoreCase)]
+    private static partial Regex SeasonEpisodePattern();
+
     /// <summary>
     /// Reads the TMDB id out of a path, e.g. "Movie (2025) [tmdbid-42]/Movie (2025).mkv".
     /// The deepest id wins, so a file inherits the id of its own folder.
@@ -74,6 +77,19 @@ public static partial class MediaNameParser
         return quality.EndsWith('p') || quality.EndsWith('P')
             ? quality.ToLowerInvariant()
             : quality.ToUpperInvariant();
+    }
+
+    /// <summary>
+    /// Reads the season/episode numbers out of a filename written by
+    /// <see cref="MnamerNaming.EpisodeFile"/>, e.g. "Show - S01E05 - [1080p].mkv" -> (1, 5).
+    /// Null when the filename carries no such tag.
+    /// </summary>
+    public static (int Season, int Episode)? ParseSeasonEpisode(string path)
+    {
+        var match = SeasonEpisodePattern().Match(Path.GetFileName(path));
+        if (!match.Success) return null;
+
+        return (int.Parse(match.Groups[1].Value), int.Parse(match.Groups[2].Value));
     }
 
     private static int? ParseId(Regex pattern, string path)

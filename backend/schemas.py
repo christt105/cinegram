@@ -84,6 +84,7 @@ class SeasonOut(BaseModel):
 class SeriesOut(BaseModel):
     id: int
     tmdb_id: Optional[int]
+    tvdb_id: Optional[int] = None
     manual_title: Optional[str]
     poster_path: Optional[str]
     overview: Optional[str]

@@ -58,8 +58,10 @@ public class LocalMediaService
 
     /// <summary>
     /// Reads a local file with ffprobe and stores the result as the collection's technical
-    /// metadata, pointing the collection at that file. Lets an already downloaded file be
-    /// described without re-uploading it to Telegram.
+    /// metadata and audio/subtitle languages, pointing the collection at that file. The
+    /// backend derives "quality" from the technical metadata itself on patch, so it isn't
+    /// set here. Lets an already downloaded file be described without re-uploading it to
+    /// Telegram.
     /// </summary>
     public async Task<(bool ok, string error)> ProbeIntoCollectionAsync(int collectionId, string path)
     {
@@ -72,13 +74,57 @@ public class LocalMediaService
         if (!System.IO.File.Exists(fullPath))
             return (false, $"File not found: {fullPath}");
 
+        return await ProbeFileIntoCollectionAsync(collectionId, fullPath);
+    }
+
+    /// <summary>
+    /// Matches a series' episodes against the video files already on disk under its
+    /// library folder, and probes the unambiguous ones straight into their collection: one
+    /// file for that season/episode, one collection tracking the episode, and that
+    /// collection not already pointing at a local file. Anything else comes back as a skip
+    /// with the reason, left for the manual probe modal in the web UI.
+    /// </summary>
+    public async Task<(bool ok, string error, SeriesMatcher.Plan? plan)> MatchSeriesAsync(int seriesId)
+    {
+        if (!_holder.IsReady)
+            return (false, "Bot not yet initialised.", null);
+
+        var series = await _holder.ApiClient.GetSeriesAsync(seriesId);
+        if (series is null)
+            return (false, $"Series {seriesId} not found.", null);
+
+        var localFiles = MediaLibrary.Roots()
+            .SelectMany(MediaLibrary.EnumerateVideos)
+            .Where(path => MediaNameParser.MatchesIds(path, series.TmdbId, series.TvdbId))
+            .Select(path => (path, seasonEpisode: MediaNameParser.ParseSeasonEpisode(path)))
+            .Where(f => f.seasonEpisode is not null)
+            .Select(f => new SeriesMatcher.LocalEpisodeFile(f.path, f.seasonEpisode!.Value.Season, f.seasonEpisode.Value.Episode));
+
+        var plan = SeriesMatcher.Build(series, localFiles);
+
+        foreach (var match in plan.Matches)
+        {
+            var (ok, error) = await ProbeFileIntoCollectionAsync(match.CollectionId, match.Path);
+            if (!ok)
+                Log.Error($"[LocalMedia] Series {seriesId} match S{match.Season:D2}E{match.Episode:D2}: probe failed for collection {match.CollectionId}: {error}");
+        }
+
+        Log.Info($"[LocalMedia] Matched series {seriesId} against Jellyfin: {plan.Matches.Count} probed, {plan.Skips.Count} skipped.");
+        return (true, "", plan);
+    }
+
+    private async Task<(bool ok, string error)> ProbeFileIntoCollectionAsync(int collectionId, string fullPath)
+    {
         try
         {
             var metadata = await MediaProbe.ReadMetadataAsync(fullPath);
+            var summary = MediaProbe.Summarize(metadata);
             var updated = await _holder.ApiClient.PatchCollectionAsync(collectionId, new UpdateCollectionRequest
             {
                 TechnicalMetadata = metadata,
-                LocalPath = fullPath
+                LocalPath = fullPath,
+                AudioLanguages = summary.AudioLanguages,
+                SubtitleLanguages = summary.SubtitleLanguages
             });
 
             if (updated is null)

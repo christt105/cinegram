@@ -101,4 +101,24 @@ public class MediaNameParserTests
     {
         Assert.Null(MediaNameParser.ParseQuality("/data/movies/1080p rips/Movie (2025).mkv"));
     }
+
+    [Fact]
+    public void ParseSeasonEpisode_ReadsTheNumbersFromTheFilename()
+    {
+        Assert.Equal((1, 1), MediaNameParser.ParseSeasonEpisode(EpisodePath));
+    }
+
+    [Fact]
+    public void ParseSeasonEpisode_IsCaseInsensitive()
+    {
+        var path = "/data/shows/Show [tvdbid-1]/Season 02/Show - s02e10.mkv";
+
+        Assert.Equal((2, 10), MediaNameParser.ParseSeasonEpisode(path));
+    }
+
+    [Fact]
+    public void ParseSeasonEpisode_ReturnsNullWhenThereIsNoTag()
+    {
+        Assert.Null(MediaNameParser.ParseSeasonEpisode(MoviePath));
+    }
 }
