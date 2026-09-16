@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Dict, List, Optional
 from pydantic import BaseModel, ConfigDict
 
 # ========================
@@ -55,6 +55,7 @@ class CollectionOut(BaseModel):
     season_id: Optional[int]
     files: List[FileOut] = []
     quality: Optional[str]
+    codec: Optional[str] = None
     audio_languages: Optional[str]
     subtitle_languages: Optional[str]
     tags: Optional[str]
@@ -63,6 +64,15 @@ class CollectionOut(BaseModel):
     local_path: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class MetadataVocabularyOut(BaseModel):
+    """The fixed set of normalized values Collection.quality/codec/
+    audio_languages/subtitle_languages are restricted to. Backend and web
+    share this vocabulary through this endpoint rather than each hardcoding
+    their own copy."""
+    qualities: List[str]
+    codecs: List[str]
+    languages: Dict[str, str]
 
 class EpisodeOut(BaseModel):
     id: int
@@ -133,6 +143,7 @@ class EpisodeUpdate(BaseModel):
 class CollectionUpdate(BaseModel):
     name: Optional[str] = None
     quality: Optional[str] = None
+    codec: Optional[str] = None
     audio_languages: Optional[str] = None
     subtitle_languages: Optional[str] = None
     tags: Optional[str] = None
@@ -150,6 +161,7 @@ class CollectionCreate(BaseModel):
     season_id: Optional[int] = None
     episode_id: Optional[int] = None
     quality: Optional[str] = None
+    codec: Optional[str] = None
     audio_languages: Optional[str] = None
     subtitle_languages: Optional[str] = None
     tags: Optional[str] = None

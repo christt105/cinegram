@@ -4,7 +4,7 @@ from models import File, Collection, Movie, Series, Season, Episode
 from database import engine
 from sqlmodel import Session
 from datetime import datetime, timezone
-from typing import Optional, Dict, Any
+from typing import List, Optional, Dict, Any
 from logger import logger
 from tmdb import TMDB
 
@@ -28,6 +28,135 @@ HDR_MAP = {
     "HDR": ["hdr"],
     "SDR": []  # default si no se detecta nada
 }
+
+def _build_quality_options() -> List[str]:
+    options: List[str] = []
+    for resolution in QUALITY_MAP.keys():
+        options.append(resolution)
+        for hdr_label in HDR_MAP.keys():
+            if hdr_label == "SDR":
+                continue
+            options.append(f"{resolution} {hdr_label}")
+    return options
+
+# Every value the web edit form's quality <select> offers. Generated from
+# QUALITY_MAP/HDR_MAP so it never drifts from what auto-detection can produce.
+QUALITY_OPTIONS: List[str] = _build_quality_options()
+
+# ffprobe codec_name -> normalized display label.
+CODEC_MAP: Dict[str, str] = {
+    "h264": "H.264/AVC",
+    "hevc": "H.265/HEVC",
+    "av1": "AV1",
+    "vp9": "VP9",
+    "vp8": "VP8",
+    "mpeg4": "MPEG-4",
+    "mpeg2video": "MPEG-2",
+    "vc1": "VC-1",
+    "theora": "Theora",
+}
+
+CODEC_OPTIONS: List[str] = list(dict.fromkeys(CODEC_MAP.values()))
+
+# ISO 639-2 (bibliographic) code -> display name. The fixed vocabulary
+# audio_languages/subtitle_languages are restricted to, and the only options
+# the web edit form's language multi-select offers.
+LANGUAGE_VOCABULARY: Dict[str, str] = {
+    "spa": "Español",
+    "eng": "English",
+    "jpn": "Japonés",
+    "kor": "Coreano",
+    "chi": "Chino",
+    "fre": "Francés",
+    "ger": "Alemán",
+    "ita": "Italiano",
+    "por": "Portugués",
+    "rus": "Ruso",
+    "ara": "Árabe",
+    "cat": "Catalán",
+    "lat": "Latín",
+    "pol": "Polaco",
+    "tur": "Turco",
+    "hin": "Hindi",
+    "vie": "Vietnamita",
+    "tha": "Tailandés",
+    "ind": "Indonesio",
+    "dut": "Neerlandés",
+    "swe": "Sueco",
+    "nor": "Noruego",
+    "dan": "Danés",
+    "fin": "Finlandés",
+    "gre": "Griego",
+    "heb": "Hebreo",
+    "ukr": "Ucraniano",
+    "hun": "Húngaro",
+    "cze": "Checo",
+    "rum": "Rumano",
+}
+
+# ffprobe/mkvmerge sometimes tag the ISO 639-2/T (terminology) code instead of
+# the ISO 639-2/B (bibliographic) one LANGUAGE_VOCABULARY is keyed by.
+LANGUAGE_CODE_ALIASES: Dict[str, str] = {
+    "zho": "chi",
+    "fra": "fre",
+    "deu": "ger",
+    "nld": "dut",
+    "ell": "gre",
+    "ces": "cze",
+    "ron": "rum",
+}
+
+# Codes ffprobe emits that carry no usable language information.
+DISCARDED_LANGUAGE_CODES = {"und", "mis", "mul", "zxx"}
+
+
+class InvalidLanguageCodeError(ValueError):
+    def __init__(self, codes: List[str]):
+        self.codes = codes
+        super().__init__(f"Unknown language code(s): {', '.join(codes)}")
+
+
+def normalize_language_code(code: str) -> Optional[str]:
+    """Resolve a raw ffprobe/user-supplied code to its LANGUAGE_VOCABULARY key,
+    or None if it carries no usable language information (discarded codes) or
+    is not part of the fixed vocabulary."""
+    code = code.strip().lower()
+    if not code or code in DISCARDED_LANGUAGE_CODES:
+        return None
+    resolved = LANGUAGE_CODE_ALIASES.get(code, code)
+    return resolved if resolved in LANGUAGE_VOCABULARY else None
+
+
+def validate_language_list(value: Optional[str]) -> Optional[str]:
+    """Validate a comma separated audio_languages/subtitle_languages string
+    against LANGUAGE_VOCABULARY. Discarded codes (see DISCARDED_LANGUAGE_CODES)
+    are silently dropped, since they mean "no language" rather than invalid
+    input. Anything else that isn't in the vocabulary raises
+    InvalidLanguageCodeError. Returns a cleaned, de-duplicated, comma
+    separated string of vocabulary codes, or None if nothing is left."""
+    if value is None:
+        return None
+
+    raw_codes = [c.strip().lower() for c in value.split(",") if c.strip()]
+    if not raw_codes:
+        return None
+
+    normalized: List[str] = []
+    invalid: List[str] = []
+    for code in raw_codes:
+        if code in DISCARDED_LANGUAGE_CODES:
+            continue
+        resolved = LANGUAGE_CODE_ALIASES.get(code, code)
+        if resolved not in LANGUAGE_VOCABULARY:
+            invalid.append(code)
+            continue
+        if resolved not in normalized:
+            normalized.append(resolved)
+
+    if invalid:
+        raise InvalidLanguageCodeError(invalid)
+
+    return ",".join(normalized) if normalized else None
 
 def try_subtract_quality(filename: str):
     fname = filename.lower()
@@ -91,6 +220,52 @@ def extract_quality_from_metadata(technical_metadata: str) -> Optional[str]:
         return None
 
 
+def extract_codec_from_metadata(technical_metadata: str) -> Optional[str]:
+    import json
+    try:
+        data = json.loads(technical_metadata)
+        streams = data.get("streams", [])
+        video_stream = next((s for s in streams if s.get("codec_type") == "video"), None)
+        if not video_stream:
+            return None
+
+        codec_name = video_stream.get("codec_name")
+        if not codec_name:
+            return None
+
+        return CODEC_MAP.get(codec_name.lower())
+    except Exception as e:
+        logger.error(f"Failed to parse technical metadata for codec: {e}")
+        return None
+
+
+def extract_languages_from_metadata(technical_metadata: str, stream_type: str) -> List[str]:
+    """Best-effort extraction of the language codes tagged on `stream_type`
+    ("audio" or "subtitle") streams in the raw ffprobe JSON. Streams with a
+    missing, discarded or unrecognized language tag are silently skipped:
+    this is meant for auto-fill/backfill, not for validating user input, so
+    it never raises."""
+    import json
+    try:
+        data = json.loads(technical_metadata)
+    except Exception:
+        return []
+
+    streams = data.get("streams", [])
+    codes: List[str] = []
+    for stream in streams:
+        if stream.get("codec_type") != stream_type:
+            continue
+        tags = stream.get("tags") or {}
+        lang = tags.get("language") or tags.get("LANGUAGE")
+        if not lang:
+            continue
+        code = normalize_language_code(lang)
+        if code and code not in codes:
+            codes.append(code)
+    return codes
+
+
 def get_or_create_collection(session: Session, filename: str, mime_type: str, technical_metadata: Optional[str] = None):
 
     collection_name = filename.split('.')[0] # TODO: Improve collection name extraction logic (?)
@@ -105,12 +280,14 @@ def get_or_create_collection(session: Session, filename: str, mime_type: str, te
         if quality and hdr and hdr != "SDR":
             quality += f" {hdr}"
 
+    codec = extract_codec_from_metadata(technical_metadata) if technical_metadata else None
+
     if mime_type.startswith("video/"):
         # if it is a video, we can assume that it is a file on its own
-        
+
         # TODO: Check if there is a collection with the same name and use the same movie_id or episode_id if it exists
-        
-        collection = Collection(name=collection_name, quality=quality, technical_metadata=technical_metadata)
+
+        collection = Collection(name=collection_name, quality=quality, codec=codec, technical_metadata=technical_metadata)
         session.add(collection)
         session.commit()
         session.refresh(collection)
@@ -134,6 +311,11 @@ def get_or_create_collection(session: Session, filename: str, mime_type: str, te
             if extracted_quality and collection.quality != extracted_quality:
                 collection.quality = extracted_quality
                 updated = True
+
+            extracted_codec = extract_codec_from_metadata(collection.technical_metadata)
+            if extracted_codec and collection.codec != extracted_codec:
+                collection.codec = extracted_codec
+                updated = True
         elif not collection.quality:
             # Fallback to filename
             resolution, hdr = try_subtract_quality(filename)
@@ -150,7 +332,7 @@ def get_or_create_collection(session: Session, filename: str, mime_type: str, te
             session.refresh(collection)
         return collection
 
-    collection = Collection(name=collection_name, quality=quality, technical_metadata=technical_metadata)
+    collection = Collection(name=collection_name, quality=quality, codec=codec, technical_metadata=technical_metadata)
     session.add(collection)
     session.commit()
     session.refresh(collection)
