@@ -75,6 +75,7 @@ class Collection(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     name: Optional[str] = None
     quality: Optional[str] = None
+    codec: Optional[str] = None
     audio_languages: Optional[str] = None   # Comma separated
     subtitle_languages: Optional[str] = None  # Comma separated
     tags: Optional[str] = None
