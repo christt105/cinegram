@@ -16,6 +16,15 @@
           <Sparkles :size="16" :class="{ spinning: isReidentifying }" />
           Retry identification
         </button>
+        <button
+          class="glass-button"
+          :disabled="isRescanning"
+          title="Ask bot-net to look for files the folder watcher missed"
+          @click="rescanFolder"
+        >
+          <FolderSearch :size="16" :class="{ spinning: isRescanning }" />
+          Scan folder
+        </button>
         <button class="glass-button primary" @click="fetchFiles">
           <RefreshCw :size="16" :class="{ spinning: isLoading }" />
           Refresh
@@ -227,13 +236,14 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { RefreshCw, Check, Edit3, ExternalLink, Sparkles } from 'lucide-vue-next';
+import { RefreshCw, Check, Edit3, ExternalLink, Sparkles, FolderSearch } from 'lucide-vue-next';
 import { backendUrl } from '../config';
 import {
   listWatchedFiles,
   confirmWatchedFile,
   correctWatchedFile,
   reidentifyWatchedFiles,
+  requestDownloadsRescan,
   type WatchedFile,
   type WatchedFileStatus
 } from '../api/backend';
@@ -253,6 +263,7 @@ const view = ref<'pending' | 'history'>('pending');
 const selectedIds = ref<Set<number>>(new Set());
 const isBatchActing = ref(false);
 const isReidentifying = ref(false);
+const isRescanning = ref(false);
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 
 // "confirmed"/"corrected" are transient — bot-net hasn't picked them up and moved them yet —
@@ -319,6 +330,22 @@ const reidentifyAll = async () => {
     alert('Failed to re-identify watched files.');
   } finally {
     isReidentifying.value = false;
+  }
+};
+
+const RESCAN_PICKUP_MS = 8000;
+
+const rescanFolder = async () => {
+  isRescanning.value = true;
+  try {
+    await requestDownloadsRescan();
+    await new Promise(resolve => setTimeout(resolve, RESCAN_PICKUP_MS));
+    await fetchFiles();
+  } catch (error) {
+    console.error('Error requesting a downloads rescan:', error);
+    alert('Failed to request a downloads rescan.');
+  } finally {
+    isRescanning.value = false;
   }
 };
 

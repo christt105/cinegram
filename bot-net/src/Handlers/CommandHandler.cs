@@ -30,7 +30,8 @@ public class CommandHandler
             new BackupCommand(bot.Bot, bot.ApiClient),
             new AddCommand(bot),
             new ImportCommand(bot),
-            new ReidentifyWatchedFilesCommand(bot)
+            new ReidentifyWatchedFilesCommand(bot),
+            new RescanDownloadsCommand(bot)
         };
 
         if (bot.UserClient != null)

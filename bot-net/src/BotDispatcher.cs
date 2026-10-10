@@ -31,6 +31,8 @@ public class BotDispatcher
             jellyfinClient,
             async text => await Bot.SendMessage(AuthConfig.OwnerUserId, text, ParseMode.Html));
 
+        WatchedFolder = new WatchedFolderService(apiClient);
+
         _pendingActionHandler = new PendingActionHandler(Bot);
         _commandHandler = new CommandHandler(this);
         _fileHandler = new FileHandler(this);
@@ -56,6 +58,10 @@ public class BotDispatcher
     /// <summary>Shared with <see cref="WatchNotificationService"/> so a series confirmed from
     /// Telegram and one confirmed from the web both get their TMDB id pushed to Jellyfin.</summary>
     public JellyfinSeriesIdentifier JellyfinSeries { get; }
+
+    /// <summary>Shared with <see cref="Worker"/>, which runs it, so the /rescan command
+    /// triggers the very sweep the background loop uses.</summary>
+    public WatchedFolderService WatchedFolder { get; }
 
     public PendingActionHandler PendingActionHandler => _pendingActionHandler;
 

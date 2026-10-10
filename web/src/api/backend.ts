@@ -129,6 +129,13 @@ export async function reidentifyWatchedFiles(): Promise<WatchedFile[]> {
   return res.json();
 }
 
+export async function requestDownloadsRescan(): Promise<void> {
+  const res = await fetch(`${backendUrl}/watch/rescan`, { method: 'POST' });
+  if (!res.ok) {
+    throw new Error(`Failed to request a downloads rescan: ${res.statusText}`);
+  }
+}
+
 export async function correctWatchedFile(
   id: number,
   tmdbId: number,

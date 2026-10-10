@@ -422,6 +422,18 @@ public class ApiClient : IDisposable
         return await GetSafeAsync<List<WatchedFile>>(url);
     }
 
+    /// <summary>True once if the web asked for a downloads-folder rescan since the last claim.</summary>
+    public async Task<bool> ClaimRescanRequestAsync()
+    {
+        var response = await _httpClient.PostAsync("/watch/rescan/claim", null);
+        if (!response.IsSuccessStatusCode) return false;
+
+        var body = await response.Content.ReadFromJsonAsync<RescanRequestState>(_jsonOptions);
+        return body?.Requested ?? false;
+    }
+
+    private record RescanRequestState(bool Requested);
+
     public async Task<List<WatchedFile>?> GetPendingNotifyWatchedFilesAsync()
     {
         return await GetSafeAsync<List<WatchedFile>>("/watch/pending-notify");
