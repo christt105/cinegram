@@ -8,7 +8,10 @@ COPY ./src/ ./
 RUN dotnet publish -c Release -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
-RUN apt-get update && apt-get install -y --no-install-recommends p7zip-full ffmpeg curl && rm -rf /var/lib/apt/lists/*
+RUN sed -i 's/^Components: main$/Components: main non-free/' /etc/apt/sources.list.d/debian.sources \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends p7zip-full p7zip-rar ffmpeg curl \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 ARG APP_VERSION=dev
 ENV APP_VERSION=$APP_VERSION
