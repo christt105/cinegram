@@ -19,7 +19,7 @@
         <button
           class="glass-button"
           :disabled="isRescanning"
-          title="Ask bot-net to look for files the folder watcher missed"
+          title="Look for files the folder watcher missed"
           @click="rescanFolder"
         >
           <FolderSearch :size="16" :class="{ spinning: isRescanning }" />
@@ -237,13 +237,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { RefreshCw, Check, Edit3, ExternalLink, Sparkles, FolderSearch } from 'lucide-vue-next';
-import { backendUrl } from '../config';
+import { backendUrl, botNetUrl } from '../config';
 import {
   listWatchedFiles,
   confirmWatchedFile,
   correctWatchedFile,
   reidentifyWatchedFiles,
-  requestDownloadsRescan,
   type WatchedFile,
   type WatchedFileStatus
 } from '../api/backend';
@@ -333,17 +332,15 @@ const reidentifyAll = async () => {
   }
 };
 
-const RESCAN_PICKUP_MS = 8000;
-
 const rescanFolder = async () => {
   isRescanning.value = true;
   try {
-    await requestDownloadsRescan();
-    await new Promise(resolve => setTimeout(resolve, RESCAN_PICKUP_MS));
+    const res = await fetch(`${botNetUrl}/watch/rescan`, { method: 'POST' });
+    if (!res.ok) throw new Error(res.statusText);
     await fetchFiles();
   } catch (error) {
-    console.error('Error requesting a downloads rescan:', error);
-    alert('Failed to request a downloads rescan.');
+    console.error('Error scanning the downloads folder:', error);
+    alert('Failed to scan the downloads folder.');
   } finally {
     isRescanning.value = false;
   }

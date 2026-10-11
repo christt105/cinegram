@@ -17,7 +17,6 @@ public class WatchedFolderService
     private const int StabilitySamples = 3;
     private const int ReconciliationSamples = 2;
     private static readonly TimeSpan StabilityInterval = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan RescanRequestPollInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan PeriodicSweepInterval = TimeSpan.FromMinutes(15);
 
     private readonly ApiClient _apiClient;
@@ -65,32 +64,26 @@ public class WatchedFolderService
 
         try
         {
-            await RunSweepLoopAsync(stoppingToken);
+            await RunPeriodicSweepAsync(stoppingToken);
         }
         catch (OperationCanceledException)
         {
         }
     }
 
-    private async Task RunSweepLoopAsync(CancellationToken ct)
+    private async Task RunPeriodicSweepAsync(CancellationToken ct)
     {
-        var nextSweep = DateTime.UtcNow + PeriodicSweepInterval;
-
         while (!ct.IsCancellationRequested)
         {
-            await Task.Delay(RescanRequestPollInterval, ct);
+            await Task.Delay(PeriodicSweepInterval, ct);
 
             try
             {
-                var requested = await _apiClient.ClaimRescanRequestAsync();
-                if (!requested && DateTime.UtcNow < nextSweep) continue;
-
                 await RescanAsync(ct);
-                nextSweep = DateTime.UtcNow + PeriodicSweepInterval;
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                Log.Error("[WatchedFolder] Rescan failed", ex);
+                Log.Error("[WatchedFolder] Periodic sweep failed", ex);
             }
         }
     }

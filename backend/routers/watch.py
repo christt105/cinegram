@@ -16,8 +16,6 @@ from logger import logger
 router = APIRouter(prefix="/watch", tags=["watch"])
 tmdb = TMDB()
 
-_rescan_requested = False
-
 RESOLVABLE_STATUSES = ("pending", "notified")
 PATCHABLE_STATUSES = ("notified", "moved", "error")
 
@@ -115,24 +113,6 @@ def mark_missing(payload: WatchedFileMissingIn, session: Session = Depends(get_s
     session.commit()
     session.refresh(row)
     return row
-
-
-@router.post("/rescan")
-def request_rescan():
-    """For the web: ask bot-net to sweep the downloads folder again. The backend can't see that
-    folder itself, so this only raises a flag that bot-net picks up through /rescan/claim."""
-    global _rescan_requested
-    _rescan_requested = True
-    return {"requested": True}
-
-
-@router.post("/rescan/claim")
-def claim_rescan():
-    """Bot-net polls this; returns whether a rescan was requested since the last claim, and
-    clears the request so each click triggers exactly one sweep."""
-    global _rescan_requested
-    requested, _rescan_requested = _rescan_requested, False
-    return {"requested": requested}
 
 
 @router.post("/reidentify", response_model=List[WatchedFile])

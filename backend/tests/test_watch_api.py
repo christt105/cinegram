@@ -268,11 +268,3 @@ def test_patch_rejects_confirmed_status(client):
     created = report(client, "downloads/patch-bad.mkv", filename="Patch.Bad.mkv")
     res = client.patch(f"/watch/{created['id']}", json={"status": "confirmed"})
     assert res.status_code == 400
-
-
-def test_rescan_request_is_claimed_once(client):
-    assert client.post("/watch/rescan/claim").json() == {"requested": False}
-
-    assert client.post("/watch/rescan").json() == {"requested": True}
-    assert client.post("/watch/rescan/claim").json() == {"requested": True}
-    assert client.post("/watch/rescan/claim").json() == {"requested": False}

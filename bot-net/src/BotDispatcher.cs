@@ -59,8 +59,8 @@ public class BotDispatcher
     /// Telegram and one confirmed from the web both get their TMDB id pushed to Jellyfin.</summary>
     public JellyfinSeriesIdentifier JellyfinSeries { get; }
 
-    /// <summary>Shared with <see cref="Worker"/>, which runs it, so the /rescan command
-    /// triggers the very sweep the background loop uses.</summary>
+    /// <summary>Shared with <see cref="Worker"/>, which runs it, and with the HTTP rescan
+    /// endpoint, so /rescan and the web button trigger the very sweep the background loop uses.</summary>
     public WatchedFolderService WatchedFolder { get; }
 
     public PendingActionHandler PendingActionHandler => _pendingActionHandler;

@@ -70,6 +70,7 @@ public class Worker : BackgroundService
                 Log.Info("[JellyfinBackup] Disabled: set JELLYFIN_BACKUP_DIR to enable periodic backups.");
             }
 
+            _botHolder.RegisterWatchedFolder(botDispatcher.WatchedFolder);
             _ = botDispatcher.WatchedFolder.RunAsync(stoppingToken);
 
             var watchNotificationService = new WatchNotificationService(
