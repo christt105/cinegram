@@ -14,6 +14,7 @@ export interface TelegramCollection {
   id: number;
   name: string;
   quality: string;
+  codec?: string | null;
   technical_metadata?: string | null;
   local_path?: string | null;
   files: TelegramFile[];
@@ -117,6 +118,20 @@ export async function confirmWatchedFile(
   });
   if (!res.ok) {
     throw new Error(`Failed to confirm watched file ${id}: ${res.statusText}`);
+  }
+  return res.json();
+}
+
+export interface MetadataVocabulary {
+  qualities: string[];
+  codecs: string[];
+  languages: Record<string, string>;
+}
+
+export async function fetchMetadataVocabulary(): Promise<MetadataVocabulary> {
+  const res = await fetch(`${backendUrl}/collections/vocabulary`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch metadata vocabulary: ${res.statusText}`);
   }
   return res.json();
 }

@@ -5,13 +5,28 @@ from database import get_session
 from models import Collection, Season, Episode
 from schemas import (
     CollectionOut, CollectionUpdate, CollectionCreate,
-    IdentifyRequest, ReidentifyCollectionRequest
+    IdentifyRequest, ReidentifyCollectionRequest, MetadataVocabularyOut
 )
-from crud import prune_orphaned_media, identify_collection, extract_quality_from_metadata
+from crud import (
+    prune_orphaned_media, identify_collection,
+    extract_quality_from_metadata, extract_codec_from_metadata,
+    validate_language_list, InvalidLanguageCodeError,
+    QUALITY_OPTIONS, CODEC_OPTIONS, LANGUAGE_VOCABULARY,
+)
 from tmdb import TMDB
 
 router = APIRouter(prefix="/collections", tags=["collections"])
 tmdb = TMDB()
+
+@router.get("/vocabulary", response_model=MetadataVocabularyOut)
+def get_metadata_vocabulary():
+    """The fixed quality/codec/language options the web edit form's
+    selects are populated from."""
+    return {
+        "qualities": QUALITY_OPTIONS,
+        "codecs": CODEC_OPTIONS,
+        "languages": LANGUAGE_VOCABULARY,
+    }
 
 @router.get("/{collection_id}", response_model=Optional[CollectionOut])
 def get_collection(collection_id: int, session: Session = Depends(get_session)):
@@ -40,14 +55,21 @@ def create_collection(
     session: Session = Depends(get_session),
 ):
     """Create a new collection"""
+    try:
+        audio_languages = validate_language_list(collection_in.audio_languages)
+        subtitle_languages = validate_language_list(collection_in.subtitle_languages)
+    except InvalidLanguageCodeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     new_collection = Collection(
         name=collection_in.name,
         movie_id=collection_in.movie_id,
         season_id=collection_in.season_id,
         episode_id=collection_in.episode_id,
         quality=collection_in.quality,
-        audio_languages=collection_in.audio_languages,
-        subtitle_languages=collection_in.subtitle_languages,
+        codec=collection_in.codec,
+        audio_languages=audio_languages,
+        subtitle_languages=subtitle_languages,
         tags=collection_in.tags,
         notes=collection_in.notes,
     )
@@ -129,6 +151,19 @@ def update_collection(
         extracted_quality = extract_quality_from_metadata(update_data["technical_metadata"])
         if extracted_quality:
             update_data["quality"] = extracted_quality
+
+    if update_data.get("technical_metadata") and "codec" not in update_data:
+        extracted_codec = extract_codec_from_metadata(update_data["technical_metadata"])
+        if extracted_codec:
+            update_data["codec"] = extracted_codec
+
+    try:
+        if "audio_languages" in update_data:
+            update_data["audio_languages"] = validate_language_list(update_data["audio_languages"])
+        if "subtitle_languages" in update_data:
+            update_data["subtitle_languages"] = validate_language_list(update_data["subtitle_languages"])
+    except InvalidLanguageCodeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
     for key, value in update_data.items():
         setattr(db_collection, key, value)

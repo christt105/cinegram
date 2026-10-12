@@ -397,19 +397,49 @@
             <input v-model="editForm.name" type="text" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
           </div>
           
-          <div>
-            <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Quality (e.g. 1080p, 4K, HDR)</label>
-            <input v-model="editForm.quality" type="text" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div>
+              <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Quality</label>
+              <select v-model="editForm.quality" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;">
+                <option value="">—</option>
+                <option v-for="q in metadataVocabulary.qualities" :key="q" :value="q">{{ q }}</option>
+              </select>
+            </div>
+            <div>
+              <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Codec</label>
+              <select v-model="editForm.codec" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;">
+                <option value="">—</option>
+                <option v-for="c in metadataVocabulary.codecs" :key="c" :value="c">{{ c }}</option>
+              </select>
+            </div>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
             <div>
-              <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Audio Tracks (e.g. es, en)</label>
-              <input v-model="editForm.audio_languages" type="text" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
+              <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Audio Tracks</label>
+              <div class="language-chip-picker">
+                <button
+                  v-for="(label, code) in metadataVocabulary.languages"
+                  :key="'audio-' + code"
+                  type="button"
+                  class="language-chip"
+                  :class="{ active: editForm.audio_languages.includes(code) }"
+                  @click="toggleLanguage(editForm.audio_languages, code)"
+                >{{ label }}</button>
+              </div>
             </div>
             <div>
               <label style="display: block; font-size: 0.85rem; color: #a1a1aa; margin-bottom: 0.25rem;">Subtitles</label>
-              <input v-model="editForm.subtitle_languages" type="text" style="width: 100%; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
+              <div class="language-chip-picker">
+                <button
+                  v-for="(label, code) in metadataVocabulary.languages"
+                  :key="'subs-' + code"
+                  type="button"
+                  class="language-chip"
+                  :class="{ active: editForm.subtitle_languages.includes(code) }"
+                  @click="toggleLanguage(editForm.subtitle_languages, code)"
+                >{{ label }}</button>
+              </div>
             </div>
           </div>
 
@@ -618,6 +648,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { DownloadCloud, Trash2, Edit3, Copy, Check, Search, FileSearch, HardDrive, ChevronDown, ChevronRight, FolderSync } from 'lucide-vue-next'
 import { findJellyfinItemByTmdbId } from '../api/jellyfin'
+import { fetchMetadataVocabulary, type MetadataVocabulary } from '../api/backend'
 
 const props = defineProps<{
   type: string
@@ -652,13 +683,30 @@ const editForm = ref({
   id: 0,
   name: '',
   quality: '',
-  audio_languages: '',
-  subtitle_languages: '',
+  codec: '',
+  audio_languages: [] as string[],
+  subtitle_languages: [] as string[],
   notes: '',
   season_number: 1,
   episode_number: null as number | null,
   is_season_pack: false
 })
+
+const metadataVocabulary = ref<MetadataVocabulary>({ qualities: [], codecs: [], languages: {} })
+
+const loadMetadataVocabulary = async () => {
+  try {
+    metadataVocabulary.value = await fetchMetadataVocabulary()
+  } catch (err) {
+    console.error('Failed to load metadata vocabulary', err)
+  }
+}
+
+const toggleLanguage = (list: string[], code: string) => {
+  const idx = list.indexOf(code)
+  if (idx === -1) list.push(code)
+  else list.splice(idx, 1)
+}
 
 const showingPosterModal = ref(false)
 const loadingPosters = ref(false)
@@ -764,14 +812,18 @@ const checkJellyfinItem = async (tmdbId: number) => {
   }
 }
 
+const splitLanguages = (value: string | null | undefined): string[] =>
+  (value || '').split(',').map(c => c.trim()).filter(Boolean)
+
 const openEditModal = (col: any, currentSeason: number | null, currentEpisode: number | null) => {
   editingCollection.value = col
   editForm.value = {
     id: col.id,
     name: col.name || '',
     quality: col.quality || '',
-    audio_languages: col.audio_languages || '',
-    subtitle_languages: col.subtitle_languages || '',
+    codec: col.codec || '',
+    audio_languages: splitLanguages(col.audio_languages),
+    subtitle_languages: splitLanguages(col.subtitle_languages),
     notes: col.notes || '',
     season_number: currentSeason !== null ? currentSeason : 1,
     episode_number: currentEpisode,
@@ -784,8 +836,9 @@ const saveCollectionChanges = async () => {
     const payload: any = {
       name: editForm.value.name,
       quality: editForm.value.quality,
-      audio_languages: editForm.value.audio_languages,
-      subtitle_languages: editForm.value.subtitle_languages,
+      codec: editForm.value.codec,
+      audio_languages: editForm.value.audio_languages.join(','),
+      subtitle_languages: editForm.value.subtitle_languages.join(','),
       notes: editForm.value.notes
     }
 
@@ -1497,6 +1550,7 @@ const deleteItem = async () => {
 
 onMounted(() => {
   fetchItem()
+  loadMetadataVocabulary()
 })
 </script>
 
@@ -1622,6 +1676,32 @@ onMounted(() => {
   background: rgba(34, 197, 94, 0.14);
   color: #7ee2a8;
   font-size: 10px;
+}
+.language-chip-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.language-chip {
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d1d5db;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.language-chip.active {
+  background: rgba(96, 165, 250, 0.2);
+  border-color: rgba(96, 165, 250, 0.5);
+  color: #93c5fd;
 }
 .col-meta {
   font-size: 0.85rem;
