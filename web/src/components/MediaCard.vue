@@ -9,7 +9,7 @@
       <!-- Collections count (Telegram library) or backup status badge -->
       <div v-if="showCollectionCount" class="status-badge collections">
         <Layers :size="12" />
-        {{ media.collectionCount || 0 }} {{ (media.collectionCount || 0) === 1 ? 'collection' : 'collections' }}
+        {{ media.collectionCount || 0 }}
       </div>
       <div v-else class="status-badge" :class="media.isOnTelegram ? 'backed-up' : 'pending'">
         <component :is="media.isOnTelegram ? CheckCircle : RefreshCw" :size="12" />
@@ -148,6 +148,8 @@ const goToDetail = () => {
 }
 
 .status-badge.collections {
+  top: auto;
+  bottom: 8px;
   background: rgba(14, 14, 14, 0.72);
   color: var(--secondary);
   border: 1px solid var(--outline-variant);
