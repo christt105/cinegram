@@ -23,14 +23,14 @@ Cinegram is a decoupled set of three services:
 | Service    | Stack                              | Role                                                                                     |
 | ---------- | ---------------------------------- | ---------------------------------------------------------------------------------------- |
 | `web`      | Vue 3 + Vite + TypeScript          | Admin panel: browse the library, manage download/upload queues, re-identify collections. |
-| `backend`  | Python 3.12 + FastAPI + SQLModel   | Source of truth: REST API, filename parsing, TMDB metadata, task queues (SQLite).        |
-| `bot-net`  | C# / .NET 8 + WTelegramClient      | Worker: polls tasks, transfers files over Telegram (MTProto), splits/joins with `7z`, reads metadata with `ffprobe`. |
+| `backend`  | Python 3.12 + FastAPI + SQLModel   | Source of truth: REST API, filename parsing, TMDB metadata (SQLite).                     |
+| `bot-net`  | C# / .NET 8 + WTelegramClient      | Worker: owns the download/upload queues, transfers files over Telegram (MTProto), splits/joins with `7z`, reads metadata with `ffprobe`. |
 
 ```
 User ─▶ web (Vue) ─▶ backend (FastAPI) ─▶ SQLite / TMDB
-                          ▲
-                          │ polls tasks & reports status
-                       bot-net (.NET) ─▶ Telegram (MTProto)
+              │           ▲
+              │           │ catalogue
+              └──────▶ bot-net (.NET) ─▶ Telegram (MTProto)
                                        ─▶ Host disk (Jellyfin media)
 ```
 
@@ -168,7 +168,7 @@ Mark such a season as **Local metadata (non-official)** in the web panel (series
 | `backend` | `${BACKEND_PORT:-8005}` | `8000`         |
 | `bot-net` | `${BOT_NET_PORT:-8088}` | `8080`         |
 
-All three host ports are configurable in `.env`, so you can move any of them if it clashes with something else already running on the host. The browser only talks to the web's origin: its nginx proxies `/api/` to `backend` (except `/api/watch`, already served by `bot-net`) and `/bot/` to `bot-net` over the compose network, so only `WEB_PORT` has to be reachable. At container start the web injects `JELLYFIN_URL` / `JELLYFIN_TOKEN` into the browser (via `/config.js`); `BACKEND_URL` / `BOT_NET_URL` override the proxied paths if you serve the services elsewhere. After changing them, `docker compose up -d` is enough, no rebuild.
+All three host ports are configurable in `.env`, so you can move any of them if it clashes with something else already running on the host. The browser only talks to the web's origin: its nginx proxies `/api/` to `backend` (except `/api/watch`, `/api/tasks/`, `/api/downloads/` and `/api/uploads/`, already served by `bot-net`) and `/bot/` to `bot-net` over the compose network, so only `WEB_PORT` has to be reachable. At container start the web injects `JELLYFIN_URL` / `JELLYFIN_TOKEN` into the browser (via `/config.js`); `BACKEND_URL` / `BOT_NET_URL` override the proxied paths if you serve the services elsewhere. After changing them, `docker compose up -d` is enough, no rebuild.
 
 The `web` service is a static bundle served by nginx, with the runtime config written on startup by `web/docker-entrypoint.sh`. A `web/Dockerfile.dev` (Vite dev server with hot reload) is kept for local development; it proxies `/api` and `/bot` to `localhost:8005` and `localhost:8088`, or to `BACKEND_URL` / `BOT_NET_URL` when set.
 

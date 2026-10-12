@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO;
 using Bot.Models;
+using UploadTask = Bot.Data.UploadTask;
 using Bot.Utils;
 using Telegram.Bot.Types;
 using File = System.IO.File;
@@ -80,6 +81,7 @@ public class UploadService
 {
     private readonly WTelegram.Bot _bot;
     private readonly ApiClient _apiClient;
+    private readonly TransferTasks _tasks;
     private readonly TaskQueue _queue;
     private readonly UserClientService? _userClient;
     private readonly UploadEchoRegistry? _echoes;
@@ -90,42 +92,46 @@ public class UploadService
     /// </summary>
     private static readonly TimeSpan EchoTimeout = TimeSpan.FromMinutes(2);
 
-    public UploadService(WTelegram.Bot bot, ApiClient apiClient, TaskQueue queue,
+    /// <summary>How long to wait before reading the queue again after the database failed.</summary>
+    private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(30);
+
+    public UploadService(WTelegram.Bot bot, ApiClient apiClient, TransferTasks tasks, TaskQueue queue,
         UserClientService? userClient = null, UploadEchoRegistry? echoes = null)
     {
         _bot = bot;
         _apiClient = apiClient;
+        _tasks = tasks;
         _queue = queue;
         _userClient = userClient;
         _echoes = echoes;
     }
 
-    public async Task PollAndProcessAsync(CancellationToken stoppingToken)
+    /// <summary>
+    /// Hands every pending upload to the queue, then again each time one is enqueued.
+    /// </summary>
+    public async Task RunAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                var pendingTasks = await _apiClient.GetPendingUploadsAsync();
-                if (pendingTasks != null && pendingTasks.Count > 0)
+                foreach (var task in await _tasks.ClaimPendingUploadsAsync(stoppingToken))
                 {
-                    foreach (var task in pendingTasks)
-                    {
-                        Log.Info($"[Uploader] Found pending upload task {task.Id} for Jellyfin item {task.JellyfinId}");
-                        // Mark as uploading immediately to avoid duplicate pickups
-                        await _apiClient.UpdateUploadStatusAsync(task.Id, "uploading", 0);
-                        
-                        // Enqueue work
-                        await _queue.Enqueue(() => ProcessUploadTask(task));
-                    }
+                    Log.Info($"[Uploader] Found pending upload task {task.Id} for Jellyfin item {task.JellyfinId}");
+                    await _queue.Enqueue(() => ProcessUploadTask(task));
                 }
+
+                await _tasks.Uploads.WaitAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                return;
             }
             catch (Exception ex)
             {
-                Log.Error("[Uploader] Error in polling loop", ex);
+                Log.Error("[Uploader] Failed to claim pending uploads", ex);
+                await Task.Delay(RetryDelay, stoppingToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
             }
-
-            await Task.Delay(5000, stoppingToken);
         }
     }
 
@@ -289,13 +295,13 @@ public class UploadService
             }
 
             // 4. Update Status
-            await _apiClient.UpdateUploadStatusAsync(task.Id, "completed", 100);
+            await _tasks.UpdateUploadAsync(task.Id, "completed", 100);
             Log.Info($"[Uploader] Upload task {task.Id} completed successfully.");
         }
         catch (Exception ex)
         {
             Log.Error($"[Uploader] Failed to process upload task {task.Id}", ex);
-            await _apiClient.UpdateUploadStatusAsync(task.Id, "failed", 0, ex.Message);
+            await _tasks.UpdateUploadAsync(task.Id, "failed", 0, ex.Message);
         }
         finally
         {
@@ -402,7 +408,7 @@ public class UploadService
             {
                 progress[1] = nowTicks;
                 var percent = (int)(progress[0] * 100 / totalBytesToUpload);
-                _ = _apiClient.UpdateUploadStatusAsync(taskId, "uploading", percent);
+                _ = _tasks.ReportUploadProgressAsync(taskId, percent);
             }
         };
 

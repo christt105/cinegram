@@ -9,43 +9,49 @@ public class DownloadService
 {
     private readonly WTelegram.Bot _bot;
     private readonly ApiClient _apiClient;
+    private readonly TransferTasks _tasks;
     private readonly TaskQueue _queue;
     private readonly UserClientService? _userClient;
 
-    public DownloadService(WTelegram.Bot bot, ApiClient apiClient, TaskQueue queue, UserClientService? userClient = null)
+    /// <summary>How long to wait before reading the queue again after the database failed.</summary>
+    private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(30);
+
+    public DownloadService(WTelegram.Bot bot, ApiClient apiClient, TransferTasks tasks, TaskQueue queue,
+        UserClientService? userClient = null)
     {
         _bot = bot;
         _apiClient = apiClient;
+        _tasks = tasks;
         _queue = queue;
         _userClient = userClient;
     }
 
-    public async Task PollAndProcessAsync(CancellationToken stoppingToken)
+    /// <summary>
+    /// Hands every pending download to the queue, then again each time one is enqueued.
+    /// </summary>
+    public async Task RunAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
-                var pendingTasks = await _apiClient.GetPendingDownloadsAsync();
-                if (pendingTasks != null && pendingTasks.Count > 0)
+                foreach (var task in await _tasks.ClaimPendingDownloadsAsync(stoppingToken))
                 {
-                    foreach (var task in pendingTasks)
-                    {
-                        Log.Info($"[Downloader] Found pending download task {task.TaskId} for collection {task.CollectionId}");
-                        // Mark as downloading immediately to avoid duplicate pickups
-                        await _apiClient.UpdateDownloadStatusAsync(task.TaskId, "downloading", 0);
-                        
-                        // Enqueue work
-                        await _queue.Enqueue(() => ProcessDownloadTask(task));
-                    }
+                    Log.Info($"[Downloader] Found pending download task {task.TaskId} for collection {task.CollectionId}");
+                    await _queue.Enqueue(() => ProcessDownloadTask(task));
                 }
+
+                await _tasks.Downloads.WaitAsync(stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                return;
             }
             catch (Exception ex)
             {
-                Log.Error("[Downloader] Error in polling loop", ex);
+                Log.Error("[Downloader] Failed to claim pending downloads", ex);
+                await Task.Delay(RetryDelay, stoppingToken).ConfigureAwait(ConfigureAwaitOptions.SuppressThrowing);
             }
-
-            await Task.Delay(5000, stoppingToken);
         }
     }
 
@@ -139,7 +145,7 @@ public class DownloadService
                             {
                                 lastReportedTime = nowTicks;
                                 var percent = (int)(totalDownloaded * 100 / totalSize);
-                                _ = _apiClient.UpdateDownloadStatusAsync(task.TaskId, "downloading", percent);
+                                _ = _tasks.ReportDownloadProgressAsync(task.TaskId, percent);
                             }
                         }
 
@@ -280,7 +286,7 @@ public class DownloadService
             await StoreTechnicalMetadata(task.CollectionId, fullPath);
 
             // 7. Update Status
-            await _apiClient.UpdateDownloadStatusAsync(task.TaskId, "completed", 100, localPath: fullPath);
+            await _tasks.UpdateDownloadAsync(task.TaskId, "completed", 100, localPath: fullPath);
             taskStopwatch.Stop();
             var totalMb = totalSize / 1_000_000.0;
             var totalSec = taskStopwatch.Elapsed.TotalSeconds;
@@ -290,7 +296,7 @@ public class DownloadService
         catch (Exception ex)
         {
             Log.Error($"[Downloader] Failed to process task {task.TaskId}", ex);
-            await _apiClient.UpdateDownloadStatusAsync(task.TaskId, "failed", 0, ex.Message);
+            await _tasks.UpdateDownloadAsync(task.TaskId, "failed", 0, ex.Message);
         }
         finally
         {

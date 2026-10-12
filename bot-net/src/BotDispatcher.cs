@@ -19,12 +19,13 @@ public class BotDispatcher
     private readonly PendingActionHandler _pendingActionHandler;
 
     public BotDispatcher(
-        WTelegram.Bot bot, ApiClient apiClient, WatchedFiles watchedFiles, TaskQueue queue,
+        WTelegram.Bot bot, ApiClient apiClient, WatchedFiles watchedFiles, TransferTasks transfers, TaskQueue queue,
         UserClientService? userClient = null, IJellyfinClient? jellyfinClient = null)
     {
         Bot = bot;
         ApiClient = apiClient;
         WatchedFiles = watchedFiles;
+        Transfers = transfers;
         Queue = queue;
         UserClient = userClient;
 
@@ -47,6 +48,8 @@ public class BotDispatcher
     public ApiClient ApiClient { get; }
 
     public WatchedFiles WatchedFiles { get; }
+
+    public TransferTasks Transfers { get; }
 
     public TaskQueue Queue { get; }
 
