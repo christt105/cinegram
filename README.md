@@ -103,8 +103,8 @@ All configuration lives in `.env` (see `.env.example` for the template).
 | `JELLYFIN_BACKUP_RETAIN` | How many of the most recent backups to keep in the chat; older ones are deleted as new ones land (defaults `4`). `0` or negative keeps every backup ever sent. |
 | `PUID` / `PGID`         | User/group IDs the `backend` and `bot-net` containers run as, so they can write to the host media directories (defaults `1000:1000`). |
 | `WEB_PORT`              | Host port for the web panel (defaults `5173`). Change it if the port is already in use.          |
-| `BACKEND_PORT`          | Host port for the backend API (defaults `8005`). The web container reads it at start.           |
-| `BOT_NET_PORT`          | Host port for the `bot-net` worker (defaults `8088`). The web container reads it at start.       |
+| `BACKEND_PORT`          | Host port for the backend API (defaults `8005`). The web reaches the backend through its own `/api` proxy, so this is only for direct access. |
+| `BOT_NET_PORT`          | Host port for the `bot-net` worker (defaults `8088`). The web reaches it through its own `/bot` proxy, so this is only for direct access. |
 | `CINEGRAM_TAG`          | Image tag to deploy (defaults `latest`; pin to an exact release like `v1.2.0`, to a major line like `v1` to auto-track its patches/minors, or to `pr-18` to try a pull request). |
 
 ## Path mapping
@@ -168,9 +168,9 @@ Mark such a season as **Local metadata (non-official)** in the web panel (series
 | `backend` | `${BACKEND_PORT:-8005}` | `8000`         |
 | `bot-net` | `${BOT_NET_PORT:-8088}` | `8080`         |
 
-All three host ports are configurable in `.env`, so you can move any of them if it clashes with something else already running on the host. At container start the web injects `JELLYFIN_URL` / `JELLYFIN_TOKEN` / `BACKEND_PORT` / `BOT_NET_PORT` into the browser (via `/config.js`), so the app talks to the services on whatever ports you choose. After changing them, `docker compose up -d` is enough — no rebuild.
+All three host ports are configurable in `.env`, so you can move any of them if it clashes with something else already running on the host. The browser only talks to the web's origin: its nginx proxies `/api/` to `backend` and `/bot/` to `bot-net` over the compose network, so only `WEB_PORT` has to be reachable. At container start the web injects `JELLYFIN_URL` / `JELLYFIN_TOKEN` into the browser (via `/config.js`); `BACKEND_URL` / `BOT_NET_URL` override the proxied paths if you serve the services elsewhere. After changing them, `docker compose up -d` is enough, no rebuild.
 
-The `web` service is a static bundle served by nginx, with the runtime config written on startup by `web/docker-entrypoint.sh`. A `web/Dockerfile.dev` (Vite dev server with hot reload) is kept for local development.
+The `web` service is a static bundle served by nginx, with the runtime config written on startup by `web/docker-entrypoint.sh`. A `web/Dockerfile.dev` (Vite dev server with hot reload) is kept for local development; it proxies `/api` and `/bot` to `localhost:8005` and `localhost:8088`, or to `BACKEND_URL` / `BOT_NET_URL` when set.
 
 ## Security
 
@@ -231,7 +231,7 @@ The session is written to `./appdata/bot-net/user_client.session` and reused on 
 ## Data & Persistence
 
 All persistent application state is stored on the host under `./appdata`:
-- `./appdata/backend`: SQLite database storing library metadata, task queues, and media indexes.
+- `./appdata/backend`: SQLite database storing library metadata, task queues, and media indexes. `bot-net` mounts it too, at `/data/db`, while the backend's responsibilities move into it; both open the database in WAL mode.
 - `./appdata/bot-net`: Telegram session state (bot and, if configured, user account) and worker runtime cache.
 
 Make sure to back up the `./appdata` directory when migrating servers or updating containers.

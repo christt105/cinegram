@@ -4,6 +4,18 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    proxy: {
+      '/api': {
+        target: process.env.BACKEND_URL ?? 'http://localhost:8005',
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
+      '/bot': {
+        target: process.env.BOT_NET_URL ?? 'http://localhost:8088',
+        rewrite: (path) => path.replace(/^\/bot/, ''),
+      },
+    },
+  },
   plugins: [
     vue(),
     VitePWA({

@@ -1,12 +1,16 @@
 using Bot;
+using Bot.Data;
 using Bot.Services;
 using Bot.Utils;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 if (args.Length > 0 && args[0] == "auth")
     return await ConsoleAuth.RunAsync();
 
 var builder = WebApplication.CreateBuilder(args);
+var databasePath = Environment.GetEnvironmentVariable("DATABASE_PATH") ?? CinegramDb.DefaultPath;
+builder.Services.AddDbContextFactory<CinegramDb>(options => options.UseSqlite(CinegramDb.ConnectionString(databasePath)));
 builder.Services.AddSingleton<BotHolder>();
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddCors(options =>
@@ -18,6 +22,8 @@ builder.Services.AddCors(options =>
 builder.WebHost.UseUrls("http://0.0.0.0:8080");
 
 var app = builder.Build();
+
+await DatabaseCheck.LogAsync(databasePath, CancellationToken.None);
 
 app.UseCors();
 
