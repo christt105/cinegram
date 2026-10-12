@@ -10,6 +10,7 @@ public class BotHolder
     private WTelegram.Bot? _bot;
     private ApiClient? _apiClient;
     private long _chatId;
+    private WatchedFolderService? _watchedFolder;
 
     public void Register(WTelegram.Bot bot, ApiClient apiClient, long chatId)
     {
@@ -18,6 +19,8 @@ public class BotHolder
         _chatId = chatId;
     }
 
+    public void RegisterWatchedFolder(WatchedFolderService watchedFolder) => _watchedFolder = watchedFolder;
+
     public bool IsReady => _bot != null && _apiClient != null;
 
     public WTelegram.Bot Bot => _bot ?? throw new InvalidOperationException("Bot not yet initialised.");
@@ -25,4 +28,7 @@ public class BotHolder
     public ApiClient ApiClient => _apiClient ?? throw new InvalidOperationException("ApiClient not yet initialised.");
 
     public long ChatId => _chatId;
+
+    public WatchedFolderService WatchedFolder =>
+        _watchedFolder ?? throw new InvalidOperationException("WatchedFolderService not yet initialised.");
 }

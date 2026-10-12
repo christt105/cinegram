@@ -8,29 +8,34 @@ namespace Bot.Services;
 /// Watches the downloads folder for new video files, waits for their size to stop growing,
 /// and reports them to the backend's /watch endpoints. Runs a reconciliation sweep against
 /// the backend's active rows on startup first, since FileSystemWatcher only sees events raised
-/// while the process is running and guarantees nothing about downtime.
+/// while the process is running and guarantees nothing about downtime. The same sweep re-runs
+/// periodically and on demand (the /rescan command, the web's "Scan folder" button), because
+/// the watcher can also go quiet without notice while the process is still alive.
 /// </summary>
 public class WatchedFolderService
 {
     private const int StabilitySamples = 3;
     private const int ReconciliationSamples = 2;
     private static readonly TimeSpan StabilityInterval = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan PeriodicSweepInterval = TimeSpan.FromMinutes(15);
 
     private readonly ApiClient _apiClient;
     private readonly ConcurrentDictionary<string, byte> _tracking = new();
 
-    private string _root = "";
+    private readonly SemaphoreSlim _sweepGate = new(1, 1);
+
+    private readonly string _root;
     private CancellationToken _lifetimeToken;
 
     public WatchedFolderService(ApiClient apiClient)
     {
         _apiClient = apiClient;
+        _root = MediaLibrary.DownloadsDir;
     }
 
     public async Task RunAsync(CancellationToken stoppingToken)
     {
         _lifetimeToken = stoppingToken;
-        _root = MediaLibrary.DownloadsDir;
 
         try
         {
@@ -42,7 +47,7 @@ public class WatchedFolderService
             return;
         }
 
-        await ReconcileAsync(stoppingToken);
+        await RescanAsync(stoppingToken);
 
         using var watcher = new FileSystemWatcher(_root)
         {
@@ -59,14 +64,49 @@ public class WatchedFolderService
 
         try
         {
-            await Task.Delay(Timeout.Infinite, stoppingToken);
+            await RunPeriodicSweepAsync(stoppingToken);
         }
         catch (OperationCanceledException)
         {
         }
     }
 
-    private async Task ReconcileAsync(CancellationToken ct)
+    private async Task RunPeriodicSweepAsync(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested)
+        {
+            await Task.Delay(PeriodicSweepInterval, ct);
+
+            try
+            {
+                await RescanAsync(ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Log.Error("[WatchedFolder] Periodic sweep failed", ex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Diffs the downloads folder against the backend's active rows and reports whatever the
+    /// watcher missed. Safe to call at any time: a file already being tracked is skipped, and
+    /// concurrent calls queue behind each other.
+    /// </summary>
+    public async Task<WatchedFileReconciliation.ReconciliationDiff> RescanAsync(CancellationToken ct)
+    {
+        await _sweepGate.WaitAsync(ct);
+        try
+        {
+            return await ReconcileAsync(ct);
+        }
+        finally
+        {
+            _sweepGate.Release();
+        }
+    }
+
+    private async Task<WatchedFileReconciliation.ReconciliationDiff> ReconcileAsync(CancellationToken ct)
     {
         var onDiskRelative = MediaLibrary.EnumerateVideos(_root)
             .Select(path => WatchedFileReconciliation.ToRelativePath(_root, path))
@@ -90,6 +130,8 @@ public class WatchedFolderService
             var fullPath = WatchedFileReconciliation.ToFullPath(_root, relativePath);
             await TrackAndReportAsync(fullPath, ReconciliationSamples, StabilityInterval, ct);
         }
+
+        return diff;
     }
 
     private void OnCreated(object? sender, FileSystemEventArgs e)

@@ -16,6 +16,15 @@
           <Sparkles :size="16" :class="{ spinning: isReidentifying }" />
           Retry identification
         </button>
+        <button
+          class="glass-button"
+          :disabled="isRescanning"
+          title="Look for files the folder watcher missed"
+          @click="rescanFolder"
+        >
+          <FolderSearch :size="16" :class="{ spinning: isRescanning }" />
+          Scan folder
+        </button>
         <button class="glass-button primary" @click="fetchFiles">
           <RefreshCw :size="16" :class="{ spinning: isLoading }" />
           Refresh
@@ -227,8 +236,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { RefreshCw, Check, Edit3, ExternalLink, Sparkles } from 'lucide-vue-next';
-import { backendUrl } from '../config';
+import { RefreshCw, Check, Edit3, ExternalLink, Sparkles, FolderSearch } from 'lucide-vue-next';
+import { backendUrl, botNetUrl } from '../config';
 import {
   listWatchedFiles,
   confirmWatchedFile,
@@ -253,6 +262,7 @@ const view = ref<'pending' | 'history'>('pending');
 const selectedIds = ref<Set<number>>(new Set());
 const isBatchActing = ref(false);
 const isReidentifying = ref(false);
+const isRescanning = ref(false);
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 
 // "confirmed"/"corrected" are transient — bot-net hasn't picked them up and moved them yet —
@@ -319,6 +329,20 @@ const reidentifyAll = async () => {
     alert('Failed to re-identify watched files.');
   } finally {
     isReidentifying.value = false;
+  }
+};
+
+const rescanFolder = async () => {
+  isRescanning.value = true;
+  try {
+    const res = await fetch(`${botNetUrl}/watch/rescan`, { method: 'POST' });
+    if (!res.ok) throw new Error(res.statusText);
+    await fetchFiles();
+  } catch (error) {
+    console.error('Error scanning the downloads folder:', error);
+    alert('Failed to scan the downloads folder.');
+  } finally {
+    isRescanning.value = false;
   }
 };
 

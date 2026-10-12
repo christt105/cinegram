@@ -84,6 +84,20 @@ app.MapPost("/messages/forward-origin", async (int[] messageIds, IServiceProvide
     }
 });
 
+// Sweep the downloads folder for files the FileSystemWatcher missed
+app.MapPost("/watch/rescan", async (BotHolder holder) =>
+{
+    try
+    {
+        var diff = await holder.WatchedFolder.RescanAsync(CancellationToken.None);
+        return Results.Ok(new { @new = diff.New.Count, missing = diff.Missing.Count });
+    }
+    catch (InvalidOperationException ex)
+    {
+        return Results.Problem(ex.Message, statusCode: 503);
+    }
+});
+
 // Delete a collection's downloaded file, keeping the collection itself
 app.MapDelete("/local/collection/{collectionId:int}", async (int collectionId, IServiceProvider sp) =>
 {

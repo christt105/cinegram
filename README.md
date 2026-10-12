@@ -150,6 +150,8 @@ A healthy deployment reports `Jellyfin library path check: 2/2 locations resolve
 
 If the guesses are wrong across the board — TMDB was unreachable when the files were detected, say — `/reidentify` re-runs the identification for every file still unresolved.
 
+The folder watcher can occasionally stop seeing new files while the bot keeps running, so `bot-net` also sweeps the folder against the backend every 15 minutes. To force it right away, use `/rescan` in Telegram or the **Scan folder** button in the web panel's Downloads section (which may take a few seconds per new file while it checks the size has stopped growing).
+
 A file removed from disk before you action it is marked as such instead of leaving a dead button behind, and one that was already moved is never re-imported.
 
 ## Local metadata for non-official content
@@ -200,6 +202,7 @@ Once the containers are up, control the worker from Telegram (as the user in `TE
 | `/orphans`                 | List collections still missing TMDB identification.         |
 | `/queue`                   | Show active upload and download transfers.                  |
 | `/reidentify`              | Re-run TMDB identification for every unresolved watched file. |
+| `/rescan`                  | Scan the downloads folder for files the watcher missed.     |
 | `/auth`                    | Show whether a Telegram user account session is active.     |
 | `/backup`                  | Send a backup of the database.                              |
 | `/version`                 | Show the bot version.                                       |
