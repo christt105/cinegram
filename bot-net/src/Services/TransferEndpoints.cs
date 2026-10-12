@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -32,10 +33,22 @@ public static class TransferEndpoints
         });
 
         app.MapPost("/downloads/enqueue/collection/{collectionId:int}",
-            async (int collectionId, [FromBody] DownloadEnqueueRequest? request, TransferTasks tasks, CancellationToken ct) =>
-                await tasks.EnqueueCollectionAsync(collectionId, request?.NameSuffix, ct)
+            async (int collectionId, HttpRequest http, TransferTasks tasks, CancellationToken ct) =>
+            {
+                DownloadEnqueueRequest? request;
+                try
+                {
+                    request = await ReadOptionalJsonAsync<DownloadEnqueueRequest>(http, ct);
+                }
+                catch (JsonException)
+                {
+                    return Error(422, "Invalid JSON body");
+                }
+
+                return await tasks.EnqueueCollectionAsync(collectionId, request?.NameSuffix, ct)
                     ? Status("ok", "Enqueued collection")
-                    : Status("ignored", "Collection already in queue or empty"));
+                    : Status("ignored", "Collection already in queue or empty");
+            });
 
         app.MapPost("/downloads/enqueue/series/{seriesId:int}",
             async (int seriesId, TransferTasks tasks, CancellationToken ct) =>
@@ -82,6 +95,14 @@ public static class TransferEndpoints
 
         app.MapPost("/uploads/{taskId:int}/retry", async (int taskId, TransferTasks tasks, CancellationToken ct) =>
             await tasks.RetryUploadAsync(taskId, ct) ? Status("ok") : Error(404, "Upload task not found"));
+    }
+
+    /// <summary>The body is optional and, as in the backend, read as JSON whatever its content type.</summary>
+    private static async Task<T?> ReadOptionalJsonAsync<T>(HttpRequest http, CancellationToken ct) where T : class
+    {
+        using var reader = new StreamReader(http.Body);
+        var body = await reader.ReadToEndAsync(ct);
+        return string.IsNullOrWhiteSpace(body) ? null : JsonSerializer.Deserialize<T>(body);
     }
 
     private static IResult Enqueued(TransferTasks.EnqueueOutcome outcome, Func<int, string> message) =>

@@ -147,6 +147,23 @@ public class TransferTasksTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task EnqueueCollection_ReadsTheBodyWhateverItsContentType()
+    {
+        var first = await MovieCollection();
+        var second = await Add(new Collection { MovieId = first.MovieId, Files = [File()] });
+
+        await Json(await _http.PostAsync($"/downloads/enqueue/collection/{first.Id}",
+            new FormUrlEncodedContent([])));
+        await Json(await _http.PostAsync($"/downloads/enqueue/collection/{second.Id}",
+            new StringContent("""{"name_suffix": "v2"}""", System.Text.Encoding.UTF8, "text/plain")));
+        var invalid = await _http.PostAsync($"/downloads/enqueue/collection/{first.Id}",
+            new StringContent("{", System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, invalid.StatusCode);
+        Assert.Equal([null, "v2"], (await _tasks.ClaimPendingDownloadsAsync()).Select(j => j.NameSuffix));
+    }
+
+    [Fact]
     public async Task EnqueueCollection_IgnoresQueuedEmptyOrUnknownCollections()
     {
         var collection = await MovieCollection();
