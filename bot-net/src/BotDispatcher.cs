@@ -19,11 +19,12 @@ public class BotDispatcher
     private readonly PendingActionHandler _pendingActionHandler;
 
     public BotDispatcher(
-        WTelegram.Bot bot, ApiClient apiClient, TaskQueue queue, UserClientService? userClient = null,
-        IJellyfinClient? jellyfinClient = null)
+        WTelegram.Bot bot, ApiClient apiClient, WatchedFiles watchedFiles, TaskQueue queue,
+        UserClientService? userClient = null, IJellyfinClient? jellyfinClient = null)
     {
         Bot = bot;
         ApiClient = apiClient;
+        WatchedFiles = watchedFiles;
         Queue = queue;
         UserClient = userClient;
 
@@ -31,7 +32,8 @@ public class BotDispatcher
             jellyfinClient,
             async text => await Bot.SendMessage(AuthConfig.OwnerUserId, text, ParseMode.Html));
 
-        WatchedFolder = new WatchedFolderService(apiClient);
+        WatchNotifications = new WatchNotificationService(bot, watchedFiles, WatchedFileMessages, JellyfinSeries);
+        WatchedFolder = new WatchedFolderService(watchedFiles, WatchNotifications);
 
         _pendingActionHandler = new PendingActionHandler(Bot);
         _commandHandler = new CommandHandler(this);
@@ -44,6 +46,8 @@ public class BotDispatcher
 
     public ApiClient ApiClient { get; }
 
+    public WatchedFiles WatchedFiles { get; }
+
     public TaskQueue Queue { get; }
 
     public UserClientService? UserClient { get; }
@@ -52,12 +56,15 @@ public class BotDispatcher
     public UploadEchoRegistry UploadEchoes { get; } = new();
 
     /// <summary>Shared with <see cref="WatchNotificationService"/> so the Confirm/Correct
-    /// callbacks and the removed-file reconciliation sweep track the same live messages.</summary>
+    /// callbacks and the removed-file and web-confirmed edits track the same live messages.</summary>
     public WatchedFileMessageRegistry WatchedFileMessages { get; } = new();
 
     /// <summary>Shared with <see cref="WatchNotificationService"/> so a series confirmed from
     /// Telegram and one confirmed from the web both get their TMDB id pushed to Jellyfin.</summary>
     public JellyfinSeriesIdentifier JellyfinSeries { get; }
+
+    /// <summary>Shared with the HTTP confirm/correct endpoints, which hand it the rows to move.</summary>
+    public WatchNotificationService WatchNotifications { get; }
 
     /// <summary>Shared with <see cref="Worker"/>, which runs it, and with the HTTP rescan
     /// endpoint, so /rescan and the web button trigger the very sweep the background loop uses.</summary>

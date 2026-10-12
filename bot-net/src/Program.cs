@@ -11,6 +11,8 @@ if (args.Length > 0 && args[0] == "auth")
 var builder = WebApplication.CreateBuilder(args);
 var databasePath = Environment.GetEnvironmentVariable("DATABASE_PATH") ?? CinegramDb.DefaultPath;
 builder.Services.AddDbContextFactory<CinegramDb>(options => options.UseSqlite(CinegramDb.ConnectionString(databasePath)));
+builder.Services.AddSingleton<ITmdbLookup>(_ => TmdbIdentifier.FromEnvironment());
+builder.Services.AddSingleton<WatchedFiles>();
 builder.Services.AddSingleton<BotHolder>();
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddCors(options =>
@@ -90,19 +92,8 @@ app.MapPost("/messages/forward-origin", async (int[] messageIds, IServiceProvide
     }
 });
 
-// Sweep the downloads folder for files the FileSystemWatcher missed
-app.MapPost("/watch/rescan", async (BotHolder holder) =>
-{
-    try
-    {
-        var diff = await holder.WatchedFolder.RescanAsync(CancellationToken.None);
-        return Results.Ok(new { @new = diff.New.Count, missing = diff.Missing.Count });
-    }
-    catch (InvalidOperationException ex)
-    {
-        return Results.Problem(ex.Message, statusCode: 503);
-    }
-});
+// Watched files in the downloads folder: list, re-identify, confirm/correct and rescan
+WatchEndpoints.Map(app);
 
 // Delete a collection's downloaded file, keeping the collection itself
 app.MapDelete("/local/collection/{collectionId:int}", async (int collectionId, IServiceProvider sp) =>

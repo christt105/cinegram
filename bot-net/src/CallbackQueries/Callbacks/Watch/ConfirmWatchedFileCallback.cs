@@ -5,8 +5,7 @@ namespace Bot.CallbackQueries.Callbacks.Watch;
 
 /// <summary>
 /// Accepts the guess a notify message showed as-is. The guess (tmdb id/season/episode) travels
-/// packed in the callback data itself, since the row already carries it and there is no
-/// single-row GET on /watch to re-fetch it from — avoids a backend change for this alone.
+/// packed in the callback data itself, so the button acts on the guess the message showed.
 /// </summary>
 [Callback(Id)]
 public class ConfirmWatchedFileCallback : ICallbackQuery
@@ -14,7 +13,7 @@ public class ConfirmWatchedFileCallback : ICallbackQuery
     public const string Id = "confirm-watched-file";
 
     private readonly WTelegram.Bot _bot;
-    private readonly ApiClient _apiClient;
+    private readonly WatchedFiles _watchedFiles;
     private readonly WatchedFileMessageRegistry _registry;
     private readonly JellyfinSeriesIdentifier? _jellyfin;
     private readonly int _watchedFileId;
@@ -24,7 +23,7 @@ public class ConfirmWatchedFileCallback : ICallbackQuery
 
     private ConfirmWatchedFileCallback(
         int watchedFileId, int tmdbId, int? season, int? episode,
-        WTelegram.Bot bot, ApiClient apiClient, WatchedFileMessageRegistry registry,
+        WTelegram.Bot bot, WatchedFiles watchedFiles, WatchedFileMessageRegistry registry,
         JellyfinSeriesIdentifier? jellyfin)
     {
         _jellyfin = jellyfin;
@@ -33,15 +32,15 @@ public class ConfirmWatchedFileCallback : ICallbackQuery
         _season = season;
         _episode = episode;
         _bot = bot;
-        _apiClient = apiClient;
+        _watchedFiles = watchedFiles;
         _registry = registry;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var resolution = await _apiClient.ConfirmWatchedFileAsync(_watchedFileId, _tmdbId, _season, _episode);
+        var outcome = await _watchedFiles.ResolveAsync(_watchedFileId, _tmdbId, _season, _episode, "confirmed");
         await WatchedFileMoveFlow.ExecuteAsync(
-            _bot, _apiClient, _registry, message!, _watchedFileId, resolution, _jellyfin);
+            _bot, _watchedFiles, _registry, message!, _watchedFileId, outcome.Resolution, _jellyfin);
     }
 
     public static string Pack(int watchedFileId, int tmdbId, int? season, int? episode) =>
@@ -55,6 +54,6 @@ public class ConfirmWatchedFileCallback : ICallbackQuery
 
         return new ConfirmWatchedFileCallback(
             int.Parse(fields[0]), int.Parse(fields[1]), season, episode,
-            dispatcher.Bot, dispatcher.ApiClient, dispatcher.WatchedFileMessages, dispatcher.JellyfinSeries);
+            dispatcher.Bot, dispatcher.WatchedFiles, dispatcher.WatchedFileMessages, dispatcher.JellyfinSeries);
     }
 }

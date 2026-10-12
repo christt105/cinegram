@@ -23,7 +23,7 @@ public class CinegramDbTests : IDisposable
     }
 
     /// <summary>Builds a database the way the backend's Alembic head leaves it.</summary>
-    private static void CreateBackendDatabase(string path, string revision)
+    internal static void CreateBackendDatabase(string path, string revision)
     {
         var schema = System.IO.File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "backend-schema.sql"));
         using var connection = new SqliteConnection($"Data Source={path};Pooling=False");

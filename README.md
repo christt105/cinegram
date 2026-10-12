@@ -168,7 +168,7 @@ Mark such a season as **Local metadata (non-official)** in the web panel (series
 | `backend` | `${BACKEND_PORT:-8005}` | `8000`         |
 | `bot-net` | `${BOT_NET_PORT:-8088}` | `8080`         |
 
-All three host ports are configurable in `.env`, so you can move any of them if it clashes with something else already running on the host. The browser only talks to the web's origin: its nginx proxies `/api/` to `backend` and `/bot/` to `bot-net` over the compose network, so only `WEB_PORT` has to be reachable. At container start the web injects `JELLYFIN_URL` / `JELLYFIN_TOKEN` into the browser (via `/config.js`); `BACKEND_URL` / `BOT_NET_URL` override the proxied paths if you serve the services elsewhere. After changing them, `docker compose up -d` is enough, no rebuild.
+All three host ports are configurable in `.env`, so you can move any of them if it clashes with something else already running on the host. The browser only talks to the web's origin: its nginx proxies `/api/` to `backend` (except `/api/watch`, already served by `bot-net`) and `/bot/` to `bot-net` over the compose network, so only `WEB_PORT` has to be reachable. At container start the web injects `JELLYFIN_URL` / `JELLYFIN_TOKEN` into the browser (via `/config.js`); `BACKEND_URL` / `BOT_NET_URL` override the proxied paths if you serve the services elsewhere. After changing them, `docker compose up -d` is enough, no rebuild.
 
 The `web` service is a static bundle served by nginx, with the runtime config written on startup by `web/docker-entrypoint.sh`. A `web/Dockerfile.dev` (Vite dev server with hot reload) is kept for local development; it proxies `/api` and `/bot` to `localhost:8005` and `localhost:8088`, or to `BACKEND_URL` / `BOT_NET_URL` when set.
 

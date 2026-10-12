@@ -1,3 +1,4 @@
+using Bot.Data;
 using Bot.Handlers;
 using Bot.Services;
 using Telegram.Bot.Types.Enums;
@@ -19,9 +20,14 @@ public class ReidentifyWatchedFilesCommand : ICommand
 
     public async Task Execute(string[] args, Message msg)
     {
-        var updated = await _dispatcher.ApiClient.ReidentifyWatchedFilesAsync();
-        if (updated is null)
+        List<WatchedFile> updated;
+        try
         {
+            updated = await _dispatcher.WatchedFiles.ReidentifyAsync();
+        }
+        catch (Exception ex)
+        {
+            Log.Error("[Reidentify] Failed to re-identify watched files", ex);
             await _dispatcher.Bot.SendMessage(msg.Chat.Id, "❌ Failed to re-identify watched files.");
             return;
         }

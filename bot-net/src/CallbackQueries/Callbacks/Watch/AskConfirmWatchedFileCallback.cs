@@ -16,27 +16,26 @@ public class AskConfirmWatchedFileCallback : ICallbackQuery
     public const string Id = "ask-confirm-watched-file";
 
     private readonly WTelegram.Bot _bot;
-    private readonly ApiClient _apiClient;
+    private readonly WatchedFiles _watchedFiles;
     private readonly int _watchedFileId;
     private readonly int _tmdbId;
     private readonly int? _season;
     private readonly int? _episode;
 
     private AskConfirmWatchedFileCallback(
-        int watchedFileId, int tmdbId, int? season, int? episode, WTelegram.Bot bot, ApiClient apiClient)
+        int watchedFileId, int tmdbId, int? season, int? episode, WTelegram.Bot bot, WatchedFiles watchedFiles)
     {
         _watchedFileId = watchedFileId;
         _tmdbId = tmdbId;
         _season = season;
         _episode = episode;
         _bot = bot;
-        _apiClient = apiClient;
+        _watchedFiles = watchedFiles;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var rows = await _apiClient.GetWatchedFilesAsync();
-        var row = rows?.FirstOrDefault(r => r.Id == _watchedFileId);
+        var row = await _watchedFiles.GetAsync(_watchedFileId);
 
         if (row?.GuessMediaType is null || row.GuessTitle is null)
         {
@@ -73,6 +72,6 @@ public class AskConfirmWatchedFileCallback : ICallbackQuery
         var episode = string.IsNullOrEmpty(fields[3]) ? (int?)null : int.Parse(fields[3]);
 
         return new AskConfirmWatchedFileCallback(
-            int.Parse(fields[0]), int.Parse(fields[1]), season, episode, dispatcher.Bot, dispatcher.ApiClient);
+            int.Parse(fields[0]), int.Parse(fields[1]), season, episode, dispatcher.Bot, dispatcher.WatchedFiles);
     }
 }
