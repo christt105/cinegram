@@ -1,3 +1,4 @@
+using Bot.Data;
 using Bot.Models;
 using Xunit;
 

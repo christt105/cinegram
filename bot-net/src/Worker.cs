@@ -8,10 +8,12 @@ public class Worker : BackgroundService
 {
     private readonly TaskQueue _queue = new();
     private readonly BotHolder _botHolder;
+    private readonly WatchedFiles _watchedFiles;
 
-    public Worker(BotHolder botHolder)
+    public Worker(BotHolder botHolder, WatchedFiles watchedFiles)
     {
         _botHolder = botHolder;
+        _watchedFiles = watchedFiles;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -43,7 +45,7 @@ public class Worker : BackgroundService
             // Register so PreviewService and HTTP endpoints can use the live bot instance
             _botHolder.Register(bot, apiClient, authUserId);
 
-            var botDispatcher = new BotDispatcher(bot, apiClient, _queue, userClient, jellyfinClient);
+            var botDispatcher = new BotDispatcher(bot, apiClient, _watchedFiles, _queue, userClient, jellyfinClient);
 
             await botDispatcher.InitBot();
 
@@ -70,12 +72,9 @@ public class Worker : BackgroundService
                 Log.Info("[JellyfinBackup] Disabled: set JELLYFIN_BACKUP_DIR to enable periodic backups.");
             }
 
-            _botHolder.RegisterWatchedFolder(botDispatcher.WatchedFolder);
+            _botHolder.RegisterWatch(botDispatcher.WatchedFolder, botDispatcher.WatchNotifications);
             _ = botDispatcher.WatchedFolder.RunAsync(stoppingToken);
-
-            var watchNotificationService = new WatchNotificationService(
-                bot, apiClient, botDispatcher.WatchedFileMessages, botDispatcher.JellyfinSeries);
-            _ = watchNotificationService.PollAndProcessAsync(stoppingToken);
+            _ = botDispatcher.WatchNotifications.ResumeResolvedAsync(stoppingToken);
 
             _ = _queue.StartProcessing(stoppingToken);
 

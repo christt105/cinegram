@@ -6,6 +6,10 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   server: {
     proxy: {
+      '/api/watch': {
+        target: process.env.BOT_NET_URL ?? 'http://localhost:8088',
+        rewrite: (path) => path.replace(/^\/api/, ''),
+      },
       '/api': {
         target: process.env.BACKEND_URL ?? 'http://localhost:8005',
         rewrite: (path) => path.replace(/^\/api/, ''),

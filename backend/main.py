@@ -16,7 +16,6 @@ from routers.collections import router as collections_router
 from routers.files import router as files_router
 from routers.maintenance import router as maintenance_router
 from routers.tasks import router as tasks_router
-from routers.watch import router as watch_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -92,4 +91,3 @@ app.include_router(files_router)
 app.include_router(maintenance_router)
 app.include_router(tasks_router)
 app.include_router(search_router)
-app.include_router(watch_router)
