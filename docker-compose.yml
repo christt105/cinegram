@@ -14,6 +14,7 @@ services:
       - "${BOT_NET_PORT:-8088}:8080"
     volumes:
       - ./appdata/bot-net:/data
+      - ./appdata/backend:/data/db
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/data/media
       - ${JELLYFIN_APPDATA_ROOT:-./appdata/.jellyfin-appdata-unset}:/data/jellyfin-appdata:ro
     environment:
@@ -40,5 +41,3 @@ services:
     environment:
       - JELLYFIN_URL=${JELLYFIN_URL:-}
       - JELLYFIN_TOKEN=${JELLYFIN_TOKEN:-}
-      - BACKEND_PORT=${BACKEND_PORT:-8005}
-      - BOT_NET_PORT=${BOT_NET_PORT:-8088}
