@@ -27,7 +27,7 @@ public class CommandHandler
             new SearchCommand(bot.Bot, bot.Catalog),
             new QueueCommand(bot.Bot, bot.Transfers),
             new OrphansCommand(bot.Bot, bot.Catalog),
-            new BackupCommand(bot.Bot, bot.ApiClient),
+            new BackupCommand(bot.Bot, bot.Backup),
             new AddCommand(bot),
             new ImportCommand(bot),
             new ReidentifyWatchedFilesCommand(bot),

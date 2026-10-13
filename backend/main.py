@@ -6,8 +6,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from config import settings
 from database import init_db
 
-from routers.maintenance import router as maintenance_router
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     os.makedirs(settings.DATA_DIR, exist_ok=True)
@@ -31,5 +29,3 @@ def root():
 @app.get("/version")
 def version():
     return {"name": settings.PROJECT_NAME, "version": settings.APP_VERSION}
-
-app.include_router(maintenance_router)

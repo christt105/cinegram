@@ -16,6 +16,7 @@ builder.Services.AddSingleton<WatchedFiles>();
 builder.Services.AddSingleton<TransferTasks>();
 builder.Services.AddSingleton<CatalogIdentifier>();
 builder.Services.AddSingleton<Catalog>();
+builder.Services.AddSingleton<DatabaseBackup>();
 builder.Services.AddSingleton<BotHolder>();
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddCors(options =>
@@ -81,20 +82,6 @@ app.MapPost("/probe/series/{seriesId:int}", async (int seriesId, IServiceProvide
     return ok ? Results.Ok(plan) : Results.Problem(error);
 });
 
-// Look up document_id and forward origin for historical messages, for the backend's backfill script
-app.MapPost("/messages/forward-origin", async (int[] messageIds, IServiceProvider sp) =>
-{
-    var forwardOrigin = ActivatorUtilities.CreateInstance<ForwardOriginService>(sp);
-    try
-    {
-        return Results.Ok(await forwardOrigin.LookupAsync(messageIds));
-    }
-    catch (InvalidOperationException ex)
-    {
-        return Results.Problem(ex.Message, statusCode: 503);
-    }
-});
-
 // Watched files in the downloads folder: list, re-identify, confirm/correct and rescan
 WatchEndpoints.Map(app);
 
@@ -103,6 +90,9 @@ TransferEndpoints.Map(app);
 
 // The library: movies, series, collections, files and TMDB search
 CatalogEndpoints.Map(app);
+
+// Database backup, orphaned collections and the forward-origin exposure report
+MaintenanceEndpoints.Map(app);
 
 // Delete a collection's downloaded file, keeping the collection itself
 app.MapDelete("/local/collection/{collectionId:int}", async (int collectionId, IServiceProvider sp) =>

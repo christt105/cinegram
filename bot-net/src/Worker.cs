@@ -13,9 +13,10 @@ public class Worker : BackgroundService
     private readonly Catalog _catalog;
     private readonly CatalogIdentifier _identifier;
     private readonly ITmdbLookup _tmdb;
+    private readonly DatabaseBackup _backup;
 
     public Worker(BotHolder botHolder, WatchedFiles watchedFiles, TransferTasks transfers, Catalog catalog,
-        CatalogIdentifier identifier, ITmdbLookup tmdb)
+        CatalogIdentifier identifier, ITmdbLookup tmdb, DatabaseBackup backup)
     {
         _botHolder = botHolder;
         _watchedFiles = watchedFiles;
@@ -23,6 +24,7 @@ public class Worker : BackgroundService
         _catalog = catalog;
         _identifier = identifier;
         _tmdb = tmdb;
+        _backup = backup;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -54,7 +56,7 @@ public class Worker : BackgroundService
             // Register so PreviewService and HTTP endpoints can use the live bot instance
             _botHolder.Register(bot, authUserId);
 
-            var botDispatcher = new BotDispatcher(bot, apiClient, _catalog, _identifier, _tmdb, _watchedFiles, _transfers, _queue, userClient, jellyfinClient);
+            var botDispatcher = new BotDispatcher(bot, apiClient, _catalog, _identifier, _tmdb, _backup, _watchedFiles, _transfers, _queue, userClient, jellyfinClient);
 
             await botDispatcher.InitBot();
 

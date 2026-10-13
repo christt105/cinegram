@@ -20,7 +20,7 @@ public class BotDispatcher
 
     public BotDispatcher(
         WTelegram.Bot bot, ApiClient apiClient, Catalog catalog, CatalogIdentifier identifier, ITmdbLookup tmdb,
-        WatchedFiles watchedFiles, TransferTasks transfers, TaskQueue queue,
+        DatabaseBackup backup, WatchedFiles watchedFiles, TransferTasks transfers, TaskQueue queue,
         UserClientService? userClient = null, IJellyfinClient? jellyfinClient = null)
     {
         Bot = bot;
@@ -28,6 +28,7 @@ public class BotDispatcher
         Catalog = catalog;
         Identifier = identifier;
         Tmdb = tmdb;
+        Backup = backup;
         WatchedFiles = watchedFiles;
         Transfers = transfers;
         Queue = queue;
@@ -49,7 +50,7 @@ public class BotDispatcher
 
     public WTelegram.Bot Bot { get; }
 
-    /// <summary>The backend's maintenance API, until maintenance moves here too.</summary>
+    /// <summary>The backend's health check; the backend only runs the schema migrations now.</summary>
     public ApiClient ApiClient { get; }
 
     public Catalog Catalog { get; }
@@ -57,6 +58,8 @@ public class BotDispatcher
     public CatalogIdentifier Identifier { get; }
 
     public ITmdbLookup Tmdb { get; }
+
+    public DatabaseBackup Backup { get; }
 
     public WatchedFiles WatchedFiles { get; }
 
