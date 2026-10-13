@@ -10,8 +10,7 @@ services:
     ports:
       - "${WEB_PORT:-5173}:8080"
     volumes:
-      - ./appdata/bot-net:/data
-      - ./appdata/backend:/data/db
+      - ./appdata:/data
       - ${MEDIA_ROOT:?set MEDIA_ROOT in .env}:/data/media
       - ${JELLYFIN_APPDATA_ROOT:-./appdata/.jellyfin-appdata-unset}:/data/jellyfin-appdata:ro
     environment:

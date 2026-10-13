@@ -156,7 +156,7 @@ Cinegram can periodically archive Jellyfin's own state, not the media library, a
 1. Bind-mount Jellyfin's appdata directory into the container by setting `JELLYFIN_APPDATA_ROOT` to its host path, then point `JELLYFIN_BACKUP_DIR` at `/data/jellyfin-appdata` to match. See `.env.example`.
 2. By default only `config`, `data` and `plugins` are archived (`JELLYFIN_BACKUP_SUBDIRS`). `metadata` is left out: it holds posters, fanart and `.nfo` files Jellyfin re-fetches from TMDB/TheTVDB on demand, and can dwarf everything else. Add it to `JELLYFIN_BACKUP_SUBDIRS`, or blank the variable, to back up the whole directory anyway.
 3. The archive is a gzipped tar, built and sent without ever touching the media library or leaving a copy on disk afterwards.
-4. A container that has never backed up runs one right away; one restarting mid-interval waits out the remainder instead of backing up on every boot, tracked in `appdata/bot-net/jellyfin-backup-last-run`.
+4. A container that has never backed up runs one right away; one restarting mid-interval waits out the remainder instead of backing up on every boot, tracked in `appdata/jellyfin-backup-last-run`.
 5. Only the most recent `JELLYFIN_BACKUP_RETAIN` backups (default `4`) are kept in the chat: sending a new one deletes the oldest beyond that count, so a backup left running for years doesn't fill the chat history. Set it to `0` or a negative number to keep every backup ever sent instead.
 
 ## Importing from the downloads folder
@@ -239,13 +239,13 @@ The login has to be done **from a terminal on the server**, not from the Telegra
    ```
 4. Check it from Telegram with `/auth`.
 
-The session is written to `./appdata/bot-net/user_client.session` and reused on every start, so this is a one-off. Run the same command again to re-authenticate — the current session is only replaced once the new login succeeds. Deleting that file reverts the worker to the bot API limits.
+The session is written to `./appdata/user_client.session` and reused on every start, so this is a one-off. Run the same command again to re-authenticate — the current session is only replaced once the new login succeeds. Deleting that file reverts the worker to the bot API limits.
 
 ## Data & Persistence
 
-All persistent application state is stored on the host under `./appdata`:
-- `./appdata/backend` (mounted at `/data/db`): the SQLite database (`database.db`, WAL mode) with library metadata, task queues and media indexes. Cinegram creates it on first start and applies its schema migrations on every start. The folder keeps its v2 name so upgraded deployments point at the same file.
-- `./appdata/bot-net` (mounted at `/data`): Telegram session state (bot and, if configured, user account) and worker runtime cache.
+All persistent application state is stored on the host under `./appdata`, mounted at `/data`:
+- `./appdata/db`: the SQLite database (`database.db`, WAL mode) with library metadata, task queues and media indexes. Cinegram creates it on first start and applies its schema migrations on every start.
+- `./appdata` itself: Telegram session state (`bot.sqlite`, and `user_client.session` if a user account is configured), Jellyfin backup bookkeeping and the transfer temp folder.
 
 Make sure to back up the `./appdata` directory when migrating servers or updating containers.
 
