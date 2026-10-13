@@ -38,7 +38,7 @@
 
       <div class="server-status">
         <div class="status-indicator"></div>
-        <span>Connected to Jellyfin &amp; Backend</span>
+        <span>Connected to Jellyfin &amp; Cinegram</span>
       </div>
 
       <a

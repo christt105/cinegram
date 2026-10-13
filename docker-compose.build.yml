@@ -1,10 +1,5 @@
 services:
-  bot-net:
+  cinegram:
     build:
-      context: ./bot-net
-      dockerfile: Dockerfile
-
-  web:
-    build:
-      context: ./web
+      context: .
       dockerfile: Dockerfile

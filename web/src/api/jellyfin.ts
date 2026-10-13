@@ -4,7 +4,7 @@ import { getSystemApi } from '@jellyfin/sdk/lib/utils/api/system-api';
 import { getUserApi } from '@jellyfin/sdk/lib/utils/api/user-api';
 import { BaseItemKind, ItemFields } from '@jellyfin/sdk/lib/generated-client/models';
 import { ref } from 'vue';
-import { jellyfinUrl as serverUrl, jellyfinToken as token } from '../config';
+import { jellyfinProxyUrl as serverUrl } from '../config';
 
 const jellyfin = new Jellyfin({
     clientInfo: { name: 'Cinegram', version: '2.0.0' },
@@ -12,9 +12,6 @@ const jellyfin = new Jellyfin({
 });
 
 export const api = jellyfin.createApi(serverUrl);
-if (token) {
-    api.accessToken = token;
-}
 
 export const itemsApi = getItemsApi(api);
 export const systemApi = getSystemApi(api);
@@ -61,11 +58,6 @@ export function useJellyfin() {
     const error = ref<string | null>(null);
 
     const fetchItems = async () => {
-        if (!token) {
-            error.value = 'No API token configured in .env';
-            return;
-        }
-
         loading.value = true;
         error.value = null;
 
@@ -142,28 +134,21 @@ export function useJellyfin() {
 }
 
 export const fetchItemDetails = async (id: string, type: 'movie' | 'series') => {
-    if (!token) throw new Error('No API token configured');
     const usersRes = await userApi.getUsers();
     if (!usersRes.data || usersRes.data.length === 0) throw new Error("No users found.");
     const adminUser = usersRes.data.find(u => u.Policy?.IsAdministrator) || usersRes.data[0];
     const currentUserId = adminUser.Id as string;
 
-    const res = await fetch(`${serverUrl}/Users/${currentUserId}/Items/${id}?Fields=Path,Overview,ProviderIds,MediaSources`, {
-        headers: { 'Authorization': `MediaBrowser Token="${token}"` }
-    });
+    const res = await fetch(`${serverUrl}/Users/${currentUserId}/Items/${id}?Fields=Path,Overview,ProviderIds,MediaSources`);
     const item = await res.json();
 
     if (type === 'series') {
-        const seasonsRes = await fetch(`${serverUrl}/Shows/${id}/Seasons?userId=${currentUserId}`, {
-            headers: { 'Authorization': `MediaBrowser Token="${token}"` }
-        });
+        const seasonsRes = await fetch(`${serverUrl}/Shows/${id}/Seasons?userId=${currentUserId}`);
         const seasonsData = await seasonsRes.json();
         item.seasons = seasonsData.Items || [];
 
         for (const s of item.seasons) {
-            const epsRes = await fetch(`${serverUrl}/Shows/${id}/Episodes?seasonId=${s.Id}&userId=${currentUserId}&Fields=Path,Overview,MediaSources`, {
-                headers: { 'Authorization': `MediaBrowser Token="${token}"` }
-            });
+            const epsRes = await fetch(`${serverUrl}/Shows/${id}/Episodes?seasonId=${s.Id}&userId=${currentUserId}&Fields=Path,Overview,MediaSources`);
             const epsData = await epsRes.json();
             s.episodes = (epsData.Items || []).filter(hasVideoFile);
         }
@@ -175,7 +160,6 @@ export const fetchItemDetails = async (id: string, type: 'movie' | 'series') => 
 };
 
 export const findJellyfinItemByTmdbId = async (tmdbId: number, type: 'movie' | 'series') => {
-    if (!token) return null;
     try {
         const usersRes = await userApi.getUsers();
         if (!usersRes.data || usersRes.data.length === 0) return null;

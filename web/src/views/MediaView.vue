@@ -181,7 +181,7 @@ const saved = getViewState(props.type);
 const sortBy = ref<SortBy>(saved.sortBy);
 const telegramFilter = ref<TelegramFilter>(saved.telegramFilter);
 const backupFilter = ref<BackupFilter>(saved.backupFilter);
-import { backendUrl } from '../config';
+import { apiUrl } from '../config';
 
 const title = computed(() => {
   if (props.type === 'telegram') return 'Telegram Library';
@@ -410,8 +410,8 @@ const handleDelete = async (item: any) => {
     const rawId = item.rawId;
     const type = item.type;
     const url = type === 'series' 
-      ? `${backendUrl}/series/${rawId}`
-      : `${backendUrl}/movies/${rawId}`;
+      ? `${apiUrl}/series/${rawId}`
+      : `${apiUrl}/movies/${rawId}`;
       
     const res = await fetch(url, { method: 'DELETE' });
     if (!res.ok) {
@@ -428,12 +428,12 @@ const handleDownloadAll = async (media: any) => {
   try {
     let url = '';
     if (media.type === 'series') {
-      url = `${backendUrl}/downloads/enqueue/series/${media.rawId}`;
+      url = `${apiUrl}/downloads/enqueue/series/${media.rawId}`;
     } else {
       if (!media.collections || media.collections.length === 0) {
         throw new Error('No files found for this movie.');
       }
-      url = `${backendUrl}/downloads/enqueue/collection/${media.collections[0].id}`;
+      url = `${apiUrl}/downloads/enqueue/collection/${media.collections[0].id}`;
     }
     const res = await fetch(url, { method: 'POST' });
     if (!res.ok) throw new Error('Error enqueuing download.');
@@ -446,7 +446,7 @@ const handleDownloadAll = async (media: any) => {
 
 const handleDownloadSeason = async (event: { seriesId: number, seasonNumber: number, title: string }) => {
   try {
-    const url = `${backendUrl}/downloads/enqueue/series/${event.seriesId}/season/${event.seasonNumber}`;
+    const url = `${apiUrl}/downloads/enqueue/series/${event.seriesId}/season/${event.seasonNumber}`;
     const res = await fetch(url, { method: 'POST' });
     if (!res.ok) throw new Error('Error enqueuing download.');
     alert(`Download queued for Season ${event.seasonNumber} of ${event.title}`);
@@ -458,7 +458,7 @@ const handleDownloadSeason = async (event: { seriesId: number, seasonNumber: num
 
 const handleDownloadEpisode = async (event: { seriesId: number, seasonNumber: number, episodeNumber: number, title: string }) => {
   try {
-    const url = `${backendUrl}/downloads/enqueue/series/${event.seriesId}/season/${event.seasonNumber}/episode/${event.episodeNumber}`;
+    const url = `${apiUrl}/downloads/enqueue/series/${event.seriesId}/season/${event.seasonNumber}/episode/${event.episodeNumber}`;
     const res = await fetch(url, { method: 'POST' });
     if (!res.ok) throw new Error('Error enqueuing download.');
     alert(`Download queued for S${event.seasonNumber.toString().padStart(2, '0')}E${event.episodeNumber.toString().padStart(2, '0')} of ${event.title}`);
@@ -474,7 +474,7 @@ const handleUpload = async (media: any) => {
     return;
   }
   try {
-    const url = `${backendUrl}/uploads/enqueue`;
+    const url = `${apiUrl}/uploads/enqueue`;
     const payload = {
       jellyfin_id: media.id,
       tmdb_id: media.tmdbId,
@@ -506,7 +506,7 @@ const searchTMDB = async () => {
   isSearchingTMDB.value = true;
   searchResultsTMDB.value = [];
   try {
-    const res = await fetch(`${backendUrl}/tmdb/search?query=${encodeURIComponent(searchQueryTMDB.value.trim())}`);
+    const res = await fetch(`${apiUrl}/tmdb/search?query=${encodeURIComponent(searchQueryTMDB.value.trim())}`);
     if (res.ok) {
       searchResultsTMDB.value = await res.json();
     }
@@ -519,7 +519,7 @@ const searchTMDB = async () => {
 
 const selectTMDBResult = async (result: any) => {
   try {
-    const res = await fetch(`${backendUrl}/maintenance/create-media`, {
+    const res = await fetch(`${apiUrl}/maintenance/create-media`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

@@ -1,14 +1,14 @@
 name: cinegram
 
 services:
-  bot-net:
-    image: ghcr.io/christt105/cinegram-bot-net:${CINEGRAM_TAG:-latest}
+  cinegram:
+    image: ghcr.io/christt105/cinegram:${CINEGRAM_TAG:-latest}
     user: "${PUID:-1000}:${PGID:-1000}"
     restart: unless-stopped
     env_file:
       - .env
     ports:
-      - "${BOT_NET_PORT:-8088}:8080"
+      - "${WEB_PORT:-5173}:8080"
     volumes:
       - ./appdata/bot-net:/data
       - ./appdata/backend:/data/db
@@ -18,12 +18,3 @@ services:
       - JELLYFIN_MOVIES_DIR=/data/media/${MOVIES_SUBDIR:-movies}
       - JELLYFIN_SHOWS_DIR=/data/media/${SHOWS_SUBDIR:-shows}
       - DOWNLOADS_DIR=/data/media/${DOWNLOADS_SUBDIR:-downloads}
-
-  web:
-    image: ghcr.io/christt105/cinegram-web:${CINEGRAM_TAG:-latest}
-    restart: unless-stopped
-    ports:
-      - "${WEB_PORT:-5173}:80"
-    environment:
-      - JELLYFIN_URL=${JELLYFIN_URL:-}
-      - JELLYFIN_TOKEN=${JELLYFIN_TOKEN:-}

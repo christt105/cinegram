@@ -237,7 +237,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { RefreshCw, Check, Edit3, ExternalLink, Sparkles, FolderSearch } from 'lucide-vue-next';
-import { backendUrl, botNetUrl } from '../config';
+import { apiUrl } from '../config';
 import {
   listWatchedFiles,
   confirmWatchedFile,
@@ -335,7 +335,7 @@ const reidentifyAll = async () => {
 const rescanFolder = async () => {
   isRescanning.value = true;
   try {
-    const res = await fetch(`${botNetUrl}/watch/rescan`, { method: 'POST' });
+    const res = await fetch(`${apiUrl}/watch/rescan`, { method: 'POST' });
     if (!res.ok) throw new Error(res.statusText);
     await fetchFiles();
   } catch (error) {
@@ -482,7 +482,7 @@ const searchTMDB = async () => {
   searchResultsTMDB.value = [];
   try {
     const res = await fetch(
-      `${backendUrl}/tmdb/search?query=${encodeURIComponent(searchQueryTMDB.value.trim())}&media_type=multi`
+      `${apiUrl}/tmdb/search?query=${encodeURIComponent(searchQueryTMDB.value.trim())}&media_type=multi`
     );
     if (res.ok) {
       searchResultsTMDB.value = await res.json();

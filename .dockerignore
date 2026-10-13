@@ -1,0 +1,10 @@
+.git
+.github
+.env
+appdata
+docs
+**/node_modules
+**/dist
+**/bin
+**/obj
+**/core.*
