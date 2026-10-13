@@ -648,7 +648,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { DownloadCloud, Trash2, Edit3, Copy, Check, Search, FileSearch, HardDrive, ChevronDown, ChevronRight, FolderSync } from 'lucide-vue-next'
 import { findJellyfinItemByTmdbId } from '../api/jellyfin'
-import { fetchMetadataVocabulary, type MetadataVocabulary } from '../api/backend'
+import { fetchMetadataVocabulary, type MetadataVocabulary } from '../api/cinegram'
 
 const props = defineProps<{
   type: string

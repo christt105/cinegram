@@ -122,6 +122,7 @@ interface UploadTask {
 interface DownloadTask {
   id: number;
   collection_id: number;
+  title?: string;
   status: string;
   progress: number;
   error_message?: string;

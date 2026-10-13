@@ -67,7 +67,7 @@
         :telegramSeries="telegramSeries"
         :loading="loading"
         :jellyfinError="jellyfinError"
-        :backendError="backendError"
+        :catalogError="catalogError"
         @refresh="fetchItems"
       />
     </main>
@@ -81,7 +81,7 @@ import { Film, Tv, Send, Settings, Search, List, Github, FolderDown } from 'luci
 import { onMounted, ref, computed, nextTick } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useJellyfin } from './api/jellyfin';
-import { useBackend } from './api/backend';
+import { useCatalog } from './api/cinegram';
 import ScrollToTop from './components/ScrollToTop.vue';
 
 const searchQuery = ref('');
@@ -96,7 +96,7 @@ const scrollPositions = new Map<string, number>();
 
 const isMediaRoute = computed(() => ['movies', 'series', 'telegram'].includes(route.name as string));
 
-router.beforeEach((to, from) => {
+router.beforeEach((_to, from) => {
   if (mainContent.value) {
     scrollPositions.set(from.fullPath, mainContent.value.scrollTop);
   }
@@ -113,9 +113,9 @@ router.afterEach((to) => {
 });
 
 const { items: jellyfinItems, loading: jellyfinLoading, error: jellyfinError, fetchItems: fetchJellyfin } = useJellyfin();
-const { telegramMovies, telegramSeries, loading: backendLoading, error: backendError, fetchTelegramMovies, fetchTelegramSeries } = useBackend();
+const { telegramMovies, telegramSeries, loading: catalogLoading, error: catalogError, fetchTelegramMovies, fetchTelegramSeries } = useCatalog();
 
-const loading = computed(() => jellyfinLoading.value || backendLoading.value);
+const loading = computed(() => jellyfinLoading.value || catalogLoading.value);
 
 const fetchItems = () => {
   fetchJellyfin();
