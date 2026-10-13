@@ -3,7 +3,8 @@ using System.Text.Json;
 
 namespace Bot.Services;
 
-/// <summary>The backend's health check and database backup, until maintenance moves to bot-net.</summary>
+/// <summary>The backend's health check. The backend only owns the schema migrations until the
+/// single-service release.</summary>
 public class ApiClient : IDisposable
 {
     private readonly HttpClient _httpClient;
@@ -42,18 +43,5 @@ public class ApiClient : IDisposable
                 ["error"] = e.Message
             };
         }
-    }
-
-    public async Task<byte[]?> DownloadBackupAsync()
-    {
-        var response = await _httpClient.GetAsync("/maintenance/backup");
-        if (!response.IsSuccessStatusCode)
-        {
-            var text = await response.Content.ReadAsStringAsync();
-            Log.Error($"Backup failed: {response.StatusCode} {text}");
-            return null;
-        }
-
-        return await response.Content.ReadAsByteArrayAsync();
     }
 }

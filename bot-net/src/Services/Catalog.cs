@@ -34,6 +34,11 @@ public class Catalog(IDbContextFactory<CinegramDb> dbFactory, CatalogIdentifier 
         int FileId, int MessageId, string Filename, int CollectionId, int? MovieId, int? SeasonId, int? EpisodeId,
         bool Duplicate);
 
+    /// <summary><see cref="Type"/> is a Telegram forward-origin category ("user", "hidden_user",
+    /// "chat", "channel"), "owned" for files uploaded directly, or "unknown" for files whose
+    /// origin was never recorded.</summary>
+    public sealed record ForwardSource(string Type, string? SourceId, string Name, int Files, long Size, bool Public);
+
     public sealed record CollectionDraft(
         string Name,
         int? MovieId = null,
@@ -280,6 +285,38 @@ public class Catalog(IDbContextFactory<CinegramDb> dbFactory, CatalogIdentifier 
         await PruneOrphanedMediaAsync(db, ct);
         await tx.CommitAsync(ct);
         return true;
+    }
+
+    /// <summary>Deletes the collections that exist, with their files and pending downloads.</summary>
+    public async Task DeleteCollectionsAsync(IReadOnlyCollection<int> ids, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+        await DeleteCollectionsAsync(db, ids.ToList(), ct);
+        await PruneOrphanedMediaAsync(db, ct);
+        await tx.CommitAsync(ct);
+    }
+
+    /// <summary>
+    /// Files and bytes grouped by where their Telegram blob came from, largest first. A public
+    /// channel or chat can be moderated or purged by Telegram, so those sources are the ones whose
+    /// files are most at risk.
+    /// </summary>
+    public async Task<List<ForwardSource>> ListForwardSourcesAsync(CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var files = await db.Files.AsNoTracking()
+            .Select(f => new { f.DocumentId, f.FwdFromType, f.FwdFromId, f.FwdFromName, f.Filesize })
+            .ToListAsync(ct);
+
+        return files
+            .GroupBy(f => f.DocumentId is null ? ("unknown", null, "Unknown origin")
+                : f.FwdFromType is null ? ("owned", null, "Uploaded directly")
+                : (f.FwdFromType, f.FwdFromId, f.FwdFromName ?? "Unknown sender"))
+            .Select(g => new ForwardSource(g.Key.Item1, g.Key.Item2, g.Key.Item3, g.Count(), g.Sum(f => f.Filesize),
+                g.Key.Item1 is "channel" or "chat"))
+            .OrderByDescending(s => s.Size)
+            .ToList();
     }
 
     /// <summary>Unlinks its collections, which stay as orphans, and deletes the movie.</summary>

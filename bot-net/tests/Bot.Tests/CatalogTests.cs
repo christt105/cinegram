@@ -38,8 +38,10 @@ public class CatalogTests : IAsyncLifetime
         builder.Services.AddSingleton<ITmdbLookup>(new TmdbIdentifier(_tmdb));
         builder.Services.AddSingleton<CatalogIdentifier>();
         builder.Services.AddSingleton<Catalog>();
+        builder.Services.AddSingleton<DatabaseBackup>();
         _app = builder.Build();
         CatalogEndpoints.Map(_app);
+        MaintenanceEndpoints.Map(_app);
         await _app.StartAsync();
 
         var address = _app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();
@@ -662,6 +664,101 @@ public class CatalogTests : IAsyncLifetime
             await Detail(await _http.PostAsJsonAsync("/maintenance/create-media", new { tmdb_id = 1, media_type = "book" }), HttpStatusCode.BadRequest));
         Assert.Equal("TMDB item not found",
             await Detail(await _http.PostAsJsonAsync("/maintenance/create-media", new { tmdb_id = 1, media_type = "movie" }), HttpStatusCode.NotFound));
+    }
+
+    // Maintenance
+
+    [Fact]
+    public async Task The_backup_is_a_readable_copy_of_the_database()
+    {
+        await Upload("zzqx-orphan.mkv");
+        var before = Directory.GetFiles(Path.GetTempPath(), "cinegram-backup-*.db").Length;
+
+        var response = await _http.GetAsync("/maintenance/backup");
+        Assert.True(response.IsSuccessStatusCode);
+        Assert.StartsWith("cinegram-backup-", response.Content.Headers.ContentDisposition!.FileName);
+        var copy = Path.Combine(_dir, "copy.db");
+        await File.WriteAllBytesAsync(copy, await response.Content.ReadAsByteArrayAsync());
+
+        await using var db = new CinegramDb(CinegramDb.Options(copy));
+        Assert.Equal("zzqx-orphan", (await db.Collections.SingleAsync()).Name);
+        Assert.Equal(before, Directory.GetFiles(Path.GetTempPath(), "cinegram-backup-*.db").Length);
+    }
+
+    [Fact]
+    public async Task Orphans_list_their_files()
+    {
+        var orphan = await Upload("zzqx-orphan.mkv");
+
+        var body = Assert.Single((await Json(await _http.GetAsync("/maintenance/orphans"))).EnumerateArray());
+
+        Assert.Equal((orphan.CollectionId, "zzqx-orphan", 1), (body.GetProperty("id").GetInt32(),
+            body.GetProperty("name").GetString(), body.GetProperty("files_count").GetInt32()));
+        Assert.Equal("zzqx-orphan.mkv", body.GetProperty("files")[0].GetProperty("filename").GetString());
+    }
+
+    [Fact]
+    public async Task A_batch_identification_links_every_collection_and_reports_the_missing_ones()
+    {
+        _tmdb.Add(Movie(129, "El viaje de Chihiro", "2001-07-20"));
+        var first = await Upload("zzqx-a.mkv");
+        var second = await Upload("zzqx-b.mkv");
+
+        var body = await Json(await _http.PostAsJsonAsync("/maintenance/identify-batch",
+            new { collection_ids = new[] { first.CollectionId, second.CollectionId, 999 }, tmdb_id = 129 }));
+
+        Assert.Equal(["success", "success", "error"],
+            body.GetProperty("results").EnumerateArray().Select(r => r.GetProperty("status").GetString()));
+        var movie = Assert.Single(await _catalog.ListMoviesAsync());
+        Assert.Equal(2, movie.Collections.Count);
+        Assert.Empty(await _catalog.ListOrphansAsync());
+    }
+
+    [Fact]
+    public async Task A_batch_deletion_removes_the_collections_their_files_and_the_titles_left_empty()
+    {
+        _tmdb.Add(Movie(129, "El viaje de Chihiro", "2001-07-20"));
+        var linked = await Upload("whatever.mkv", tmdbId: 129);
+        var orphan = await Upload("zzqx-orphan.mkv");
+        var kept = await Upload("zzqx-kept.mkv");
+
+        await Json(await _http.PostAsJsonAsync("/maintenance/delete-batch",
+            new { collection_ids = new[] { linked.CollectionId, orphan.CollectionId, 999 } }));
+
+        Assert.Equal(kept.CollectionId, Assert.Single(await _catalog.ListOrphansAsync()).Id);
+        Assert.Equal(1, await Count<TelegramFile>());
+        Assert.Empty(await _catalog.ListMoviesAsync());
+    }
+
+    [Fact]
+    public async Task Batches_need_their_ids()
+    {
+        Assert.Equal("collection_ids and tmdb_id are required", await Detail(
+            await _http.PostAsJsonAsync("/maintenance/identify-batch", new { collection_ids = new[] { 1 } }),
+            HttpStatusCode.UnprocessableEntity));
+        Assert.Equal("collection_ids is required", await Detail(
+            await _http.PostAsJsonAsync("/maintenance/delete-batch", new { }), HttpStatusCode.UnprocessableEntity));
+    }
+
+    [Fact]
+    public async Task Forward_sources_group_files_by_origin_largest_first()
+    {
+        await Upload("zzqx-1.mkv", documentId: 1, fwdFromType: "channel", fwdFromId: "-100", fwdFromName: "Anime HD");
+        await Upload("zzqx-2.mkv", documentId: 2, fwdFromType: "channel", fwdFromId: "-100", fwdFromName: "Anime HD");
+        await Upload("zzqx-3.mkv", documentId: 3);
+        await Upload("zzqx-4.mkv");
+
+        var body = await Json(await _http.GetAsync("/maintenance/forward-sources"));
+
+        var sources = body.GetProperty("sources").EnumerateArray()
+            .Select(s => (s.GetProperty("type").GetString(), s.GetProperty("name").GetString(),
+                s.GetProperty("files").GetInt32(), s.GetProperty("public").GetBoolean()))
+            .ToList();
+        Assert.Equal(("channel", "Anime HD", 2, true), sources[0]);
+        Assert.Equal([("owned", "Uploaded directly", 1, false), ("unknown", "Unknown origin", 1, false)],
+            sources.Skip(1).OrderBy(s => s.Item1));
+        Assert.Equal((4, 4 * 1048576L),
+            (body.GetProperty("total_files").GetInt32(), body.GetProperty("total_size").GetInt64()));
     }
 
     // Collections
