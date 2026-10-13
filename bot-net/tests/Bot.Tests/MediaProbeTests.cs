@@ -42,4 +42,22 @@ public class MediaProbeTests
         Assert.Null(summary.AudioLanguages);
         Assert.Null(summary.SubtitleLanguages);
     }
+
+    [Fact]
+    public void Summarize_NormalizesAliasesAndDropsLanguagesOutsideTheVocabulary()
+    {
+        var summary = MediaProbe.Summarize("""
+        {
+          "streams": [
+            { "codec_type": "audio", "tags": { "language": "spa" } },
+            { "codec_type": "subtitle", "tags": { "language": "nob" } },
+            { "codec_type": "subtitle", "tags": { "language": "fra" } },
+            { "codec_type": "subtitle", "tags": { "language": "klingon" } }
+          ]
+        }
+        """);
+
+        Assert.Equal("spa", summary.AudioLanguages);
+        Assert.Equal("nor,fre", summary.SubtitleLanguages);
+    }
 }

@@ -82,6 +82,22 @@ public static class CollectionMetadata
         ["hun"] = "Húngaro",
         ["cze"] = "Checo",
         ["rum"] = "Rumano",
+        ["glg"] = "Gallego",
+        ["baq"] = "Euskera",
+        ["hrv"] = "Croata",
+        ["srp"] = "Serbio",
+        ["slv"] = "Esloveno",
+        ["slo"] = "Eslovaco",
+        ["bul"] = "Búlgaro",
+        ["est"] = "Estonio",
+        ["lav"] = "Letón",
+        ["lit"] = "Lituano",
+        ["ice"] = "Islandés",
+        ["per"] = "Persa",
+        ["may"] = "Malayo",
+        ["fil"] = "Filipino",
+        ["tam"] = "Tamil",
+        ["tel"] = "Telugu",
     };
 
     /// <summary>ISO 639-2/T codes ffprobe and mkvmerge sometimes tag instead of the /B ones.</summary>
@@ -94,6 +110,14 @@ public static class CollectionMetadata
         ["ell"] = "gre",
         ["ces"] = "cze",
         ["ron"] = "rum",
+        ["eus"] = "baq",
+        ["slk"] = "slo",
+        ["isl"] = "ice",
+        ["fas"] = "per",
+        ["msa"] = "may",
+        ["nob"] = "nor",
+        ["nno"] = "nor",
+        ["tgl"] = "fil",
     };
 
     /// <summary>Codes that carry no usable language, dropped rather than rejected.</summary>
@@ -161,10 +185,21 @@ public static class CollectionMetadata
     /// <exception cref="InvalidLanguageCodeException">Some code is outside the vocabulary.</exception>
     public static string? ValidateLanguages(string? value)
     {
-        if (value is null) return null;
+        var (normalized, invalid) = NormalizeLanguages(value);
+        if (invalid.Count > 0) throw new InvalidLanguageCodeException(invalid);
+        return normalized;
+    }
 
+    /// <summary>Like <see cref="ValidateLanguages"/>, but drops codes outside the vocabulary
+    /// instead of rejecting the list. For languages read from a file's own tags.</summary>
+    public static string? KnownLanguages(string? value) => NormalizeLanguages(value).Normalized;
+
+    private static (string? Normalized, List<string> Invalid) NormalizeLanguages(string? value)
+    {
         var normalized = new List<string>();
         var invalid = new List<string>();
+        if (value is null) return (null, invalid);
+
         foreach (var raw in value.Split(','))
         {
             var code = raw.Trim().ToLowerInvariant();
@@ -177,8 +212,7 @@ public static class CollectionMetadata
                 normalized.Add(resolved);
         }
 
-        if (invalid.Count > 0) throw new InvalidLanguageCodeException(invalid);
-        return normalized.Count > 0 ? string.Join(",", normalized) : null;
+        return (normalized.Count > 0 ? string.Join(",", normalized) : null, invalid);
     }
 
     private static JsonElement? VideoStream(string technicalMetadata)
