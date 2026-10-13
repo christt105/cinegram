@@ -265,7 +265,7 @@ const isReidentifying = ref(false);
 const isRescanning = ref(false);
 let pollInterval: ReturnType<typeof setInterval> | null = null;
 
-// "confirmed"/"corrected" are transient — bot-net hasn't picked them up and moved them yet —
+// "confirmed"/"corrected" are transient: the server hasn't picked them up and moved them yet,
 // so they still belong with what's pending, not with the finished history below.
 const PENDING_STATUSES: WatchedFileStatus[] = ['pending', 'notified', 'confirmed', 'corrected'];
 

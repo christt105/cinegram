@@ -18,7 +18,7 @@ It ships as a single container, so a full deployment is one `docker compose up`.
 
 ## Architecture
 
-Cinegram is one .NET 8 service (`bot-net/` in this repository) that also serves the web panel:
+Cinegram is one .NET 8 service (`server/` in this repository) that also serves the web panel:
 
 | Part        | Stack                          | Role                                                                                     |
 | ----------- | ------------------------------ | ---------------------------------------------------------------------------------------- |
@@ -75,10 +75,10 @@ cp .env.example .env   # then edit
 docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 ```
 
-The database schema is owned by EF Core migrations in `bot-net/src/Data/Migrations`, applied at startup. After changing an entity, add a migration with the pinned `dotnet-ef` tool:
+The database schema is owned by EF Core migrations in `server/src/Data/Migrations`, applied at startup. After changing an entity, add a migration with the pinned `dotnet-ef` tool:
 
 ```bash
-cd bot-net && dotnet tool restore
+cd server && dotnet tool restore
 cd src && dotnet ef migrations add <Name> -o Data/Migrations
 ```
 
@@ -132,7 +132,7 @@ You don't have to wait for a failed upload to find out whether the mapping is ri
 docker compose logs cinegram | grep "library path check"
 ```
 
-A healthy deployment reports `Jellyfin library path check: 2/2 locations resolve inside bot-net`. Anything else prints one warning per library naming the reported path, what it translated to and the `JELLYFIN_PATH_MAP` entry that would fix it. Libraries of other kinds (music, photos) are not checked, since Cinegram never reads from them. The check needs `JELLYFIN_URL` and `JELLYFIN_TOKEN` to be set; without them, or if Jellyfin is unreachable, it logs a warning saying so and the worker starts as usual.
+A healthy deployment reports `Jellyfin library path check: 2/2 locations resolve inside Cinegram`. Anything else prints one warning per library naming the reported path, what it translated to and the `JELLYFIN_PATH_MAP` entry that would fix it. Libraries of other kinds (music, photos) are not checked, since Cinegram never reads from them. The check needs `JELLYFIN_URL` and `JELLYFIN_TOKEN` to be set; without them, or if Jellyfin is unreachable, it logs a warning saying so and the worker starts as usual.
 
 ## Jellyfin backups
 

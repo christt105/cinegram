@@ -1,7 +1,7 @@
 /**
  * Normalizes text for accent-insensitive comparisons: strips diacritics and
  * maps special separators (middle dot, en/em dash, hyphen) to spaces,
- * collapsing whitespace and lowercasing. Mirrors the bot-net TextNormalizer so
+ * collapsing whitespace and lowercasing. Mirrors the server's TextNormalizer so
  * local search behaves the same on the web and in Telegram.
  */
 export function normalizeText(text: string | null | undefined): string {
