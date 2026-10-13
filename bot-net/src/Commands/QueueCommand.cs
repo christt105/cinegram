@@ -8,10 +8,10 @@ namespace Bot.Commands;
 
 public static class QueueMessageBuilder
 {
-    public static async Task<(string Text, InlineKeyboardMarkup Markup)> BuildQueueMessage(ApiClient apiClient)
+    public static async Task<(string Text, InlineKeyboardMarkup Markup)> BuildQueueMessage(TransferTasks tasks)
     {
-        var uploads = await apiClient.GetUploadsQueueAsync() ?? new();
-        var downloads = await apiClient.GetDownloadsQueueAsync() ?? new();
+        var uploads = await tasks.UploadQueueAsync();
+        var downloads = await tasks.DownloadQueueAsync();
 
         var sb = new StringBuilder();
         sb.AppendLine("⏳ <b>Active Transfers</b>\n");
@@ -99,20 +99,20 @@ public static class QueueMessageBuilder
 
 public class QueueCommand : ICommand
 {
-    private readonly ApiClient _apiClient;
+    private readonly TransferTasks _tasks;
     private readonly WTelegram.Bot _bot;
 
-    public QueueCommand(WTelegram.Bot bot, ApiClient apiClient)
+    public QueueCommand(WTelegram.Bot bot, TransferTasks tasks)
     {
         _bot = bot;
-        _apiClient = apiClient;
+        _tasks = tasks;
     }
 
     public async Task Execute(string[] args, Message msg)
     {
         try
         {
-            var (text, markup) = await QueueMessageBuilder.BuildQueueMessage(_apiClient);
+            var (text, markup) = await QueueMessageBuilder.BuildQueueMessage(_tasks);
             await _bot.SendMessage(msg.Chat.Id, text,
                 parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
                 replyMarkup: markup,

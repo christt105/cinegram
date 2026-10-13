@@ -25,7 +25,7 @@ public class CommandHandler
             new SerieCommand(bot.Bot, bot.ApiClient),
             new MovieCommand(bot.Bot, bot.ApiClient),
             new SearchCommand(bot.Bot, bot.ApiClient),
-            new QueueCommand(bot.Bot, bot.ApiClient),
+            new QueueCommand(bot.Bot, bot.Transfers),
             new OrphansCommand(bot.Bot, bot.ApiClient),
             new BackupCommand(bot.Bot, bot.ApiClient),
             new AddCommand(bot),

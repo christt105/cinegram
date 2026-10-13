@@ -13,6 +13,7 @@ var databasePath = Environment.GetEnvironmentVariable("DATABASE_PATH") ?? Cinegr
 builder.Services.AddDbContextFactory<CinegramDb>(options => options.UseSqlite(CinegramDb.ConnectionString(databasePath)));
 builder.Services.AddSingleton<ITmdbLookup>(_ => TmdbIdentifier.FromEnvironment());
 builder.Services.AddSingleton<WatchedFiles>();
+builder.Services.AddSingleton<TransferTasks>();
 builder.Services.AddSingleton<BotHolder>();
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddCors(options =>
@@ -94,6 +95,9 @@ app.MapPost("/messages/forward-origin", async (int[] messageIds, IServiceProvide
 
 // Watched files in the downloads folder: list, re-identify, confirm/correct and rescan
 WatchEndpoints.Map(app);
+
+// Download and upload queues: enqueue, list, cancel and retry
+TransferEndpoints.Map(app);
 
 // Delete a collection's downloaded file, keeping the collection itself
 app.MapDelete("/local/collection/{collectionId:int}", async (int collectionId, IServiceProvider sp) =>

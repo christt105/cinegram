@@ -86,37 +86,8 @@ def test_movies_and_series_crud(client):
     assert s_res.json() == []
 
 
-def test_task_endpoints(client):
-    dl_res = client.get("/tasks/downloads")
-    assert dl_res.status_code == 200
-    assert dl_res.json() == []
-
-    ul_res = client.get("/tasks/uploads")
-    assert ul_res.status_code == 200
-    assert ul_res.json() == []
-
-    clear_res = client.delete("/tasks/completed")
-    assert clear_res.status_code == 200
-    assert clear_res.json()["cleared_downloads"] == 0
-
-
 CLIENT_API_CONTRACT = [
     ("GET", "/tmdb/search"),
-    ("POST", "/uploads/enqueue"),
-    ("GET", "/uploads/queue"),
-    ("GET", "/uploads/pending"),
-    ("DELETE", "/uploads/{task_id}"),
-    ("POST", "/uploads/{task_id}/status"),
-    ("POST", "/uploads/{task_id}/retry"),
-    ("GET", "/downloads/queue"),
-    ("GET", "/downloads/pending"),
-    ("DELETE", "/downloads/{task_id}"),
-    ("POST", "/downloads/{task_id}/status"),
-    ("POST", "/downloads/{task_id}/retry"),
-    ("POST", "/downloads/enqueue/collection/{collection_id}"),
-    ("POST", "/downloads/enqueue/series/{series_id}"),
-    ("POST", "/downloads/enqueue/series/{series_id}/season/{season_number}"),
-    ("POST", "/downloads/enqueue/series/{series_id}/season/{season_number}/episode/{episode_number}"),
 ]
 
 
