@@ -31,8 +31,8 @@ jobs:
         working-directory: ./web
         run: npm run build
 
-  botnet-tests:
-    name: Bot-Net Build & Tests (.NET 8)
+  server-tests:
+    name: Server Build & Tests (.NET 8)
     runs-on: ubuntu-latest
 
     steps:
@@ -45,10 +45,10 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore bot-net/tests/Bot.Tests/Bot.Tests.csproj
+        run: dotnet restore server/tests/Cinegram.Tests/Cinegram.Tests.csproj
 
-      - name: Build Bot-Net
-        run: dotnet build bot-net/src/Bot.csproj --configuration Release
+      - name: Build Server
+        run: dotnet build server/src/Cinegram.csproj --configuration Release
 
       - name: Run Tests
-        run: dotnet test bot-net/tests/Bot.Tests/Bot.Tests.csproj --configuration Release
+        run: dotnet test server/tests/Cinegram.Tests/Cinegram.Tests.csproj --configuration Release

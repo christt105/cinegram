@@ -1,0 +1,69 @@
+using Cinegram.CallbackQueries.Callbacks.File;
+using Cinegram.CallbackQueries.Callbacks.Movie;
+using Cinegram.Services;
+using Cinegram.Utils;
+using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
+using Message = Telegram.Bot.Types.Message;
+
+namespace Cinegram.CallbackQueries.Callbacks.Collection;
+
+[Callback(Id)]
+public class ShowCollectionCallback : ICallbackQuery
+{
+    public const string Id = "see-collection";
+    private readonly Catalog _catalog;
+    private readonly WTelegram.Bot _bot;
+    private readonly int _collectionId;
+
+    public ShowCollectionCallback(int collectionId, WTelegram.Bot bot, Catalog catalog)
+    {
+        _collectionId = collectionId;
+        _bot = bot;
+        _catalog = catalog;
+    }
+
+    public async Task ExecuteAsync(Message? message)
+    {
+        var collection = await _catalog.GetCollectionAsync(_collectionId);
+
+        if (collection is null)
+        {
+            await _bot.EditMessageText(message!.Chat.Id, message.MessageId,
+                $"Collection with Id {_collectionId} was not found");
+            return;
+        }
+
+        var text = Beautify.FormatCollection(collection);
+
+        List<List<InlineKeyboardButton>> buttons = [];
+
+        buttons.Add(
+            [
+                InlineKeyboardButton.WithCallbackData("Edit Collection", EditCollectionCallback.Pack(_collectionId)),
+                InlineKeyboardButton.WithCallbackData("Delete Collection", DeleteCollectionCallback.Pack(_collectionId))
+            ]
+        );
+
+        buttons.AddRange(collection.Files.Select((f, i) => new List<InlineKeyboardButton>
+            { InlineKeyboardButton.WithCallbackData((i + 1).ToString(), ShowFileCallback.Pack(f.Id)) }));
+
+        buttons.Add([
+            InlineKeyboardButton.WithCallbackData("\u2b05\ufe0f Back to collection",
+                SeeMovieCollectionsCallback.Pack(collection.MovieId!.Value))
+        ]);
+
+        await _bot.EditMessageText(message!.Chat.Id, message.MessageId, text,
+            Telegram.Bot.Types.Enums.ParseMode.Html, replyMarkup: buttons.ToArray());
+    }
+
+    public static ICallbackQuery Create(string[] packedFields, BotDispatcher dispatcher)
+    {
+        return new ShowCollectionCallback(int.Parse(packedFields[0]), dispatcher.Bot, dispatcher.Catalog);
+    }
+
+    public static string Pack(int collectionId)
+    {
+        return CallbackDataPacker.Pack(Id, [collectionId.ToString()]);
+    }
+}

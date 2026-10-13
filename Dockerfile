@@ -10,10 +10,10 @@ RUN npm run build
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY bot-net/src/*.csproj ./
+COPY server/src/*.csproj ./
 RUN dotnet restore
 
-COPY bot-net/src/ ./
+COPY server/src/ ./
 RUN dotnet publish -c Release -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
@@ -31,4 +31,4 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD curl -fsS http://localhost:8080/api/health || exit 1
 
-ENTRYPOINT ["dotnet", "Bot.dll"]
+ENTRYPOINT ["dotnet", "Cinegram.dll"]
