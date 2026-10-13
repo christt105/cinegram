@@ -67,7 +67,7 @@ public static partial class ReleaseNameParser
     [GeneratedRegex(@"[Ss](\d{1,2})[Ee](\d{1,3})")]
     private static partial Regex SeasonEpisode();
 
-    [GeneratedRegex(@"(?<!\d)(\d{1,2})x(\d{1,3})(?!\d)")]
+    [GeneratedRegex(@"(?<!\d)(\d{1,2})x(\d{1,3})(?!\d)", IgnoreCase)]
     private static partial Regex CrossEpisode();
 
     [GeneratedRegex(@"(?<![a-zA-Z0-9])[Ss](\d{1,2})\s*[-_]\s*(\d{1,3})(?!\d)")]

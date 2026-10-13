@@ -1,4 +1,4 @@
-using Bot.Models;
+using Bot.Data;
 using Bot.Utils;
 using Xunit;
 
@@ -10,14 +10,14 @@ public class SeriesMatcherTests
     {
         Seasons =
         [
-            new Season { SeasonNumber = 1, Episodes = episodes }
+            new Season { SeasonNumber = 1, Episodes = [.. episodes] }
         ]
     };
 
     private static Episode MakeEpisode(int number, params Collection[] collections) => new()
     {
         EpisodeNumber = number,
-        Collections = collections
+        Collections = [.. collections]
     };
 
     private static Collection MakeCollection(int id, string? localPath = null) => new()

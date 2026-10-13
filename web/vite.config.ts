@@ -6,24 +6,16 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   server: {
     proxy: {
-      '/api/watch': {
+      '/api/maintenance/create-media': {
         target: process.env.BOT_NET_URL ?? 'http://localhost:8088',
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
-      '/api/tasks/': {
-        target: process.env.BOT_NET_URL ?? 'http://localhost:8088',
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-      '/api/downloads/': {
-        target: process.env.BOT_NET_URL ?? 'http://localhost:8088',
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-      '/api/uploads/': {
-        target: process.env.BOT_NET_URL ?? 'http://localhost:8088',
+      '/api/maintenance/': {
+        target: process.env.BACKEND_URL ?? 'http://localhost:8005',
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/api': {
-        target: process.env.BACKEND_URL ?? 'http://localhost:8005',
+        target: process.env.BOT_NET_URL ?? 'http://localhost:8088',
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/bot': {

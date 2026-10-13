@@ -261,5 +261,8 @@ public class TmdbIdentificationTests
         }
 
         public Task<int?> GetTvdbIdAsync(int tvId, CancellationToken ct = default) => Task.FromResult<int?>(null);
+
+        public Task<IReadOnlyList<string>> GetPosterPathsAsync(string mediaType, int id, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
     }
 }

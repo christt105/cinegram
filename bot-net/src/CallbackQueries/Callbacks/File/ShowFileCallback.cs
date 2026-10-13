@@ -10,20 +10,20 @@ namespace Bot.CallbackQueries.Callbacks.File;
 public class ShowFileCallback : ICallbackQuery
 {
     public const string Id = "show-file";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
     private readonly int _fileId;
 
-    public ShowFileCallback(int fileId, WTelegram.Bot bot, ApiClient apiClient)
+    public ShowFileCallback(int fileId, WTelegram.Bot bot, Catalog catalog)
     {
         _fileId = fileId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var file = await _apiClient.GetFileAsync(_fileId);
+        var file = await _catalog.GetFileAsync(_fileId);
 
         if (file is null)
         {
@@ -31,13 +31,13 @@ public class ShowFileCallback : ICallbackQuery
             return;
         }
 
-        var collection = await _apiClient.GetCollectionAsync(file.CollectionId.Value);
+        var collection = await _catalog.GetCollectionAsync(file.CollectionId);
 
         var sb = new System.Text.StringBuilder();
         sb.AppendLine($"{Icons.FileIcon} <b>File #{_fileId}</b>");
         sb.AppendLine();
-        sb.AppendLine($"<b>Filename:</b> <code>{file.FileName}</code>");
-        sb.AppendLine($"<b>Size:</b> {Beautify.FormatSize(file.FileSize)}");
+        sb.AppendLine($"<b>Filename:</b> <code>{file.Filename}</code>");
+        sb.AppendLine($"<b>Size:</b> {Beautify.FormatSize(file.Filesize)}");
         sb.AppendLine($"<b>Type:</b> {file.MimeType ?? "-"}");
         sb.AppendLine($"<b>Added:</b> {file.CreatedAt}");
 
@@ -67,7 +67,7 @@ public class ShowFileCallback : ICallbackQuery
             new[]
             {
                 InlineKeyboardButton.WithCallbackData("⬅️ Back to collection",
-                    ShowCollectionCallback.Pack(file.CollectionId.Value))
+                    ShowCollectionCallback.Pack(file.CollectionId))
             }
         };
 
@@ -82,6 +82,6 @@ public class ShowFileCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new ShowFileCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new ShowFileCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
     }
 }

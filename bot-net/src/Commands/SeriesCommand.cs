@@ -7,18 +7,18 @@ namespace Bot.Commands;
 
 public class SeriesCommand : ICommand
 {
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
 
-    public SeriesCommand(WTelegram.Bot bot, ApiClient apiClient)
+    public SeriesCommand(WTelegram.Bot bot, Catalog catalog)
     {
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task Execute(string[] args, Message msg)
     {
-        var series = await _apiClient.GetSeriesAsync();
+        var series = await _catalog.ListSeriesAsync();
 
         if (series == null || series.Count == 0)
         {

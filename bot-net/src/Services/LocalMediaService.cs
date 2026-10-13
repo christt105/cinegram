@@ -6,17 +6,16 @@ namespace Bot.Services;
 /// <summary>
 /// Works with the media files already on disk in the mounted library directories: lists
 /// them, reads their technical metadata into a collection and deletes local copies.
-/// Only bot-net has those directories mounted, so this cannot live in the backend.
 /// </summary>
 public class LocalMediaService
 {
     private const int DefaultLimit = 200;
 
-    private readonly BotHolder _holder;
+    private readonly Catalog _catalog;
 
-    public LocalMediaService(BotHolder holder)
+    public LocalMediaService(Catalog catalog)
     {
-        _holder = holder;
+        _catalog = catalog;
     }
 
     /// <summary>
@@ -58,15 +57,12 @@ public class LocalMediaService
 
     /// <summary>
     /// Reads a local file with ffprobe and stores the result as the collection's technical
-    /// metadata and audio/subtitle languages, pointing the collection at that file. The
-    /// backend derives "quality" from the technical metadata itself on patch, so it isn't
-    /// set here. Lets an already downloaded file be described without re-uploading it to
-    /// Telegram.
+    /// metadata and audio/subtitle languages, pointing the collection at that file. Quality
+    /// and codec are derived from the technical metadata on update, so they aren't set here.
+    /// Lets an already downloaded file be described without re-uploading it to Telegram.
     /// </summary>
     public async Task<(bool ok, string error)> ProbeIntoCollectionAsync(int collectionId, string path)
     {
-        if (!_holder.IsReady)
-            return (false, "Bot not yet initialised.");
 
         if (!MediaLibrary.TryResolveInsideLibrary(path, out var fullPath))
             return (false, "Path is outside the mounted media library.");
@@ -86,10 +82,8 @@ public class LocalMediaService
     /// </summary>
     public async Task<(bool ok, string error, SeriesMatcher.Plan? plan)> MatchSeriesAsync(int seriesId)
     {
-        if (!_holder.IsReady)
-            return (false, "Bot not yet initialised.", null);
 
-        var series = await _holder.ApiClient.GetSeriesAsync(seriesId);
+        var series = await _catalog.GetSeriesAsync(seriesId);
         if (series is null)
             return (false, $"Series {seriesId} not found.", null);
 
@@ -119,7 +113,7 @@ public class LocalMediaService
         {
             var metadata = await MediaProbe.ReadMetadataAsync(fullPath);
             var summary = MediaProbe.Summarize(metadata);
-            var updated = await _holder.ApiClient.PatchCollectionAsync(collectionId, new UpdateCollectionRequest
+            var updated = await _catalog.UpdateCollectionAsync(collectionId, new Catalog.CollectionChanges
             {
                 TechnicalMetadata = metadata,
                 LocalPath = fullPath,
@@ -146,10 +140,8 @@ public class LocalMediaService
     /// </summary>
     public async Task<(bool ok, string error)> DeleteLocalCopyAsync(int collectionId)
     {
-        if (!_holder.IsReady)
-            return (false, "Bot not yet initialised.");
 
-        var collection = await _holder.ApiClient.GetCollectionAsync(collectionId);
+        var collection = await _catalog.GetCollectionAsync(collectionId);
         if (collection is null)
             return (false, $"Collection {collectionId} not found.");
 
@@ -166,7 +158,7 @@ public class LocalMediaService
             else
                 Log.Info($"[LocalMedia] {fullPath} was already gone, clearing the local path anyway.");
 
-            await _holder.ApiClient.ClearCollectionLocalPathAsync(collectionId);
+            await _catalog.UpdateCollectionAsync(collectionId, new Catalog.CollectionChanges { LocalPath = null });
             Log.Info($"[LocalMedia] Deleted local copy of collection {collectionId}: {fullPath}");
             return (true, "");
         }

@@ -8,15 +8,15 @@ namespace Bot.CallbackQueries.Callbacks.Series;
 public class DownloadSeriesCallback : ICallbackQuery
 {
     public const string Id = "DownloadSeries";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
     private readonly int _seriesId;
 
-    private DownloadSeriesCallback(int seriesId, WTelegram.Bot bot, ApiClient apiClient)
+    private DownloadSeriesCallback(int seriesId, WTelegram.Bot bot, Catalog catalog)
     {
         _seriesId = seriesId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
@@ -26,7 +26,7 @@ public class DownloadSeriesCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new DownloadSeriesCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new DownloadSeriesCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
     }
 
     public static string Pack(int seriesId)

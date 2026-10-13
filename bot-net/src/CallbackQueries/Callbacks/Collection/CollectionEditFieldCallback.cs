@@ -1,5 +1,5 @@
 ﻿using Bot.Handlers;
-using Bot.Models;
+using Bot.Utils;
 using Bot.Services;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -19,7 +19,7 @@ public class CollectionEditFieldCallback : ICallbackQuery
     public const string TagsField = "tags";
     public const string NotesField = "notes";
 
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
 
     private readonly int _collectionId;
@@ -28,13 +28,13 @@ public class CollectionEditFieldCallback : ICallbackQuery
 
     private readonly string? _setValue;
 
-    public CollectionEditFieldCallback(int collectionId, string field, WTelegram.Bot bot, ApiClient apiClient,
+    public CollectionEditFieldCallback(int collectionId, string field, WTelegram.Bot bot, Catalog catalog,
         PendingActionHandler pendingActionHandler, string? setValue = null)
     {
         _collectionId = collectionId;
         _field = field;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
         _pendingActionHandler = pendingActionHandler;
         _setValue = setValue;
     }
@@ -48,7 +48,7 @@ public class CollectionEditFieldCallback : ICallbackQuery
             return;
         }
 
-        var collection = await _apiClient.GetCollectionAsync(_collectionId);
+        var collection = await _catalog.GetCollectionAsync(_collectionId);
 
         if (collection is null)
         {
@@ -87,7 +87,7 @@ public class CollectionEditFieldCallback : ICallbackQuery
             input => Callback(input, message),
             async () =>
             {
-                await new EditCollectionCallback(_collectionId, _bot, _apiClient).ExecuteAsync(message);
+                await new EditCollectionCallback(_collectionId, _bot, _catalog).ExecuteAsync(message);
                 _pendingActionHandler.Clear();
             }
         ));
@@ -171,12 +171,12 @@ public class CollectionEditFieldCallback : ICallbackQuery
     }
 
 
-    private static string GetValue(Models.Collection collection, string field)
+    private static string GetValue(Data.Collection collection, string field)
     {
         switch (field)
         {
             case NameField:
-                return collection.Name;
+                return collection.Name ?? "-";
             case QualityField:
                 return collection.Quality ?? "-";
             case AudioField:
@@ -197,7 +197,7 @@ public class CollectionEditFieldCallback : ICallbackQuery
     {
         _pendingActionHandler.Clear();
         
-        var update = new UpdateCollectionRequest();
+        var update = new Catalog.CollectionChanges();
 
         switch (_field)
         {
@@ -221,8 +221,16 @@ public class CollectionEditFieldCallback : ICallbackQuery
                 break;
         }
 
-        var collection =
-            await _apiClient.PatchCollectionAsync(_collectionId, update);
+        Data.Collection? collection;
+        try
+        {
+            collection = await _catalog.UpdateCollectionAsync(_collectionId, update);
+        }
+        catch (InvalidLanguageCodeException ex)
+        {
+            await _bot.SendMessage(message.Chat.Id, $"❌ {ex.Message}. Use ISO 639-2 codes, e.g. spa,eng.");
+            return;
+        }
 
         if (collection is null)
         {
@@ -232,7 +240,7 @@ public class CollectionEditFieldCallback : ICallbackQuery
             return;
         }
 
-        await new EditCollectionCallback(_collectionId, _bot, _apiClient).ExecuteAsync(message);
+        await new EditCollectionCallback(_collectionId, _bot, _catalog).ExecuteAsync(message);
     }
 
 
@@ -246,9 +254,9 @@ public class CollectionEditFieldCallback : ICallbackQuery
     {
         if (fields.Length == 2)
             return new CollectionEditFieldCallback(int.Parse(fields[0]), fields[1], dispatcher.Bot,
-                dispatcher.ApiClient,
+                dispatcher.Catalog,
                 dispatcher.PendingActionHandler);
-        return new CollectionEditFieldCallback(int.Parse(fields[0]), fields[1], dispatcher.Bot, dispatcher.ApiClient,
+        return new CollectionEditFieldCallback(int.Parse(fields[0]), fields[1], dispatcher.Bot, dispatcher.Catalog,
             dispatcher.PendingActionHandler, fields[2]);
     }
 }

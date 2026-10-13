@@ -9,22 +9,22 @@ namespace Bot.CallbackQueries.Callbacks.Series;
 public class SeeSeasonEpisodesCallback : ICallbackQuery
 {
     public const string Id = "SeasonEps";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
     private readonly int _seriesId;
     private readonly int _seasonId;
 
-    private SeeSeasonEpisodesCallback(int seriesId, int seasonId, WTelegram.Bot bot, ApiClient apiClient)
+    private SeeSeasonEpisodesCallback(int seriesId, int seasonId, WTelegram.Bot bot, Catalog catalog)
     {
         _seriesId = seriesId;
         _seasonId = seasonId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var series = await _apiClient.GetSeriesAsync(_seriesId);
+        var series = await _catalog.GetSeriesAsync(_seriesId);
         if (series == null || series.Seasons == null)
         {
             await _bot.SendMessage(message!.Chat.Id, "Series or seasons not found.");
@@ -65,7 +65,7 @@ public class SeeSeasonEpisodesCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new SeeSeasonEpisodesCallback(int.Parse(fields[0]), int.Parse(fields[1]), dispatcher.Bot, dispatcher.ApiClient);
+        return new SeeSeasonEpisodesCallback(int.Parse(fields[0]), int.Parse(fields[1]), dispatcher.Bot, dispatcher.Catalog);
     }
 
     public static string Pack(int seriesId, int seasonId)

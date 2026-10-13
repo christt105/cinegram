@@ -3,7 +3,6 @@ from sqlalchemy.exc import NoResultFound
 from models import File, Collection, Movie, Series, Season, Episode
 from database import engine
 from sqlmodel import Session
-from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 from logger import logger
 from tmdb import TMDB
@@ -265,129 +264,6 @@ def extract_languages_from_metadata(technical_metadata: str, stream_type: str) -
             codes.append(code)
     return codes
 
-
-def get_or_create_collection(session: Session, filename: str, mime_type: str, technical_metadata: Optional[str] = None):
-
-    collection_name = filename.split('.')[0] # TODO: Improve collection name extraction logic (?)
-
-    quality = None
-    if technical_metadata:
-        quality = extract_quality_from_metadata(technical_metadata)
-
-    if not quality:
-        resolution, hdr = try_subtract_quality(filename)
-        quality = f"{resolution}" if resolution else None
-        if quality and hdr and hdr != "SDR":
-            quality += f" {hdr}"
-
-    codec = extract_codec_from_metadata(technical_metadata) if technical_metadata else None
-
-    if mime_type.startswith("video/"):
-        # if it is a video, we can assume that it is a file on its own
-
-        # TODO: Check if there is a collection with the same name and use the same movie_id or episode_id if it exists
-
-        collection = Collection(name=collection_name, quality=quality, codec=codec, technical_metadata=technical_metadata)
-        session.add(collection)
-        session.commit()
-        session.refresh(collection)
-        return collection
-    # otherwise, it is a collection of files, so we need to check if it already exists and create it if it does not exist
-    # WARN: if the filename is the same as other files, it will be added to the same collection
-    
-    collection = session.exec(
-        select(Collection).where(Collection.name == collection_name)
-    ).first()
-
-    if collection:
-        updated = False
-        if technical_metadata and not collection.technical_metadata:
-            collection.technical_metadata = technical_metadata
-            updated = True
-        
-        # Prioritize technical metadata quality
-        if collection.technical_metadata:
-            extracted_quality = extract_quality_from_metadata(collection.technical_metadata)
-            if extracted_quality and collection.quality != extracted_quality:
-                collection.quality = extracted_quality
-                updated = True
-
-            extracted_codec = extract_codec_from_metadata(collection.technical_metadata)
-            if extracted_codec and collection.codec != extracted_codec:
-                collection.codec = extracted_codec
-                updated = True
-        elif not collection.quality:
-            # Fallback to filename
-            resolution, hdr = try_subtract_quality(filename)
-            quality_fn = f"{resolution}" if resolution else None
-            if quality_fn and hdr and hdr != "SDR":
-                quality_fn += f" {hdr}"
-            if quality_fn:
-                collection.quality = quality_fn
-                updated = True
-                
-        if updated:
-            session.add(collection)
-            session.commit()
-            session.refresh(collection)
-        return collection
-
-    collection = Collection(name=collection_name, quality=quality, codec=codec, technical_metadata=technical_metadata)
-    session.add(collection)
-    session.commit()
-    session.refresh(collection)
-    return collection
-
-def create_file(session: Session, message_id, filename, filesize, mime_type, created_at, tmdb_id=None, technical_metadata=None, storage_peer="bot", user_message_id=None, document_id=None, fwd_from_type=None, fwd_from_id=None, fwd_from_name=None, fwd_from_hidden=False):
-    existing = session.exec(select(File).where(File.message_id == message_id)).first()
-    if existing:
-        changed = False
-        if user_message_id is not None and existing.user_message_id is None:
-            existing.user_message_id = user_message_id
-            changed = True
-        if document_id is not None and existing.document_id is None:
-            existing.document_id = document_id
-            existing.fwd_from_type = fwd_from_type
-            existing.fwd_from_id = fwd_from_id
-            existing.fwd_from_name = fwd_from_name
-            existing.fwd_from_hidden = fwd_from_hidden
-            changed = True
-        if changed:
-            session.add(existing)
-            session.commit()
-            session.refresh(existing)
-        return existing, session.get(Collection, existing.collection_id), False
-
-    if document_id is not None:
-        duplicate = session.exec(select(File).where(File.document_id == document_id)).first()
-        if duplicate:
-            return duplicate, session.get(Collection, duplicate.collection_id), True
-
-    collection = get_or_create_collection(session, filename, mime_type, technical_metadata)
-
-    file_created_at = datetime.fromisoformat(created_at) if created_at else datetime.now(timezone.utc)
-    file = File(
-        message_id=message_id,
-        user_message_id=user_message_id,
-        filename=filename,
-        filesize=filesize,
-        mime_type=mime_type,
-        created_at=file_created_at,
-        collection_id=collection.id,
-        storage_peer=storage_peer,
-        document_id=document_id,
-        fwd_from_type=fwd_from_type,
-        fwd_from_id=fwd_from_id,
-        fwd_from_name=fwd_from_name,
-        fwd_from_hidden=fwd_from_hidden
-    )
-    session.add(file)
-    session.commit()
-    session.refresh(file)
-    return file, collection, False
-
-def get_file(session: Session, item_id: int) -> Optional[File]:
-    return session.get(File, item_id)
 
 def get_collection(session: Session, item_id: int) -> Optional[File]:
     return session.get(Collection, item_id)

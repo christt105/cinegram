@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.IO;
-using Bot.Models;
 using UploadTask = Bot.Data.UploadTask;
 using Bot.Utils;
 using Telegram.Bot.Types;
@@ -80,7 +79,7 @@ public readonly record struct StoredUpload(int MessageId, int? UserMessageId);
 public class UploadService
 {
     private readonly WTelegram.Bot _bot;
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly TransferTasks _tasks;
     private readonly TaskQueue _queue;
     private readonly UserClientService? _userClient;
@@ -95,11 +94,11 @@ public class UploadService
     /// <summary>How long to wait before reading the queue again after the database failed.</summary>
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(30);
 
-    public UploadService(WTelegram.Bot bot, ApiClient apiClient, TransferTasks tasks, TaskQueue queue,
+    public UploadService(WTelegram.Bot bot, Catalog catalog, TransferTasks tasks, TaskQueue queue,
         UserClientService? userClient = null, UploadEchoRegistry? echoes = null)
     {
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
         _tasks = tasks;
         _queue = queue;
         _userClient = userClient;
@@ -253,18 +252,11 @@ public class UploadService
                         totalUploadedBytes = pp[0];
                         lastReportedTime = pp[1];
 
-                        await _apiClient.UploadAsync(new UploadFile
-                        {
-                            MessageId = stored.MessageId,
-                            UserMessageId = stored.UserMessageId,
-                            FileName = partInfo.Name,
-                            FileSize = partInfo.Length,
-                            MimeType = "application/zip",
-                            UploadDate = DateTime.UtcNow.ToString("O"),
-                            TmdbId = task.TmdbId,
-                            TechnicalMetadata = partIndex == 0 ? technicalMetadata : null,
-                            StoragePeer = "bot"
-                        });
+                        await _catalog.AddFileAsync(new Catalog.FileUpload(
+                            stored.MessageId, partInfo.Name, partInfo.Length, "application/zip", DateTime.UtcNow,
+                            UserMessageId: stored.UserMessageId,
+                            TmdbId: task.TmdbId,
+                            TechnicalMetadata: partIndex == 0 ? technicalMetadata : null));
                     }
                 }
                 else
@@ -279,18 +271,11 @@ public class UploadService
                     totalUploadedBytes = dp[0];
                     lastReportedTime = dp[1];
 
-                    await _apiClient.UploadAsync(new UploadFile
-                    {
-                        MessageId = stored.MessageId,
-                        UserMessageId = stored.UserMessageId,
-                        FileName = fileInfo.Name,
-                        FileSize = fileInfo.Length,
-                        MimeType = mime,
-                        UploadDate = DateTime.UtcNow.ToString("O"),
-                        TmdbId = task.TmdbId,
-                        TechnicalMetadata = technicalMetadata,
-                        StoragePeer = "bot"
-                    });
+                    await _catalog.AddFileAsync(new Catalog.FileUpload(
+                        stored.MessageId, fileInfo.Name, fileInfo.Length, mime, DateTime.UtcNow,
+                        UserMessageId: stored.UserMessageId,
+                        TmdbId: task.TmdbId,
+                        TechnicalMetadata: technicalMetadata));
                 }
             }
 

@@ -11,22 +11,22 @@ namespace Bot.CallbackQueries.Callbacks.Movie;
 public class EditMovieCallback : ICallbackQuery
 {
     public const string Id = "edit-movie";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
     private readonly int _movieId;
     private readonly PendingActionHandler _pendingActionHandler;
 
-    private EditMovieCallback(int movieId, WTelegram.Bot bot, ApiClient apiClient, PendingActionHandler pendingActionHandler)
+    private EditMovieCallback(int movieId, WTelegram.Bot bot, Catalog catalog, PendingActionHandler pendingActionHandler)
     {
         _movieId = movieId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
         _pendingActionHandler = pendingActionHandler;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var movie = await _apiClient.GetMovieAsync(_movieId);
+        var movie = await _catalog.GetMovieAsync(_movieId);
         if (movie == null)
         {
             await _bot.SendMessage(message!.Chat.Id, "Movie not found.");
@@ -53,18 +53,18 @@ public class EditMovieCallback : ICallbackQuery
             var action = fields[1];
             if (action == "reidentify")
             {
-                return new ReidentifyAction(movieId, dispatcher.Bot, dispatcher.ApiClient, dispatcher.PendingActionHandler);
+                return new ReidentifyAction(movieId, dispatcher.Bot, dispatcher.Catalog, dispatcher.Identifier, dispatcher.PendingActionHandler);
             }
             if (action == "delete")
             {
-                return new DeleteAction(movieId, dispatcher.Bot, dispatcher.ApiClient);
+                return new DeleteAction(movieId, dispatcher.Bot, dispatcher.Catalog);
             }
             if (action == "confirm_delete")
             {
-                return new ConfirmDeleteAction(movieId, dispatcher.Bot, dispatcher.ApiClient);
+                return new ConfirmDeleteAction(movieId, dispatcher.Bot, dispatcher.Catalog);
             }
         }
-        return new EditMovieCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient, dispatcher.PendingActionHandler);
+        return new EditMovieCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog, dispatcher.PendingActionHandler);
     }
 
     public static string Pack(int movieId)
@@ -76,20 +76,23 @@ public class EditMovieCallback : ICallbackQuery
     {
         private readonly int _movieId;
         private readonly WTelegram.Bot _bot;
-        private readonly ApiClient _apiClient;
+        private readonly Catalog _catalog;
+        private readonly CatalogIdentifier _identifier;
         private readonly PendingActionHandler _pendingActionHandler;
 
-        public ReidentifyAction(int movieId, WTelegram.Bot bot, ApiClient apiClient, PendingActionHandler pendingActionHandler)
+        public ReidentifyAction(int movieId, WTelegram.Bot bot, Catalog catalog, CatalogIdentifier identifier,
+            PendingActionHandler pendingActionHandler)
         {
+            _identifier = identifier;
             _movieId = movieId;
             _bot = bot;
-            _apiClient = apiClient;
+            _catalog = catalog;
             _pendingActionHandler = pendingActionHandler;
         }
 
         public async Task ExecuteAsync(Message? message)
         {
-            var movie = await _apiClient.GetMovieAsync(_movieId);
+            var movie = await _catalog.GetMovieAsync(_movieId);
             if (movie == null)
             {
                 await _bot.SendMessage(message!.Chat.Id, "Movie not found.");
@@ -117,7 +120,7 @@ public class EditMovieCallback : ICallbackQuery
                     var progress = await _bot.SendMessage(message.Chat.Id, "⏳ Re-identifying movie... Please wait...");
                     try
                     {
-                        var success = await _apiClient.ReidentifyMovieAsync(_movieId, newTmdbId);
+                        var success = (await _identifier.ReidentifyMovieAsync(_movieId, newTmdbId)).Error == CatalogIdentifier.ReidentifyError.None;
                         if (success)
                         {
                             await _bot.EditMessageText(message.Chat.Id, progress.MessageId, "✅ Movie successfully re-identified! All files and collections have been moved to the new TMDB ID metadata.");
@@ -136,7 +139,7 @@ public class EditMovieCallback : ICallbackQuery
                 async () =>
                 {
                     _pendingActionHandler.Clear();
-                    await new EditMovieCallback(_movieId, _bot, _apiClient, _pendingActionHandler).ExecuteAsync(message);
+                    await new EditMovieCallback(_movieId, _bot, _catalog, _pendingActionHandler).ExecuteAsync(message);
                 }
             ));
         }
@@ -146,18 +149,18 @@ public class EditMovieCallback : ICallbackQuery
     {
         private readonly int _movieId;
         private readonly WTelegram.Bot _bot;
-        private readonly ApiClient _apiClient;
+        private readonly Catalog _catalog;
 
-        public DeleteAction(int movieId, WTelegram.Bot bot, ApiClient apiClient)
+        public DeleteAction(int movieId, WTelegram.Bot bot, Catalog catalog)
         {
             _movieId = movieId;
             _bot = bot;
-            _apiClient = apiClient;
+            _catalog = catalog;
         }
 
         public async Task ExecuteAsync(Message? message)
         {
-            var movie = await _apiClient.GetMovieAsync(_movieId);
+            var movie = await _catalog.GetMovieAsync(_movieId);
             if (movie == null)
             {
                 await _bot.SendMessage(message!.Chat.Id, "Movie not found.");
@@ -182,18 +185,18 @@ public class EditMovieCallback : ICallbackQuery
     {
         private readonly int _movieId;
         private readonly WTelegram.Bot _bot;
-        private readonly ApiClient _apiClient;
+        private readonly Catalog _catalog;
 
-        public ConfirmDeleteAction(int movieId, WTelegram.Bot bot, ApiClient apiClient)
+        public ConfirmDeleteAction(int movieId, WTelegram.Bot bot, Catalog catalog)
         {
             _movieId = movieId;
             _bot = bot;
-            _apiClient = apiClient;
+            _catalog = catalog;
         }
 
         public async Task ExecuteAsync(Message? message)
         {
-            var success = await _apiClient.DeleteMovieAsync(_movieId);
+            var success = await _catalog.DeleteMovieAsync(_movieId);
             if (success)
             {
                 await _bot.EditMessageText(message!.Chat.Id, message.MessageId, "✅ Movie deleted successfully.");

@@ -11,22 +11,22 @@ namespace Bot.CallbackQueries.Callbacks.Series;
 public class EditSeriesCallback : ICallbackQuery
 {
     public const string Id = "EditSeries";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
     private readonly int _seriesId;
     private readonly PendingActionHandler _pendingActionHandler;
 
-    private EditSeriesCallback(int seriesId, WTelegram.Bot bot, ApiClient apiClient, PendingActionHandler pendingActionHandler)
+    private EditSeriesCallback(int seriesId, WTelegram.Bot bot, Catalog catalog, PendingActionHandler pendingActionHandler)
     {
         _seriesId = seriesId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
         _pendingActionHandler = pendingActionHandler;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var series = await _apiClient.GetSeriesAsync(_seriesId);
+        var series = await _catalog.GetSeriesAsync(_seriesId);
         if (series == null)
         {
             await _bot.SendMessage(message!.Chat.Id, "Series not found.");
@@ -53,18 +53,18 @@ public class EditSeriesCallback : ICallbackQuery
             var action = fields[1];
             if (action == "reidentify")
             {
-                return new ReidentifyAction(seriesId, dispatcher.Bot, dispatcher.ApiClient, dispatcher.PendingActionHandler);
+                return new ReidentifyAction(seriesId, dispatcher.Bot, dispatcher.Catalog, dispatcher.Identifier, dispatcher.PendingActionHandler);
             }
             if (action == "delete")
             {
-                return new DeleteAction(seriesId, dispatcher.Bot, dispatcher.ApiClient);
+                return new DeleteAction(seriesId, dispatcher.Bot, dispatcher.Catalog);
             }
             if (action == "confirm_delete")
             {
-                return new ConfirmDeleteAction(seriesId, dispatcher.Bot, dispatcher.ApiClient);
+                return new ConfirmDeleteAction(seriesId, dispatcher.Bot, dispatcher.Catalog);
             }
         }
-        return new EditSeriesCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient, dispatcher.PendingActionHandler);
+        return new EditSeriesCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog, dispatcher.PendingActionHandler);
     }
 
     public static string Pack(int seriesId)
@@ -76,20 +76,23 @@ public class EditSeriesCallback : ICallbackQuery
     {
         private readonly int _seriesId;
         private readonly WTelegram.Bot _bot;
-        private readonly ApiClient _apiClient;
+        private readonly Catalog _catalog;
+        private readonly CatalogIdentifier _identifier;
         private readonly PendingActionHandler _pendingActionHandler;
 
-        public ReidentifyAction(int seriesId, WTelegram.Bot bot, ApiClient apiClient, PendingActionHandler pendingActionHandler)
+        public ReidentifyAction(int seriesId, WTelegram.Bot bot, Catalog catalog, CatalogIdentifier identifier,
+            PendingActionHandler pendingActionHandler)
         {
+            _identifier = identifier;
             _seriesId = seriesId;
             _bot = bot;
-            _apiClient = apiClient;
+            _catalog = catalog;
             _pendingActionHandler = pendingActionHandler;
         }
 
         public async Task ExecuteAsync(Message? message)
         {
-            var series = await _apiClient.GetSeriesAsync(_seriesId);
+            var series = await _catalog.GetSeriesAsync(_seriesId);
             if (series == null)
             {
                 await _bot.SendMessage(message!.Chat.Id, "Series not found.");
@@ -117,7 +120,7 @@ public class EditSeriesCallback : ICallbackQuery
                     var progress = await _bot.SendMessage(message.Chat.Id, "⏳ Re-identifying series and re-mapping all episodes. Please wait...");
                     try
                     {
-                        var success = await _apiClient.ReidentifySeriesAsync(_seriesId, newTmdbId);
+                        var success = (await _identifier.ReidentifySeriesAsync(_seriesId, newTmdbId)).Error == CatalogIdentifier.ReidentifyError.None;
                         if (success)
                         {
                             await _bot.EditMessageText(message.Chat.Id, progress.MessageId, "✅ Series successfully re-identified! All files and collections have been moved to the new TMDB ID metadata.");
@@ -136,7 +139,7 @@ public class EditSeriesCallback : ICallbackQuery
                 async () =>
                 {
                     _pendingActionHandler.Clear();
-                    await new EditSeriesCallback(_seriesId, _bot, _apiClient, _pendingActionHandler).ExecuteAsync(message);
+                    await new EditSeriesCallback(_seriesId, _bot, _catalog, _pendingActionHandler).ExecuteAsync(message);
                 }
             ));
         }
@@ -146,18 +149,18 @@ public class EditSeriesCallback : ICallbackQuery
     {
         private readonly int _seriesId;
         private readonly WTelegram.Bot _bot;
-        private readonly ApiClient _apiClient;
+        private readonly Catalog _catalog;
 
-        public DeleteAction(int seriesId, WTelegram.Bot bot, ApiClient apiClient)
+        public DeleteAction(int seriesId, WTelegram.Bot bot, Catalog catalog)
         {
             _seriesId = seriesId;
             _bot = bot;
-            _apiClient = apiClient;
+            _catalog = catalog;
         }
 
         public async Task ExecuteAsync(Message? message)
         {
-            var series = await _apiClient.GetSeriesAsync(_seriesId);
+            var series = await _catalog.GetSeriesAsync(_seriesId);
             if (series == null)
             {
                 await _bot.SendMessage(message!.Chat.Id, "Series not found.");
@@ -182,18 +185,18 @@ public class EditSeriesCallback : ICallbackQuery
     {
         private readonly int _seriesId;
         private readonly WTelegram.Bot _bot;
-        private readonly ApiClient _apiClient;
+        private readonly Catalog _catalog;
 
-        public ConfirmDeleteAction(int seriesId, WTelegram.Bot bot, ApiClient apiClient)
+        public ConfirmDeleteAction(int seriesId, WTelegram.Bot bot, Catalog catalog)
         {
             _seriesId = seriesId;
             _bot = bot;
-            _apiClient = apiClient;
+            _catalog = catalog;
         }
 
         public async Task ExecuteAsync(Message? message)
         {
-            var success = await _apiClient.DeleteSeriesAsync(_seriesId);
+            var success = await _catalog.DeleteSeriesAsync(_seriesId);
             if (success)
             {
                 await _bot.EditMessageText(message!.Chat.Id, message.MessageId, "✅ Series deleted successfully.");

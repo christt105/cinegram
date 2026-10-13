@@ -278,7 +278,7 @@ const selectTMDBResult = async (result: any) => {
     const res = await fetch(`${backendUrl}/collections/${activeOrphanId.value}/identify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tmdb_id: result.id })
+      body: JSON.stringify({ tmdb_id: result.id, media_type: result.media_type })
     });
     if (res.ok) {
       alert(`Collection successfully linked to "${result.title}" (${result.year})`);

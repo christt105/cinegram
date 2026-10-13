@@ -14,6 +14,8 @@ builder.Services.AddDbContextFactory<CinegramDb>(options => options.UseSqlite(Ci
 builder.Services.AddSingleton<ITmdbLookup>(_ => TmdbIdentifier.FromEnvironment());
 builder.Services.AddSingleton<WatchedFiles>();
 builder.Services.AddSingleton<TransferTasks>();
+builder.Services.AddSingleton<CatalogIdentifier>();
+builder.Services.AddSingleton<Catalog>();
 builder.Services.AddSingleton<BotHolder>();
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddCors(options =>
@@ -98,6 +100,9 @@ WatchEndpoints.Map(app);
 
 // Download and upload queues: enqueue, list, cancel and retry
 TransferEndpoints.Map(app);
+
+// The library: movies, series, collections, files and TMDB search
+CatalogEndpoints.Map(app);
 
 // Delete a collection's downloaded file, keeping the collection itself
 app.MapDelete("/local/collection/{collectionId:int}", async (int collectionId, IServiceProvider sp) =>

@@ -11,33 +11,33 @@ public class ConfirmDeleteFileCallback : ICallbackQuery
     public const string Id = "confirm-delete-file";
     private int _fileId;
     private WTelegram.Bot _bot;
-    private ApiClient _apiClient;
+    private Catalog _catalog;
 
-    public ConfirmDeleteFileCallback(int fileId, WTelegram.Bot bot, ApiClient apiClient)
+    public ConfirmDeleteFileCallback(int fileId, WTelegram.Bot bot, Catalog catalog)
     {
         _fileId = fileId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var file = await _apiClient.GetFileAsync(_fileId);
-        var result = await _apiClient.DeleteFileAsync(_fileId);
+        var file = await _catalog.GetFileAsync(_fileId);
+        var result = await _catalog.DeleteFileAsync(_fileId);
 
         var text = result
             ? $"File {_fileId} deleted successfully."
             : $"Failed to delete the file {_fileId}.";
 
-        await _bot.EditMessageText(message.Chat.Id, message.MessageId, text, replyMarkup: file != null && file.CollectionId.HasValue ?
+        await _bot.EditMessageText(message.Chat.Id, message.MessageId, text, replyMarkup: file != null && true ?
         new[]{
-            InlineKeyboardButton.WithCallbackData("Back to files", ShowCollectionCallback.Pack(file.CollectionId.Value))
+            InlineKeyboardButton.WithCallbackData("Back to files", ShowCollectionCallback.Pack(file.CollectionId))
         } : null);
     }
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new ConfirmDeleteFileCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new ConfirmDeleteFileCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
     }
 
     public static string Pack(int fileId)

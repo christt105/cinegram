@@ -8,9 +8,9 @@ namespace Bot.Commands;
 
 public static class OrphansMessageBuilder
 {
-    public static async Task<(string Text, InlineKeyboardMarkup Markup)> BuildOrphansMessage(ApiClient apiClient, int page)
+    public static async Task<(string Text, InlineKeyboardMarkup Markup)> BuildOrphansMessage(Catalog catalog, int page)
     {
-        var orphans = await apiClient.GetOrphansAsync() ?? new();
+        var orphans = await catalog.ListOrphansAsync();
 
         if (orphans.Count == 0)
         {
@@ -67,20 +67,20 @@ public static class OrphansMessageBuilder
 
 public class OrphansCommand : ICommand
 {
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
 
-    public OrphansCommand(WTelegram.Bot bot, ApiClient apiClient)
+    public OrphansCommand(WTelegram.Bot bot, Catalog catalog)
     {
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task Execute(string[] args, Message msg)
     {
         try
         {
-            var (text, markup) = await OrphansMessageBuilder.BuildOrphansMessage(_apiClient, 0);
+            var (text, markup) = await OrphansMessageBuilder.BuildOrphansMessage(_catalog, 0);
             await _bot.SendMessage(msg.Chat.Id, text,
                 parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
                 replyMarkup: markup,

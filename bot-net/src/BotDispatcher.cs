@@ -19,11 +19,15 @@ public class BotDispatcher
     private readonly PendingActionHandler _pendingActionHandler;
 
     public BotDispatcher(
-        WTelegram.Bot bot, ApiClient apiClient, WatchedFiles watchedFiles, TransferTasks transfers, TaskQueue queue,
+        WTelegram.Bot bot, ApiClient apiClient, Catalog catalog, CatalogIdentifier identifier, ITmdbLookup tmdb,
+        WatchedFiles watchedFiles, TransferTasks transfers, TaskQueue queue,
         UserClientService? userClient = null, IJellyfinClient? jellyfinClient = null)
     {
         Bot = bot;
         ApiClient = apiClient;
+        Catalog = catalog;
+        Identifier = identifier;
+        Tmdb = tmdb;
         WatchedFiles = watchedFiles;
         Transfers = transfers;
         Queue = queue;
@@ -45,7 +49,14 @@ public class BotDispatcher
 
     public WTelegram.Bot Bot { get; }
 
+    /// <summary>The backend's maintenance API, until maintenance moves here too.</summary>
     public ApiClient ApiClient { get; }
+
+    public Catalog Catalog { get; }
+
+    public CatalogIdentifier Identifier { get; }
+
+    public ITmdbLookup Tmdb { get; }
 
     public WatchedFiles WatchedFiles { get; }
 
