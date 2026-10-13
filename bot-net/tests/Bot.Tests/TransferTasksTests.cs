@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Bot.Data;
+using Bot.Data.Migrations;
 using Bot.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -28,7 +29,7 @@ public class TransferTasksTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         var path = Path.Combine(_dir, "database.db");
-        CinegramDbTests.CreateBackendDatabase(path, CinegramDb.ExpectedAlembicRevision);
+        CinegramDbTests.CreateBackendDatabase(path, Baseline.LegacyAlembicRevision);
 
         var builder = WebApplication.CreateBuilder();
         builder.Logging.ClearProviders();

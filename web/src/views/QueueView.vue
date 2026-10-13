@@ -135,14 +135,14 @@ const failedCount = computed(() =>
   downloads.value.filter(t => t.status === 'failed').length
 );
 let pollInterval: any = null;
-import { backendUrl } from '../config';
+import { apiUrl } from '../config';
 
 const fetchQueues = async () => {
   isLoading.value = true;
   try {
     const [upRes, downRes] = await Promise.all([
-      fetch(`${backendUrl}/uploads/queue`),
-      fetch(`${backendUrl}/downloads/queue`)
+      fetch(`${apiUrl}/uploads/queue`),
+      fetch(`${apiUrl}/downloads/queue`)
     ]);
     
     if (upRes.ok) uploads.value = await upRes.json();
@@ -157,7 +157,7 @@ const fetchQueues = async () => {
 const cancelUpload = async (id: number) => {
   if (!confirm("Cancel this upload task?")) return;
   try {
-    await fetch(`${backendUrl}/uploads/${id}`, { method: 'DELETE' });
+    await fetch(`${apiUrl}/uploads/${id}`, { method: 'DELETE' });
     fetchQueues();
   } catch (err) {
     console.error(err);
@@ -166,7 +166,7 @@ const cancelUpload = async (id: number) => {
 
 const retryUpload = async (id: number) => {
   try {
-    const res = await fetch(`${backendUrl}/uploads/${id}/retry`, { method: 'POST' });
+    const res = await fetch(`${apiUrl}/uploads/${id}/retry`, { method: 'POST' });
     if (res.ok) {
       fetchQueues();
     }
@@ -178,7 +178,7 @@ const retryUpload = async (id: number) => {
 const cancelDownload = async (id: number) => {
   if (!confirm("Cancel this download task?")) return;
   try {
-    await fetch(`${backendUrl}/downloads/${id}`, { method: 'DELETE' });
+    await fetch(`${apiUrl}/downloads/${id}`, { method: 'DELETE' });
     fetchQueues();
   } catch (err) {
     console.error(err);
@@ -187,7 +187,7 @@ const cancelDownload = async (id: number) => {
 
 const retryDownload = async (id: number) => {
   try {
-    const res = await fetch(`${backendUrl}/downloads/${id}/retry`, { method: 'POST' });
+    const res = await fetch(`${apiUrl}/downloads/${id}/retry`, { method: 'POST' });
     if (res.ok) {
       fetchQueues();
     }

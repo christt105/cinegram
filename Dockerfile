@@ -1,10 +1,19 @@
+FROM node:20-slim AS web
+WORKDIR /web
+COPY web/package*.json ./
+RUN npm ci
+COPY web/ ./
+ARG APP_VERSION=dev
+ENV VITE_APP_VERSION=$APP_VERSION
+RUN npm run build
+
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-COPY ./src/*.csproj ./
+COPY bot-net/src/*.csproj ./
 RUN dotnet restore
 
-COPY ./src/ ./
+COPY bot-net/src/ ./
 RUN dotnet publish -c Release -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
@@ -16,8 +25,10 @@ WORKDIR /app
 ARG APP_VERSION=dev
 ENV APP_VERSION=$APP_VERSION
 COPY --from=build /app ./
+COPY --from=web /web/dist ./wwwroot
+EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-    CMD curl -fsS http://localhost:8080/ || exit 1
+    CMD curl -fsS http://localhost:8080/api/health || exit 1
 
 ENTRYPOINT ["dotnet", "Bot.dll"]

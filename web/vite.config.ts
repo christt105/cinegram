@@ -6,14 +6,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 export default defineConfig({
   server: {
     proxy: {
-      '/api': {
-        target: process.env.BOT_NET_URL ?? 'http://localhost:8088',
-        rewrite: (path) => path.replace(/^\/api/, ''),
-      },
-      '/bot': {
-        target: process.env.BOT_NET_URL ?? 'http://localhost:8088',
-        rewrite: (path) => path.replace(/^\/bot/, ''),
-      },
+      '/api': process.env.CINEGRAM_URL ?? 'http://localhost:8080',
     },
   },
   plugins: [

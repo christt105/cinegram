@@ -43,10 +43,7 @@ public class Worker : BackgroundService
             var botToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN")!;
             var authUserId = AuthConfig.OwnerUserId;
 
-            var backendUrl = Environment.GetEnvironmentVariable("BACKEND_URL") ?? "http://backend:8000";
-
             await using var connection = new SqliteConnection(@"Data Source=/data/bot.sqlite");
-            using var apiClient = new ApiClient(backendUrl);
             using var userClient = new UserClientService();
             using var jellyfinClient = JellyfinClient.FromEnvironment();
 
@@ -56,7 +53,7 @@ public class Worker : BackgroundService
             // Register so PreviewService and HTTP endpoints can use the live bot instance
             _botHolder.Register(bot, authUserId);
 
-            var botDispatcher = new BotDispatcher(bot, apiClient, _catalog, _identifier, _tmdb, _backup, _watchedFiles, _transfers, _queue, userClient, jellyfinClient);
+            var botDispatcher = new BotDispatcher(bot, _catalog, _identifier, _tmdb, _backup, _watchedFiles, _transfers, _queue, userClient, jellyfinClient);
 
             await botDispatcher.InitBot();
 

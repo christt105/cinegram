@@ -19,12 +19,11 @@ public class BotDispatcher
     private readonly PendingActionHandler _pendingActionHandler;
 
     public BotDispatcher(
-        WTelegram.Bot bot, ApiClient apiClient, Catalog catalog, CatalogIdentifier identifier, ITmdbLookup tmdb,
+        WTelegram.Bot bot, Catalog catalog, CatalogIdentifier identifier, ITmdbLookup tmdb,
         DatabaseBackup backup, WatchedFiles watchedFiles, TransferTasks transfers, TaskQueue queue,
         UserClientService? userClient = null, IJellyfinClient? jellyfinClient = null)
     {
         Bot = bot;
-        ApiClient = apiClient;
         Catalog = catalog;
         Identifier = identifier;
         Tmdb = tmdb;
@@ -49,9 +48,6 @@ public class BotDispatcher
     }
 
     public WTelegram.Bot Bot { get; }
-
-    /// <summary>The backend's health check; the backend only runs the schema migrations now.</summary>
-    public ApiClient ApiClient { get; }
 
     public Catalog Catalog { get; }
 
