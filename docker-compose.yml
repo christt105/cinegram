@@ -5,9 +5,6 @@ services:
     image: ghcr.io/christt105/cinegram-bot-net:${CINEGRAM_TAG:-latest}
     user: "${PUID:-1000}:${PGID:-1000}"
     restart: unless-stopped
-    depends_on:
-      backend:
-        condition: service_healthy
     env_file:
       - .env
     ports:
@@ -21,17 +18,6 @@ services:
       - JELLYFIN_MOVIES_DIR=/data/media/${MOVIES_SUBDIR:-movies}
       - JELLYFIN_SHOWS_DIR=/data/media/${SHOWS_SUBDIR:-shows}
       - DOWNLOADS_DIR=/data/media/${DOWNLOADS_SUBDIR:-downloads}
-
-  backend:
-    image: ghcr.io/christt105/cinegram-backend:${CINEGRAM_TAG:-latest}
-    user: "${PUID:-1000}:${PGID:-1000}"
-    env_file:
-      - .env
-    volumes:
-      - ./appdata/backend:/data
-    ports:
-      - "${BACKEND_PORT:-8005}:8000"
-    restart: unless-stopped
 
   web:
     image: ghcr.io/christt105/cinegram-web:${CINEGRAM_TAG:-latest}

@@ -19,7 +19,6 @@ public class CommandHandler
         {
             new StartCommand(bot.Bot),
             new VersionCommand(bot.Bot),
-            new HealthCommand(bot.Bot, bot.ApiClient),
             new MoviesCommand(bot.Bot, bot.Catalog),
             new SeriesCommand(bot.Bot, bot.Catalog),
             new SerieCommand(bot.Bot, bot.Catalog),
