@@ -305,34 +305,6 @@ const selectTMDBResult = async (result: any) => {
   }
 };
 
-const identifyOrphan = async (colId: number) => {
-  const tmdbIdStr = prompt("Enter the TMDB ID to identify this collection:");
-  if (!tmdbIdStr) return;
-  const tmdbId = intVal(tmdbIdStr.trim());
-  if (isNaN(tmdbId)) {
-    alert("The TMDB ID must be a valid number.");
-    return;
-  }
-  
-  try {
-    const res = await fetch(`${apiUrl}/collections/${colId}/identify`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tmdb_id: tmdbId })
-    });
-    if (res.ok) {
-      alert("Identified and linked successfully.");
-      fetchOrphans();
-    } else {
-      const txt = await res.text();
-      alert("Error identifying: " + txt);
-    }
-  } catch (err) {
-    console.error(err);
-    alert("Connection error.");
-  }
-};
-
 const identifyBatch = async () => {
   if (selectedOrphanIds.value.length === 0) return;
   const tmdbIdStr = prompt(`Enter the TMDB ID to identify the ${selectedOrphanIds.value.length} selected collections at once:`);

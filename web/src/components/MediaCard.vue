@@ -44,12 +44,12 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { CheckCircle, RefreshCw, Info, Clapperboard, Layers } from 'lucide-vue-next';
 import type { Media } from '../api/jellyfin';
-import type { BackendSeason } from '../api/backend';
+import type { CatalogSeason } from '../api/cinegram';
 
 interface UIMedia extends Media {
   isOnTelegram?: boolean;
   isInJellyfin?: boolean;
-  seasons?: BackendSeason[];
+  seasons?: CatalogSeason[];
   rawId?: number;
   collectionCount?: number;
 }

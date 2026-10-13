@@ -245,7 +245,7 @@ import {
   reidentifyWatchedFiles,
   type WatchedFile,
   type WatchedFileStatus
-} from '../api/backend';
+} from '../api/cinegram';
 
 interface TMDBSearchResult {
   id: number;

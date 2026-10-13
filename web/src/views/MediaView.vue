@@ -159,6 +159,7 @@ function getViewState(type: string): ViewState {
 </script>
 
 <script setup lang="ts">
+import { apiUrl } from '../config';
 import { computed, ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import { RefreshCw, AlertCircle, Plus } from 'lucide-vue-next';
 import MediaCard from '../components/MediaCard.vue';
@@ -172,7 +173,7 @@ const props = defineProps<{
   telegramSeries: any[];
   loading: boolean;
   jellyfinError: string | null;
-  backendError: string | null;
+  catalogError: string | null;
 }>();
 
 const emit = defineEmits(['refresh']);
@@ -181,7 +182,6 @@ const saved = getViewState(props.type);
 const sortBy = ref<SortBy>(saved.sortBy);
 const telegramFilter = ref<TelegramFilter>(saved.telegramFilter);
 const backupFilter = ref<BackupFilter>(saved.backupFilter);
-import { apiUrl } from '../config';
 
 const title = computed(() => {
   if (props.type === 'telegram') return 'Telegram Library';
@@ -197,7 +197,7 @@ const subtitle = computed(() => {
 
 const activeError = computed(() => {
   if (props.type === 'telegram') {
-    return props.backendError;
+    return props.catalogError;
   } else {
     return props.jellyfinError;
   }

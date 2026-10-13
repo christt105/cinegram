@@ -20,7 +20,7 @@ export interface TelegramCollection {
   files: TelegramFile[];
 }
 
-export interface BackendMovie {
+export interface CatalogMovie {
   id: number;
   tmdb_id: number;
   title: string;
@@ -30,28 +30,28 @@ export interface BackendMovie {
   collections: TelegramCollection[];
 }
 
-export interface BackendEpisode {
+export interface CatalogEpisode {
   id: number;
   episode_number: number;
   title: string;
   collections: TelegramCollection[];
 }
 
-export interface BackendSeason {
+export interface CatalogSeason {
   id: number;
   season_number: number;
-  episodes: BackendEpisode[];
+  episodes: CatalogEpisode[];
   collections: TelegramCollection[];
 }
 
-export interface BackendSeries {
+export interface CatalogSeries {
   id: number;
   tmdb_id: number;
   manual_title: string;
   poster_path?: string;
   overview?: string;
   release_year?: number;
-  seasons: BackendSeason[];
+  seasons: CatalogSeason[];
 }
 
 export type WatchedFileStatus =
@@ -161,9 +161,9 @@ export async function correctWatchedFile(
   return res.json();
 }
 
-export function useBackend() {
-  const telegramMovies = ref<BackendMovie[]>([]);
-  const telegramSeries = ref<BackendSeries[]>([]);
+export function useCatalog() {
+  const telegramMovies = ref<CatalogMovie[]>([]);
+  const telegramSeries = ref<CatalogSeries[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
 
@@ -178,7 +178,7 @@ export function useBackend() {
       telegramMovies.value = await res.json();
     } catch (e: any) {
       console.error(e);
-      error.value = e.message || 'Failed to fetch movies from backend';
+      error.value = e.message || 'Failed to fetch movies from Cinegram';
     } finally {
       loading.value = false;
     }
@@ -195,7 +195,7 @@ export function useBackend() {
       telegramSeries.value = await res.json();
     } catch (e: any) {
       console.error(e);
-      error.value = e.message || 'Failed to fetch series from backend';
+      error.value = e.message || 'Failed to fetch series from Cinegram';
     } finally {
       loading.value = false;
     }
