@@ -12,19 +12,19 @@ public class EditCollectionCallback : ICallbackQuery
     
     private readonly int _collectionId; 
     private readonly WTelegram.Bot _bot; 
-    private readonly ApiClient _apiClient; 
+    private readonly Catalog _catalog; 
     
 
-    public EditCollectionCallback(int collectionId, WTelegram.Bot bot, ApiClient apiClient)
+    public EditCollectionCallback(int collectionId, WTelegram.Bot bot, Catalog catalog)
     {
         _collectionId = collectionId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var collection = await _apiClient.GetCollectionAsync(_collectionId);
+        var collection = await _catalog.GetCollectionAsync(_collectionId);
 
         if (collection == null)
         {
@@ -62,6 +62,6 @@ public class EditCollectionCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new EditCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new EditCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
     }
 }

@@ -9,24 +9,24 @@ namespace Bot.CallbackQueries.Callbacks.Series;
 public class ShowEpisodeCallback : ICallbackQuery
 {
     public const string Id = "ShowEp";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
     private readonly int _seriesId;
     private readonly int _seasonId;
     private readonly int _episodeId;
 
-    private ShowEpisodeCallback(int seriesId, int seasonId, int episodeId, WTelegram.Bot bot, ApiClient apiClient)
+    private ShowEpisodeCallback(int seriesId, int seasonId, int episodeId, WTelegram.Bot bot, Catalog catalog)
     {
         _seriesId = seriesId;
         _seasonId = seasonId;
         _episodeId = episodeId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var series = await _apiClient.GetSeriesAsync(_seriesId);
+        var series = await _catalog.GetSeriesAsync(_seriesId);
         if (series == null || series.Seasons == null)
         {
             await _bot.SendMessage(message!.Chat.Id, "Series not found.");
@@ -59,9 +59,9 @@ public class ShowEpisodeCallback : ICallbackQuery
                     
                     """;
 
-        if (episode.Collections != null && episode.Collections.Length > 0)
+        if (episode.Collections != null && episode.Collections.Count > 0)
         {
-            for (var i = 0; i < episode.Collections.Length; i++)
+            for (var i = 0; i < episode.Collections.Count; i++)
             {
                 var c = episode.Collections[i];
                 text += $"{i + 1}. \"{c.Name}\" - Quality {c.Quality}\n";
@@ -91,7 +91,7 @@ public class ShowEpisodeCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new ShowEpisodeCallback(int.Parse(fields[0]), int.Parse(fields[1]), int.Parse(fields[2]), dispatcher.Bot, dispatcher.ApiClient);
+        return new ShowEpisodeCallback(int.Parse(fields[0]), int.Parse(fields[1]), int.Parse(fields[2]), dispatcher.Bot, dispatcher.Catalog);
     }
 
     public static string Pack(int seriesId, int seasonId, int episodeId)

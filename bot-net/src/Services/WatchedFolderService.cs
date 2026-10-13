@@ -1,13 +1,12 @@
 using System.Collections.Concurrent;
-using Bot.Models;
 using Bot.Utils;
 
 namespace Bot.Services;
 
 /// <summary>
 /// Watches the downloads folder for new video files, waits for their size to stop growing,
-/// and reports them to the backend's /watch endpoints. Runs a reconciliation sweep against
-/// the backend's active rows on startup first, since FileSystemWatcher only sees events raised
+/// and records them as watched files, notifying each new one on Telegram. Runs a reconciliation
+/// sweep against the active rows on startup first, since FileSystemWatcher only sees events raised
 /// while the process is running and guarantees nothing about downtime. The same sweep re-runs
 /// periodically and on demand (the /rescan command, the web's "Scan folder" button), because
 /// the watcher can also go quiet without notice while the process is still alive.
@@ -19,7 +18,8 @@ public class WatchedFolderService
     private static readonly TimeSpan StabilityInterval = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan PeriodicSweepInterval = TimeSpan.FromMinutes(15);
 
-    private readonly ApiClient _apiClient;
+    private readonly WatchedFiles _watchedFiles;
+    private readonly WatchNotificationService? _notifications;
     private readonly ConcurrentDictionary<string, byte> _tracking = new();
 
     private readonly SemaphoreSlim _sweepGate = new(1, 1);
@@ -27,9 +27,10 @@ public class WatchedFolderService
     private readonly string _root;
     private CancellationToken _lifetimeToken;
 
-    public WatchedFolderService(ApiClient apiClient)
+    public WatchedFolderService(WatchedFiles watchedFiles, WatchNotificationService? notifications = null)
     {
-        _apiClient = apiClient;
+        _watchedFiles = watchedFiles;
+        _notifications = notifications;
         _root = MediaLibrary.DownloadsDir;
     }
 
@@ -89,8 +90,8 @@ public class WatchedFolderService
     }
 
     /// <summary>
-    /// Diffs the downloads folder against the backend's active rows and reports whatever the
-    /// watcher missed. Safe to call at any time: a file already being tracked is skipped, and
+    /// Diffs the downloads folder against the active rows, records whatever the watcher missed
+    /// and retries the notification of rows still pending. Safe to call at any time: a file already being tracked is skipped, and
     /// concurrent calls queue behind each other.
     /// </summary>
     public async Task<WatchedFileReconciliation.ReconciliationDiff> RescanAsync(CancellationToken ct)
@@ -112,16 +113,16 @@ public class WatchedFolderService
             .Select(path => WatchedFileReconciliation.ToRelativePath(_root, path))
             .ToList();
 
-        var pending = await _apiClient.GetWatchedFilesAsync("pending") ?? [];
-        var notified = await _apiClient.GetWatchedFilesAsync("notified") ?? [];
-        var backendActiveRelative = pending.Concat(notified).Select(w => w.Path);
+        var pending = await _watchedFiles.ListAsync("pending", ct);
+        var notified = await _watchedFiles.ListAsync("notified", ct);
+        var activeRelative = pending.Concat(notified).Select(w => w.Path);
 
-        var diff = WatchedFileReconciliation.Compute(onDiskRelative, backendActiveRelative);
+        var diff = WatchedFileReconciliation.Compute(onDiskRelative, activeRelative);
 
         foreach (var relativePath in diff.Missing)
         {
             Log.Info($"[WatchedFolder] Reconciliation: {relativePath} is no longer on disk, marking missing.");
-            await _apiClient.MarkWatchedFileMissingAsync(relativePath);
+            await MarkMissingAsync(relativePath);
         }
 
         foreach (var relativePath in diff.New)
@@ -130,6 +131,8 @@ public class WatchedFolderService
             var fullPath = WatchedFileReconciliation.ToFullPath(_root, relativePath);
             await TrackAndReportAsync(fullPath, ReconciliationSamples, StabilityInterval, ct);
         }
+
+        if (_notifications is not null) await _notifications.NotifyPendingAsync();
 
         return diff;
     }
@@ -156,7 +159,7 @@ public class WatchedFolderService
             return;
         }
 
-        _ = _apiClient.MarkWatchedFileMissingAsync(relativePath);
+        _ = MarkMissingAsync(relativePath);
     }
 
     private void OnRenamed(object? sender, RenamedEventArgs e)
@@ -187,7 +190,7 @@ public class WatchedFolderService
             case RenameAction.Rename:
                 var oldRelative = WatchedFileReconciliation.ToRelativePath(_root, oldPath);
                 var newRelative = WatchedFileReconciliation.ToRelativePath(_root, newPath);
-                _ = _apiClient.RenameWatchedFileAsync(oldRelative, newRelative);
+                _ = RenameAsync(oldRelative, newRelative);
                 break;
 
             case RenameAction.TrackNew:
@@ -196,7 +199,7 @@ public class WatchedFolderService
 
             case RenameAction.MarkMissing:
                 var missingRelative = WatchedFileReconciliation.ToRelativePath(_root, oldPath);
-                _ = _apiClient.MarkWatchedFileMissingAsync(missingRelative);
+                _ = MarkMissingAsync(missingRelative);
                 break;
         }
     }
@@ -215,8 +218,9 @@ public class WatchedFolderService
             var relativePath = WatchedFileReconciliation.ToRelativePath(_root, fullPath);
             var filename = Path.GetFileName(fullPath);
 
-            Log.Info($"[WatchedFolder] {relativePath} is stable at {size} bytes, reporting.");
-            await _apiClient.ReportWatchedFileAsync(relativePath, filename, size.Value);
+            Log.Info($"[WatchedFolder] {relativePath} is stable at {size} bytes, recording.");
+            var (row, created) = await _watchedFiles.ReportAsync(relativePath, filename, size.Value, ct);
+            if (created && _notifications is not null) await _notifications.NotifyAsync(row.Id);
         }
         catch (OperationCanceledException)
         {
@@ -228,6 +232,31 @@ public class WatchedFolderService
         finally
         {
             _tracking.TryRemove(fullPath, out _);
+        }
+    }
+
+    private async Task MarkMissingAsync(string relativePath)
+    {
+        try
+        {
+            var row = await _watchedFiles.MarkMissingAsync(relativePath);
+            if (row is not null && _notifications is not null) await _notifications.NotifyRemovedAsync(row);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[WatchedFolder] Failed to mark {relativePath} missing", ex);
+        }
+    }
+
+    private async Task RenameAsync(string oldRelative, string newRelative)
+    {
+        try
+        {
+            await _watchedFiles.RenameAsync(oldRelative, newRelative);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[WatchedFolder] Failed to follow the rename of {oldRelative}", ex);
         }
     }
 

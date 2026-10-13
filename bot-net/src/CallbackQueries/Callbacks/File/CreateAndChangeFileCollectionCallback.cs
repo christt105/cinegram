@@ -1,5 +1,4 @@
 ﻿using Bot.CallbackQueries.Callbacks.Movie;
-using Bot.Models;
 using Bot.Services;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -10,20 +9,20 @@ namespace Bot.CallbackQueries.Callbacks.File;
 public class CreateAndChangeFileCollectionCallback : ICallbackQuery
 {
     public const string Id = "createAndChangeFileCollection";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
     private readonly int _fileId;
 
-    private CreateAndChangeFileCollectionCallback(int fileId, WTelegram.Bot bot, ApiClient apiClient)
+    private CreateAndChangeFileCollectionCallback(int fileId, WTelegram.Bot bot, Catalog catalog)
     {
         _fileId = fileId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var file = await _apiClient.GetFileAsync(_fileId);
+        var file = await _catalog.GetFileAsync(_fileId);
 
         if (file is null)
         {
@@ -32,41 +31,14 @@ public class CreateAndChangeFileCollectionCallback : ICallbackQuery
             return;
         }
 
-        int? movieId = null;
-        int? previousCollectionId = null;
-
-        if (file.CollectionId.HasValue)
-        {
-            var previousCollection = await _apiClient.GetCollectionAsync(file.CollectionId.Value);
-            movieId = previousCollection?.MovieId;
-            previousCollectionId = previousCollection?.Id;
-        }
-
-        var collection = await _apiClient.CreateCollectionAsync(new CreateCollectionRequest
-        {
-            Name = file.FileName,
-            MovieId = movieId
-        });
-
-        if (collection == null)
-        {
-            Log.Error("Failed to create Collection");
-            await _bot.EditMessageText(message!.Chat.Id, message.MessageId, "Failed to create collection",
-                replyMarkup: new[]
-                {
-                    new[]
-                    {
-                        InlineKeyboardButton.WithCallbackData("Back to File", ShowFileCallback.Pack(_fileId))
-                    }
-                });
-            return;
-        }
+        var movieId = (await _catalog.GetCollectionAsync(file.CollectionId))?.MovieId;
+        var collection = await _catalog.CreateCollectionAsync(new Catalog.CollectionDraft(file.Filename, MovieId: movieId));
 
         var resultMessage =
             await _bot.SendMessage(message!.Chat.Id,
                 $"New Collection created with ID {collection.Id} and Name {collection.Name}. Moving the file to the new Collection...");
 
-        file = await _apiClient.PatchFileAsync(_fileId, new FileUpdate { CollectionId = collection.Id });
+        (file, _) = await _catalog.MoveFileAsync(_fileId, collection.Id);
 
         if (file is null)
         {
@@ -87,8 +59,8 @@ public class CreateAndChangeFileCollectionCallback : ICallbackQuery
         await _bot.EditMessageText(resultMessage.Chat.Id, resultMessage.MessageId,
             $"New Collection created with ID {collection.Id} and Name {collection.Name}. File with ID {_fileId} moved to the new collection with ID {collection.Id}.");
 
-        if (previousCollectionId.HasValue)
-            await new SeeMovieCollectionsCallback(previousCollectionId.Value, _bot, _apiClient).ExecuteAsync(message);
+        if (movieId.HasValue)
+            await new SeeMovieCollectionsCallback(movieId.Value, _bot, _catalog).ExecuteAsync(message);
     }
 
     public static string Pack(int fileId)
@@ -98,6 +70,6 @@ public class CreateAndChangeFileCollectionCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new CreateAndChangeFileCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new CreateAndChangeFileCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
     }
 }

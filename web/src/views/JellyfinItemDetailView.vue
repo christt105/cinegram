@@ -120,7 +120,7 @@ const props = defineProps<{
 const item = ref<any>(null)
 const isLoading = ref(true)
 
-import { backendUrl } from '../config'
+import { apiUrl } from '../config'
 
 const fetchItem = async () => {
   isLoading.value = true
@@ -166,7 +166,7 @@ const checkLocalDatabase = async (tmdbId: string) => {
   if (!tmdbId) return
   try {
     const typePath = props.type === 'movies' ? 'movies' : 'series'
-    const res = await fetch(`${backendUrl}/${typePath}/tmdb/${tmdbId}`)
+    const res = await fetch(`${apiUrl}/${typePath}/tmdb/${tmdbId}`)
     if (res.ok) {
       const data = await res.json()
       if (data && data.id) {
@@ -189,7 +189,7 @@ const uploadItem = async (target: any, mediaType: string, forcePath?: string) =>
             year: item.value.ProductionYear
         };
         
-        const res = await fetch(`${backendUrl}/uploads/enqueue`, {
+        const res = await fetch(`${apiUrl}/uploads/enqueue`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)

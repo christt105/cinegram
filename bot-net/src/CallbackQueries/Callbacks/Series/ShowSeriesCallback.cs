@@ -9,20 +9,20 @@ namespace Bot.CallbackQueries.Callbacks.Series;
 public class ShowSeriesCallback : ICallbackQuery
 {
     public const string Id = "Series";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
     private readonly int _seriesId;
 
-    private ShowSeriesCallback(int seriesId, WTelegram.Bot bot, ApiClient apiClient)
+    private ShowSeriesCallback(int seriesId, WTelegram.Bot bot, Catalog catalog)
     {
         _seriesId = seriesId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var series = await _apiClient.GetSeriesAsync(_seriesId);
+        var series = await _catalog.GetSeriesAsync(_seriesId);
 
         var text = series != null ? Beautify.FormatSeries(series) : $"Series with ID: {_seriesId} not found";
 
@@ -49,7 +49,7 @@ public class ShowSeriesCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new ShowSeriesCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new ShowSeriesCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
     }
 
     public static string Pack(int seriesId)

@@ -10,22 +10,22 @@ public class ConfirmDeleteCollectionCallback : ICallbackQuery
 {
     public const string Id = "confirmDeleteCollection";
 
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
 
     private readonly int _collectionId;
 
-    public ConfirmDeleteCollectionCallback(int collectionId, WTelegram.Bot bot, ApiClient apiClient)
+    public ConfirmDeleteCollectionCallback(int collectionId, WTelegram.Bot bot, Catalog catalog)
     {
         _collectionId = collectionId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var collection = await _apiClient.GetCollectionAsync(_collectionId);
-        var result = await _apiClient.DeleteCollectionAsync(_collectionId);
+        var collection = await _catalog.GetCollectionAsync(_collectionId);
+        var result = await _catalog.DeleteCollectionAsync(_collectionId);
 
         var text = result
             ? $"Collection {_collectionId} deleted successfully."
@@ -43,7 +43,7 @@ public class ConfirmDeleteCollectionCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new ConfirmDeleteCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new ConfirmDeleteCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
     }
 
     public static string Pack(int collectionId)

@@ -1,5 +1,5 @@
 using System.Text.Json;
-using Bot.Models;
+using Bot.Data;
 
 namespace Bot.Utils;
 
@@ -101,7 +101,7 @@ public static class Beautify
         if (movie.TmdbId.HasValue)
             sb.AppendLine($"<b>TMDB:</b> <a href=\"https://www.themoviedb.org/movie/{movie.TmdbId}\">{movie.TmdbId}</a>");
 
-        var collectionCount = movie.Collections?.Length ?? 0;
+        var collectionCount = movie.Collections.Count;
         sb.AppendLine($"<b>Collections:</b> {collectionCount}");
 
         if (!string.IsNullOrWhiteSpace(movie.Tags))
@@ -129,7 +129,7 @@ public static class Beautify
         if (series.TmdbId.HasValue)
             sb.AppendLine($"<b>TMDB:</b> <a href=\"https://www.themoviedb.org/tv/{series.TmdbId}\">{series.TmdbId}</a>");
 
-        sb.AppendLine($"<b>Seasons:</b> {series.Seasons?.Length ?? 0}");
+        sb.AppendLine($"<b>Seasons:</b> {series.Seasons.Count}");
 
         if (!string.IsNullOrWhiteSpace(series.Overview))
         {
@@ -172,9 +172,9 @@ public static class Beautify
             sb.AppendLine($"<b>Technical:</b> {technical}");
 
         sb.AppendLine();
-        sb.AppendLine($"<b>Files [{collection.Files!.Length}]:</b>");
-        foreach (var (f, i) in collection.Files!.Select((f, i) => (f, i)))
-            sb.AppendLine($"{i + 1}. {f.FileName}  <i>({FormatSize(f.FileSize)})</i>");
+        sb.AppendLine($"<b>Files [{collection.Files.Count}]:</b>");
+        foreach (var (f, i) in collection.Files.Select((f, i) => (f, i)))
+            sb.AppendLine($"{i + 1}. {f.Filename}  <i>({FormatSize(f.Filesize)})</i>");
 
         return sb.ToString().TrimEnd();
     }

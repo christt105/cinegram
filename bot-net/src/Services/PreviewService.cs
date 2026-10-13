@@ -12,10 +12,12 @@ namespace Bot.Services;
 public class PreviewService
 {
     private readonly BotHolder _holder;
+    private readonly Catalog _catalog;
 
-    public PreviewService(BotHolder holder)
+    public PreviewService(BotHolder holder, Catalog catalog)
     {
         _holder = holder;
+        _catalog = catalog;
     }
 
     /// <summary>
@@ -27,20 +29,19 @@ public class PreviewService
             return (false, "Bot not yet initialised.");
 
         var bot = _holder.Bot;
-        var apiClient = _holder.ApiClient;
         var chatId = _holder.ChatId;
 
-        var collection = await apiClient.GetCollectionAsync(collectionId);
+        var collection = await _catalog.GetCollectionAsync(collectionId);
         if (collection is null)
             return (false, $"Collection {collectionId} not found.");
 
-        if (collection.Files == null || collection.Files.Length == 0)
+        if (collection.Files == null || collection.Files.Count == 0)
             return (false, "Collection is empty.");
 
         // Build and send the info card
         if (collection.MovieId != null)
         {
-            var movie = await apiClient.GetMovieAsync(collection.MovieId.Value);
+            var movie = await _catalog.GetMovieAsync(collection.MovieId.Value);
             if (movie != null)
             {
                 var movieTitle = $"\ud83c\udfac {movie.Title} ({movie.ReleaseYear})";
@@ -73,10 +74,9 @@ public class PreviewService
             return (false, "Bot not yet initialised.");
 
         var bot = _holder.Bot;
-        var apiClient = _holder.ApiClient;
         var chatId = _holder.ChatId;
 
-        var series = await apiClient.GetSeriesAsync(seriesId);
+        var series = await _catalog.GetSeriesAsync(seriesId);
         if (series == null || series.Seasons == null)
             return (false, "Series or seasons not found.");
 
@@ -85,7 +85,7 @@ public class PreviewService
             return (false, $"Season {seasonNumber} not found.");
 
         // Gather all files across season packs and episode collections
-        var allFiles = new List<Bot.Models.File>();
+        var allFiles = new List<Bot.Data.TelegramFile>();
         if (season.Collections != null)
             foreach (var c in season.Collections)
                 if (c.Files != null) allFiles.AddRange(c.Files);
@@ -100,7 +100,7 @@ public class PreviewService
             return (false, "No files found for this season.");
 
         // Build and send the info card
-        var allCollections = new List<Bot.Models.Collection>();
+        var allCollections = new List<Bot.Data.Collection>();
         if (season.Collections != null) allCollections.AddRange(season.Collections);
         if (season.Episodes != null)
             foreach (var ep in season.Episodes)

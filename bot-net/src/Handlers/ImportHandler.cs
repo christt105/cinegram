@@ -1,4 +1,3 @@
-using Bot.Models;
 using Bot.Services;
 using Bot.Utils;
 using Telegram.Bot.Types;
@@ -8,14 +7,14 @@ namespace Bot.Handlers;
 public class ImportHandler
 {
     private readonly WTelegram.Bot _bot;
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
 
     private static volatile bool _running;
 
-    public ImportHandler(WTelegram.Bot bot, ApiClient apiClient)
+    public ImportHandler(WTelegram.Bot bot, Catalog catalog)
     {
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task Run(long chatId, string moviesDir, string showsDir)
@@ -91,17 +90,8 @@ public class ImportHandler
             new InputFileStream(stream, info.Name),
             caption: info.Name);
 
-        var uploadFile = new UploadFile
-        {
-            MessageId = sent.MessageId,
-            FileName = info.Name,
-            FileSize = info.Length,
-            MimeType = GuessMime(filePath),
-            UploadDate = DateTime.UtcNow.ToString("O"),
-            TmdbId = tmdbId
-        };
-
-        await _apiClient.UploadAsync(uploadFile);
+        await _catalog.AddFileAsync(new Catalog.FileUpload(
+            sent.MessageId, info.Name, info.Length, GuessMime(filePath), DateTime.UtcNow, TmdbId: tmdbId));
     }
 
     private static List<(string Path, int? TmdbId)> Discover(string moviesDir, string showsDir)

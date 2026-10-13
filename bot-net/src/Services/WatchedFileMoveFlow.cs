@@ -5,9 +5,9 @@ using Telegram.Bot.Types;
 namespace Bot.Services;
 
 /// <summary>
-/// Shared tail end of both the Confirm and Correct callbacks, and of the poller that picks up
-/// rows confirmed/corrected from the web: builds the destination path, re-checks the source is
-/// still on disk, moves it and reports the outcome back to the backend.
+/// Shared tail end of the Confirm and Correct callbacks and of rows confirmed/corrected from the
+/// web: builds the destination path, re-checks the source is
+/// still on disk, moves it and records the outcome on the row.
 /// </summary>
 public static class WatchedFileMoveFlow
 {
@@ -26,18 +26,18 @@ public static class WatchedFileMoveFlow
             Path.GetExtension(filename));
 
     /// <summary>
-    /// Backend-reporting part, with no Telegram message to edit — reused by the web poller.
+    /// The move and its outcome on the row, with no Telegram message to edit, as the web flow uses it.
     /// Null when another caller is already moving this row (see <see cref="WatchedFileMoveClaims"/>);
     /// that caller reports the outcome, so this one has nothing to say about it.
     /// </summary>
     public static async Task<MoveOutcome?> MoveAndReportAsync(
-        ApiClient apiClient, int watchedFileId, WatchedFileResolution? resolution,
+        WatchedFiles watchedFiles, int watchedFileId, WatchedFileResolution? resolution,
         JellyfinSeriesIdentifier? jellyfin = null, CancellationToken cancellationToken = default)
     {
         if (resolution is null)
         {
             return new MoveOutcome(false,
-                "❌ Could not resolve the identity for this file (TMDB lookup or backend request failed).");
+                "❌ Could not resolve the identity for this file (TMDB lookup failed).");
         }
 
         if (!WatchedFileMoveClaims.TryClaim(watchedFileId)) return null;
@@ -48,7 +48,7 @@ public static class WatchedFileMoveFlow
 
             if (!System.IO.File.Exists(sourcePath))
             {
-                await apiClient.MarkWatchedFileMissingAsync(resolution.Path);
+                await watchedFiles.MarkMissingAsync(resolution.Path);
                 return new MoveOutcome(false, WatchedFileMessages.BuildMissingText(resolution.Filename));
             }
 
@@ -60,7 +60,7 @@ public static class WatchedFileMoveFlow
             // The move itself makes the source disappear from the downloads folder, which the
             // FileSystemWatcher sees as a Deleted event indistinguishable from a real deletion by
             // hand. Marking the path in-flight lets it recognize and ignore that expected event
-            // instead of racing the "moved" patch below with a spurious "removed" one.
+            // instead of racing the "moved" status below with a spurious "removed" one.
             InFlightWatchedFileMoves.Mark(resolution.Path);
             try
             {
@@ -68,12 +68,12 @@ public static class WatchedFileMoveFlow
 
                 if (ok)
                 {
-                    await apiClient.PatchWatchedFileStatusAsync(watchedFileId, "moved", movedPath: destPath);
+                    await watchedFiles.MarkMovedAsync(watchedFileId, destPath);
                     QueueJellyfinIdentification(jellyfin, resolution, destPath, cancellationToken);
                     return new MoveOutcome(true, WatchedFileMessages.BuildMovedText(resolution.Filename, destPath));
                 }
 
-                await apiClient.PatchWatchedFileStatusAsync(watchedFileId, "error", errorMessage: error);
+                await watchedFiles.MarkErrorAsync(watchedFileId, error);
                 return new MoveOutcome(false, WatchedFileMessages.BuildErrorText(resolution.Filename, error));
             }
             finally
@@ -117,13 +117,13 @@ public static class WatchedFileMoveFlow
     }
 
     public static async Task ExecuteAsync(
-        WTelegram.Bot bot, ApiClient apiClient, WatchedFileMessageRegistry registry,
+        WTelegram.Bot bot, WatchedFiles watchedFiles, WatchedFileMessageRegistry registry,
         Message message, int watchedFileId, WatchedFileResolution? resolution,
         JellyfinSeriesIdentifier? jellyfin = null, CancellationToken cancellationToken = default)
     {
         registry.TryUntrack(watchedFileId, out _);
 
-        var outcome = await MoveAndReportAsync(apiClient, watchedFileId, resolution, jellyfin, cancellationToken);
+        var outcome = await MoveAndReportAsync(watchedFiles, watchedFileId, resolution, jellyfin, cancellationToken);
         if (outcome is null) return;
 
         await bot.EditMessageText(message.Chat.Id, message.MessageId, outcome.Value.Text);

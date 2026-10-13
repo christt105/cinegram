@@ -8,10 +8,23 @@ public class Worker : BackgroundService
 {
     private readonly TaskQueue _queue = new();
     private readonly BotHolder _botHolder;
+    private readonly WatchedFiles _watchedFiles;
+    private readonly TransferTasks _transfers;
+    private readonly Catalog _catalog;
+    private readonly CatalogIdentifier _identifier;
+    private readonly ITmdbLookup _tmdb;
+    private readonly DatabaseBackup _backup;
 
-    public Worker(BotHolder botHolder)
+    public Worker(BotHolder botHolder, WatchedFiles watchedFiles, TransferTasks transfers, Catalog catalog,
+        CatalogIdentifier identifier, ITmdbLookup tmdb, DatabaseBackup backup)
     {
         _botHolder = botHolder;
+        _watchedFiles = watchedFiles;
+        _transfers = transfers;
+        _catalog = catalog;
+        _identifier = identifier;
+        _tmdb = tmdb;
+        _backup = backup;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -30,10 +43,7 @@ public class Worker : BackgroundService
             var botToken = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN")!;
             var authUserId = AuthConfig.OwnerUserId;
 
-            var backendUrl = Environment.GetEnvironmentVariable("BACKEND_URL") ?? "http://backend:8000";
-
             await using var connection = new SqliteConnection(@"Data Source=/data/bot.sqlite");
-            using var apiClient = new ApiClient(backendUrl);
             using var userClient = new UserClientService();
             using var jellyfinClient = JellyfinClient.FromEnvironment();
 
@@ -41,9 +51,9 @@ public class Worker : BackgroundService
             TransferTuning.Apply(bot.Client, "Bot", defaultParallelTransfers: 4);
 
             // Register so PreviewService and HTTP endpoints can use the live bot instance
-            _botHolder.Register(bot, apiClient, authUserId);
+            _botHolder.Register(bot, authUserId);
 
-            var botDispatcher = new BotDispatcher(bot, apiClient, _queue, userClient, jellyfinClient);
+            var botDispatcher = new BotDispatcher(bot, _catalog, _identifier, _tmdb, _backup, _watchedFiles, _transfers, _queue, userClient, jellyfinClient);
 
             await botDispatcher.InitBot();
 
@@ -52,11 +62,15 @@ public class Worker : BackgroundService
             if (!await userClient.TryResumeSessionAsync(apiId, apiHash, me.Username!))
                 Log.Info($"[Startup] No saved user session. Authenticate with `{UserClientService.ReauthInstructions}`.");
 
-            var downloadService = new DownloadService(bot, apiClient, _queue, userClient);
-            _ = downloadService.PollAndProcessAsync(stoppingToken);
+            var (restartedDownloads, failedUploads) = await _transfers.RecoverInterruptedAsync(stoppingToken);
+            if (restartedDownloads + failedUploads > 0)
+                Log.Info($"[Startup] A restart cut off {restartedDownloads} download(s), queued again, and {failedUploads} upload(s), marked failed.");
 
-            var uploadService = new UploadService(bot, apiClient, _queue, userClient, botDispatcher.UploadEchoes);
-            _ = uploadService.PollAndProcessAsync(stoppingToken);
+            var downloadService = new DownloadService(bot, _catalog, _transfers, _queue, userClient);
+            _ = downloadService.RunAsync(stoppingToken);
+
+            var uploadService = new UploadService(bot, _catalog, _transfers, _queue, userClient, botDispatcher.UploadEchoes);
+            _ = uploadService.RunAsync(stoppingToken);
 
             var jellyfinBackupOptions = JellyfinBackupOptions.FromEnvironment(
                 Environment.GetEnvironmentVariable, authUserId);
@@ -70,12 +84,9 @@ public class Worker : BackgroundService
                 Log.Info("[JellyfinBackup] Disabled: set JELLYFIN_BACKUP_DIR to enable periodic backups.");
             }
 
-            _botHolder.RegisterWatchedFolder(botDispatcher.WatchedFolder);
+            _botHolder.RegisterWatch(botDispatcher.WatchedFolder, botDispatcher.WatchNotifications);
             _ = botDispatcher.WatchedFolder.RunAsync(stoppingToken);
-
-            var watchNotificationService = new WatchNotificationService(
-                bot, apiClient, botDispatcher.WatchedFileMessages, botDispatcher.JellyfinSeries);
-            _ = watchNotificationService.PollAndProcessAsync(stoppingToken);
+            _ = botDispatcher.WatchNotifications.ResumeResolvedAsync(stoppingToken);
 
             _ = _queue.StartProcessing(stoppingToken);
 

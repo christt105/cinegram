@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Bot;
-using Bot.Models;
 using Bot.Services;
 using Bot.Utils;
 using Telegram.Bot.Types;
@@ -12,7 +11,8 @@ namespace TelegramBot.Handlers;
 public class FileHandler
 {
     private readonly WTelegram.Bot _bot;
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
+    private readonly CatalogIdentifier _identifier;
     private readonly TaskQueue _queue;
     private readonly Bot.Handlers.PendingActionHandler _pendingActionHandler;
 
@@ -20,7 +20,8 @@ public class FileHandler
     {
         _bot = bot.Bot;
         _queue = bot.Queue;
-        _apiClient = bot.ApiClient;
+        _catalog = bot.Catalog;
+        _identifier = bot.Identifier;
         _pendingActionHandler = bot.PendingActionHandler;
     }
 
@@ -50,25 +51,23 @@ public class FileHandler
 
         var forward = ForwardMetadata.Extract(msg.ForwardOrigin, msg.TLMessage);
 
-        var uploadFile = new UploadFile
-        {
-            MessageId = msg.MessageId,
-            FileName = fileName,
-            FileSize = fileSize,
-            UploadDate = msg.Date.ToString("O"),
-            MimeType = mimeType ?? "video/mp4",
-            DocumentId = forward.DocumentId,
-            FwdFromType = forward.FromType,
-            FwdFromId = forward.FromId,
-            FwdFromName = forward.FromName,
-            FwdFromHidden = forward.Hidden
-        };
+        var uploadFile = new Catalog.FileUpload(
+            msg.MessageId,
+            fileName,
+            fileSize,
+            mimeType ?? "video/mp4",
+            msg.Date,
+            DocumentId: forward.DocumentId,
+            FwdFromType: forward.FromType,
+            FwdFromId: forward.FromId,
+            FwdFromName: forward.FromName,
+            FwdFromHidden: forward.Hidden);
 
         var message = @$"📥 New file received:
 Id: {uploadFile.MessageId}
-Name: {uploadFile.FileName}
-Date: {uploadFile.UploadDate}
-File size: {Beautify.FormatSize(uploadFile.FileSize)}
+Name: {uploadFile.Filename}
+Date: {uploadFile.CreatedAt:O}
+File size: {Beautify.FormatSize(uploadFile.Filesize)}
 File extension: {uploadFile.MimeType}
 
 Starting to process...";
@@ -83,9 +82,9 @@ Starting to process...";
         await _queue.Enqueue(() => IdentifyFile(uploadFile, answer));
     }
 
-    private async Task IdentifyFile(UploadFile file, Message answer)
+    private async Task IdentifyFile(Catalog.FileUpload file, Message answer)
     {
-        var result = await _apiClient.UploadAsync(file);
+        var result = await _catalog.AddFileAsync(file);
 
         Log.Info(JsonSerializer.Serialize(result));
 
@@ -93,17 +92,17 @@ Starting to process...";
         {
             var message = @$"⚠️ Already in the library, this is a re-forward of a file you already have:
 Id: {file.MessageId}
-Name: {file.FileName}
+Name: {file.Filename}
 Collection ID: {result.CollectionId}";
             await _bot.EditMessageText(answer.Chat.Id, answer.MessageId, message);
             return;
         }
 
-        if (result.MovieId == null && result.EpisodeId == null && result.SeasonId == null && result.CollectionId.HasValue)
+        if (result.MovieId == null && result.EpisodeId == null && result.SeasonId == null)
         {
             var message = @$"⚠️ Could not automatically identify the file.
 Id: {file.MessageId}
-Name: {file.FileName}
+Name: {file.Filename}
 
 Please reply to this message with the numeric TMDB ID to link it manually.";
 
@@ -118,7 +117,7 @@ Please reply to this message with the numeric TMDB ID to link it manually.";
                     if (int.TryParse(text.Trim(), out var tmdbId))
                     {
                         await _bot.SendMessage(answer.Chat.Id, $"Attempting to link with TMDB ID {tmdbId}...");
-                        var success = await _apiClient.IdentifyCollectionAsync(result.CollectionId.Value, tmdbId);
+                        var success = await _identifier.IdentifyAsync(result.CollectionId, new CatalogIdentifier.Request(tmdbId));
                         if (success)
                         {
                             await _bot.SendMessage(answer.Chat.Id, "✅ File linked successfully.");
@@ -143,7 +142,7 @@ Please reply to this message with the numeric TMDB ID to link it manually.";
         {
             var message = @$"✅ File processed and identified successfully:
 Id: {file.MessageId}
-Name: {file.FileName}
+Name: {file.Filename}
 Movie ID: {result.MovieId}
 Season ID: {result.SeasonId}
 Episode ID: {result.EpisodeId}

@@ -9,20 +9,20 @@ namespace Bot.CallbackQueries.Callbacks.Movie;
 public class SeeMovieCollectionsCallback : ICallbackQuery
 {
     public const string Id = "see-movie-collections";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
     private readonly int _movieId;
 
-    public SeeMovieCollectionsCallback(int movieId, WTelegram.Bot bot, ApiClient apiClient)
+    public SeeMovieCollectionsCallback(int movieId, WTelegram.Bot bot, Catalog catalog)
     {
         _movieId = movieId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var collections = await _apiClient.GetCollectionsAsync(_movieId);
+        var collections = (await _catalog.GetMovieAsync(_movieId))?.Collections;
 
         var text = "Collections:\n\n";
 
@@ -33,7 +33,7 @@ public class SeeMovieCollectionsCallback : ICallbackQuery
             {
                 var c = collections[i];
                 var qualityStr = string.IsNullOrWhiteSpace(c.Quality) ? "" : $" - Quality {c.Quality}";
-                text += $"{i + 1}. \"{c.Name}\" (ID {c.Id}){qualityStr} - Files {c.Files!.Length}\n";
+                text += $"{i + 1}. \"{c.Name}\" (ID {c.Id}){qualityStr} - Files {c.Files.Count}\n";
                 buttons.Add([
                     InlineKeyboardButton.WithCallbackData((i + 1).ToString(), ShowCollectionCallback.Pack(c.Id))
                 ]);
@@ -51,7 +51,7 @@ public class SeeMovieCollectionsCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] packedFields, BotDispatcher dispatcher)
     {
-        return new SeeMovieCollectionsCallback(int.Parse(packedFields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new SeeMovieCollectionsCallback(int.Parse(packedFields[0]), dispatcher.Bot, dispatcher.Catalog);
     }
 
     public static string Pack(int movieId)

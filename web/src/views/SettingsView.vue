@@ -8,7 +8,7 @@
         <h3>Connection Status</h3>
         <div class="status-item" style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">
           <span class="label" style="color: var(--text-secondary);">Jellyfin URL:</span>
-          <span class="value" style="font-family: monospace;">{{ jellyfinUrl }}</span>
+          <span class="value" style="font-family: monospace;">{{ jellyfinUrl ?? 'Not configured' }}</span>
         </div>
         <div class="status-item" style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">
           <span class="label" style="color: var(--text-secondary);">Jellyfin Auth:</span>
@@ -16,8 +16,8 @@
           <span class="value error-text" v-else style="color: #f87171; font-weight: 600;">Disconnected / Missing Token</span>
         </div>
         <div class="status-item" style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">
-          <span class="label" style="color: var(--text-secondary);">Backend API URL:</span>
-          <span class="value" style="font-family: monospace;">{{ backendUrl }}</span>
+          <span class="label" style="color: var(--text-secondary);">API URL:</span>
+          <span class="value" style="font-family: monospace;">{{ apiUrl }}</span>
         </div>
       </div>
       
@@ -199,7 +199,18 @@ const props = defineProps<{
   telegramSeries: any[];
 }>();
 
-import { jellyfinUrl, backendUrl, appVersion } from '../config';
+import { apiUrl, jellyfinProxyUrl, appVersion } from '../config';
+
+const jellyfinUrl = ref<string | null>(null);
+
+const fetchJellyfinUrl = async () => {
+  try {
+    const res = await fetch(jellyfinProxyUrl);
+    if (res.ok) jellyfinUrl.value = (await res.json()).url;
+  } catch (err) {
+    console.error(err);
+  }
+};
 
 const orphans = ref<any[]>([]);
 const loadingOrphans = ref(true);
@@ -221,7 +232,7 @@ const fetchOrphans = async () => {
   loadingOrphans.value = true;
   selectedOrphanIds.value = [];
   try {
-    const res = await fetch(`${backendUrl}/maintenance/orphans`);
+    const res = await fetch(`${apiUrl}/maintenance/orphans`);
     if (res.ok) {
       orphans.value = await res.json();
     }
@@ -244,7 +255,7 @@ const searchTMDB = async () => {
   isSearching.value = true;
   searchResults.value = [];
   try {
-    const res = await fetch(`${backendUrl}/tmdb/search?query=${encodeURIComponent(searchQuery.value.trim())}`);
+    const res = await fetch(`${apiUrl}/tmdb/search?query=${encodeURIComponent(searchQuery.value.trim())}`);
     if (res.ok) {
       searchResults.value = await res.json();
     }
@@ -275,10 +286,10 @@ const openIdentifyModal = (orphan: any) => {
 const selectTMDBResult = async (result: any) => {
   if (!activeOrphanId.value) return;
   try {
-    const res = await fetch(`${backendUrl}/collections/${activeOrphanId.value}/identify`, {
+    const res = await fetch(`${apiUrl}/collections/${activeOrphanId.value}/identify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tmdb_id: result.id })
+      body: JSON.stringify({ tmdb_id: result.id, media_type: result.media_type })
     });
     if (res.ok) {
       alert(`Collection successfully linked to "${result.title}" (${result.year})`);
@@ -304,7 +315,7 @@ const identifyOrphan = async (colId: number) => {
   }
   
   try {
-    const res = await fetch(`${backendUrl}/collections/${colId}/identify`, {
+    const res = await fetch(`${apiUrl}/collections/${colId}/identify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tmdb_id: tmdbId })
@@ -333,7 +344,7 @@ const identifyBatch = async () => {
   }
   
   try {
-    const res = await fetch(`${backendUrl}/maintenance/identify-batch`, {
+    const res = await fetch(`${apiUrl}/maintenance/identify-batch`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -358,7 +369,7 @@ const deleteBatch = async () => {
   if (!confirm(`Are you sure you want to delete the ${selectedOrphanIds.value.length} selected collections at once? This action is permanent.`)) return;
   
   try {
-    const res = await fetch(`${backendUrl}/maintenance/delete-batch`, {
+    const res = await fetch(`${apiUrl}/maintenance/delete-batch`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -384,7 +395,7 @@ const intVal = (val: string) => {
 const deleteOrphan = async (colId: number) => {
   if (!confirm("Are you sure you want to delete this orphaned collection from the database? Its file references will also be removed.")) return;
   try {
-    const res = await fetch(`${backendUrl}/collections/${colId}`, {
+    const res = await fetch(`${apiUrl}/collections/${colId}`, {
       method: "DELETE"
     });
     if (res.ok) {
@@ -400,6 +411,7 @@ const deleteOrphan = async (colId: number) => {
 
 onMounted(() => {
   fetchOrphans();
+  fetchJellyfinUrl();
 });
 </script>
 

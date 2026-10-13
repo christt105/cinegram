@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { backendUrl } from '../config';
+import { apiUrl } from '../config';
 
 export interface TelegramFile {
   id: number;
@@ -97,7 +97,7 @@ export interface WatchedFileResolution {
 }
 
 export async function listWatchedFiles(status?: WatchedFileStatus): Promise<WatchedFile[]> {
-  const url = status ? `${backendUrl}/watch?status=${status}` : `${backendUrl}/watch`;
+  const url = status ? `${apiUrl}/watch?status=${status}` : `${apiUrl}/watch`;
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`Failed to list watched files: ${res.statusText}`);
@@ -111,7 +111,7 @@ export async function confirmWatchedFile(
   season?: number | null,
   episode?: number | null
 ): Promise<WatchedFileResolution> {
-  const res = await fetch(`${backendUrl}/watch/${id}/confirm`, {
+  const res = await fetch(`${apiUrl}/watch/${id}/confirm`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tmdb_id: tmdbId, season, episode })
@@ -129,7 +129,7 @@ export interface MetadataVocabulary {
 }
 
 export async function fetchMetadataVocabulary(): Promise<MetadataVocabulary> {
-  const res = await fetch(`${backendUrl}/collections/vocabulary`);
+  const res = await fetch(`${apiUrl}/collections/vocabulary`);
   if (!res.ok) {
     throw new Error(`Failed to fetch metadata vocabulary: ${res.statusText}`);
   }
@@ -137,7 +137,7 @@ export async function fetchMetadataVocabulary(): Promise<MetadataVocabulary> {
 }
 
 export async function reidentifyWatchedFiles(): Promise<WatchedFile[]> {
-  const res = await fetch(`${backendUrl}/watch/reidentify`, { method: 'POST' });
+  const res = await fetch(`${apiUrl}/watch/reidentify`, { method: 'POST' });
   if (!res.ok) {
     throw new Error(`Failed to re-identify watched files: ${res.statusText}`);
   }
@@ -150,7 +150,7 @@ export async function correctWatchedFile(
   season?: number | null,
   episode?: number | null
 ): Promise<WatchedFileResolution> {
-  const res = await fetch(`${backendUrl}/watch/${id}/correct`, {
+  const res = await fetch(`${apiUrl}/watch/${id}/correct`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tmdb_id: tmdbId, season, episode })
@@ -171,7 +171,7 @@ export function useBackend() {
     loading.value = true;
     error.value = null;
     try {
-      const res = await fetch(`${backendUrl}/movies`);
+      const res = await fetch(`${apiUrl}/movies`);
       if (!res.ok) {
         throw new Error(`Error: ${res.statusText}`);
       }
@@ -188,7 +188,7 @@ export function useBackend() {
     loading.value = true;
     error.value = null;
     try {
-      const res = await fetch(`${backendUrl}/series`);
+      const res = await fetch(`${apiUrl}/series`);
       if (!res.ok) {
         throw new Error(`Error: ${res.statusText}`);
       }

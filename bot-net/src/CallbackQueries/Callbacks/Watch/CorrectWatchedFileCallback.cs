@@ -8,7 +8,7 @@ namespace Bot.CallbackQueries.Callbacks.Watch;
 /// <summary>
 /// Arms a pending action expecting a reply of the form "tmdb &lt;id&gt;" (optionally
 /// " season &lt;n&gt; episode &lt;n&gt;"), then runs the same resolve+move flow as
-/// <see cref="ConfirmWatchedFileCallback"/> but through /watch/{id}/correct.
+/// <see cref="ConfirmWatchedFileCallback"/>, recording the row as corrected.
 /// </summary>
 [Callback(Id)]
 public class CorrectWatchedFileCallback : ICallbackQuery
@@ -16,20 +16,20 @@ public class CorrectWatchedFileCallback : ICallbackQuery
     public const string Id = "correct-watched-file";
 
     private readonly WTelegram.Bot _bot;
-    private readonly ApiClient _apiClient;
+    private readonly WatchedFiles _watchedFiles;
     private readonly WatchedFileMessageRegistry _registry;
     private readonly PendingActionHandler _pendingActionHandler;
     private readonly JellyfinSeriesIdentifier? _jellyfin;
     private readonly int _watchedFileId;
 
     private CorrectWatchedFileCallback(
-        int watchedFileId, WTelegram.Bot bot, ApiClient apiClient,
+        int watchedFileId, WTelegram.Bot bot, WatchedFiles watchedFiles,
         WatchedFileMessageRegistry registry, PendingActionHandler pendingActionHandler,
         JellyfinSeriesIdentifier? jellyfin)
     {
         _watchedFileId = watchedFileId;
         _bot = bot;
-        _apiClient = apiClient;
+        _watchedFiles = watchedFiles;
         _registry = registry;
         _pendingActionHandler = pendingActionHandler;
         _jellyfin = jellyfin;
@@ -69,10 +69,10 @@ public class CorrectWatchedFileCallback : ICallbackQuery
             return;
         }
 
-        var resolution = await _apiClient.CorrectWatchedFileAsync(
-            _watchedFileId, parsed.TmdbId, parsed.Season, parsed.Episode);
+        var outcome = await _watchedFiles.ResolveAsync(
+            _watchedFileId, parsed.TmdbId, parsed.Season, parsed.Episode, "corrected");
         await WatchedFileMoveFlow.ExecuteAsync(
-            _bot, _apiClient, _registry, message, _watchedFileId, resolution, _jellyfin);
+            _bot, _watchedFiles, _registry, message, _watchedFileId, outcome.Resolution, _jellyfin);
     }
 
     public static string Pack(int watchedFileId) =>
@@ -81,7 +81,7 @@ public class CorrectWatchedFileCallback : ICallbackQuery
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
         return new CorrectWatchedFileCallback(
-            int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient,
+            int.Parse(fields[0]), dispatcher.Bot, dispatcher.WatchedFiles,
             dispatcher.WatchedFileMessages, dispatcher.PendingActionHandler, dispatcher.JellyfinSeries);
     }
 }

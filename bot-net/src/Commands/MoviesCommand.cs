@@ -7,18 +7,18 @@ namespace Bot.Commands;
 
 public class MoviesCommand : ICommand
 {
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
 
-    public MoviesCommand(WTelegram.Bot bot, ApiClient apiClient)
+    public MoviesCommand(WTelegram.Bot bot, Catalog catalog)
     {
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task Execute(string[] args, Message msg)
     {
-        var movies = await _apiClient.GetMoviesAsync();
+        var movies = await _catalog.ListMoviesAsync();
 
         if (movies == null || movies.Count == 0)
         {

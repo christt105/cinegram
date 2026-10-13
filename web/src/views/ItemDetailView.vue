@@ -658,7 +658,7 @@ const props = defineProps<{
 const item = ref<any>(null)
 const isLoading = ref(true)
 
-import { backendUrl } from '../config'
+import { apiUrl } from '../config'
 
 const formatSize = (bytes: number) => {
   if (!bytes || bytes <= 0) return '—'
@@ -773,7 +773,7 @@ const fetchItem = async () => {
   const isInitialLoad = item.value === null
   try {
     const endpoint = props.type === 'movies' ? `/movies/${props.id}` : `/series/${props.id}`
-    const res = await fetch(`${backendUrl}${endpoint}`)
+    const res = await fetch(`${apiUrl}${endpoint}`)
     if (res.ok) {
       const data = await res.json()
       if (data.seasons) {
@@ -853,7 +853,7 @@ const saveCollectionChanges = async () => {
       }
     }
 
-    const res = await fetch(`${backendUrl}/collections/${editForm.value.id}`, {
+    const res = await fetch(`${apiUrl}/collections/${editForm.value.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -893,7 +893,7 @@ const openDownloadModal = (col: any) => {
 const confirmDownload = async () => {
   downloadModal.value.loading = true
   try {
-    const res = await fetch(`${backendUrl}/downloads/enqueue/collection/${downloadModal.value.collectionId}`, {
+    const res = await fetch(`${apiUrl}/downloads/enqueue/collection/${downloadModal.value.collectionId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name_suffix: downloadModal.value.suffix.trim() || null })
@@ -915,7 +915,7 @@ const confirmDownload = async () => {
 
 const downloadSeason = async (seasonNumber: number) => {
   try {
-    const res = await fetch(`${backendUrl}/downloads/enqueue/series/${props.id}/season/${seasonNumber}`, { method: 'POST' })
+    const res = await fetch(`${apiUrl}/downloads/enqueue/series/${props.id}/season/${seasonNumber}`, { method: 'POST' })
     if (res.ok) {
       alert("Full season added to queue.")
     } else {
@@ -930,7 +930,7 @@ const toggleSeasonLocalMetadata = async (season: any) => {
   const previous = season.local_metadata
   season.local_metadata = !previous
   try {
-    const res = await fetch(`${backendUrl}/series/${props.id}/seasons/${season.season_number}`, {
+    const res = await fetch(`${apiUrl}/series/${props.id}/seasons/${season.season_number}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ local_metadata: season.local_metadata })
@@ -947,7 +947,7 @@ const updateEpisodeTitle = async (season: any, ep: any, newTitle: string) => {
   const previous = ep.title
   ep.title = newTitle
   try {
-    const res = await fetch(`${backendUrl}/series/${props.id}/seasons/${season.season_number}/episodes/${ep.episode_number}`, {
+    const res = await fetch(`${apiUrl}/series/${props.id}/seasons/${season.season_number}/episodes/${ep.episode_number}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: newTitle })
@@ -960,7 +960,6 @@ const updateEpisodeTitle = async (season: any, ep: any, newTitle: string) => {
   }
 }
 
-import { botNetUrl } from '../config'
 
 const sendingPreview = ref<number | null>(null)
 const sendingSeasonPreview = ref<number | null>(null)
@@ -968,7 +967,7 @@ const sendingSeasonPreview = ref<number | null>(null)
 const sendCollectionPreview = async (collectionId: number) => {
   sendingPreview.value = collectionId
   try {
-    const res = await fetch(`${botNetUrl}/preview/collection/${collectionId}`, { method: 'POST' })
+    const res = await fetch(`${apiUrl}/preview/collection/${collectionId}`, { method: 'POST' })
     if (res.ok) {
       alert('✅ Preview sent to Telegram!')
     } else {
@@ -986,7 +985,7 @@ const sendCollectionPreview = async (collectionId: number) => {
 const sendSeasonPreview = async (seasonNumber: number) => {
   sendingSeasonPreview.value = seasonNumber
   try {
-    const res = await fetch(`${botNetUrl}/preview/series/${props.id}/season/${seasonNumber}`, { method: 'POST' })
+    const res = await fetch(`${apiUrl}/preview/series/${props.id}/season/${seasonNumber}`, { method: 'POST' })
     if (res.ok) {
       alert('✅ Season preview sent to Telegram!')
     } else {
@@ -1006,7 +1005,7 @@ const matchingWithJellyfin = ref(false)
 const matchWithJellyfin = async () => {
   matchingWithJellyfin.value = true
   try {
-    const res = await fetch(`${botNetUrl}/probe/series/${props.id}`, { method: 'POST' })
+    const res = await fetch(`${apiUrl}/probe/series/${props.id}`, { method: 'POST' })
     if (res.ok) {
       const plan = await res.json()
       const matched = plan.matches?.length ?? 0
@@ -1087,7 +1086,7 @@ const searchLocalFiles = async () => {
       if (probeModal.value.tvdbId) params.set('tvdb_id', String(probeModal.value.tvdbId))
     }
 
-    const res = await fetch(`${botNetUrl}/local/files?${params.toString()}`)
+    const res = await fetch(`${apiUrl}/local/files?${params.toString()}`)
     probeModal.value.files = res.ok ? await res.json() : []
     if (!res.ok) alert('Error listing local files.')
   } catch (err) {
@@ -1101,7 +1100,7 @@ const searchLocalFiles = async () => {
 const probeLocalFile = async (path: string) => {
   probeModal.value.submitting = true
   try {
-    const res = await fetch(`${botNetUrl}/probe/collection/${probeModal.value.collectionId}`, {
+    const res = await fetch(`${apiUrl}/probe/collection/${probeModal.value.collectionId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path })
@@ -1127,7 +1126,7 @@ const deleteLocalCopy = async (col: any) => {
 
   deletingLocalCopy.value = col.id
   try {
-    const res = await fetch(`${botNetUrl}/local/collection/${col.id}`, { method: 'DELETE' })
+    const res = await fetch(`${apiUrl}/local/collection/${col.id}`, { method: 'DELETE' })
     if (res.ok) {
       fetchItem()
     } else {
@@ -1185,7 +1184,7 @@ const getTechMeta = (col: any) => {
 const deleteCollection = async (collectionId: number) => {
   if (!confirm("Are you sure you want to delete this collection from the database?")) return;
   try {
-    const res = await fetch(`${backendUrl}/collections/${collectionId}`, { method: 'DELETE' })
+    const res = await fetch(`${apiUrl}/collections/${collectionId}`, { method: 'DELETE' })
     if (res.ok) {
       alert("Collection deleted.")
       fetchItem() // refresh
@@ -1204,7 +1203,7 @@ const changePoster = async () => {
   availablePosters.value = []
   try {
     const endpoint = props.type === 'movies' ? `/movies/${props.id}/posters` : `/series/${props.id}/posters`
-    const res = await fetch(`${backendUrl}${endpoint}`)
+    const res = await fetch(`${apiUrl}${endpoint}`)
     if (res.ok) {
       availablePosters.value = await res.json()
     }
@@ -1220,7 +1219,7 @@ const selectPoster = async (path: string) => {
   
   try {
     const endpoint = props.type === 'movies' ? `/movies/${props.id}` : `/series/${props.id}`
-    const res = await fetch(`${backendUrl}${endpoint}`, {
+    const res = await fetch(`${apiUrl}${endpoint}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ poster_path: path.trim() })
@@ -1282,7 +1281,7 @@ const handleCollectionTMDBSelect = async (result: any) => {
   } else {
     reidentifyCollectionModal.value.loading = true
     try {
-      const res = await fetch(`${backendUrl}/collections/${reidentifyCollectionModal.value.collectionId}/reidentify`, {
+      const res = await fetch(`${apiUrl}/collections/${reidentifyCollectionModal.value.collectionId}/reidentify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tmdb_id: result.id, media_type: 'movie' })
@@ -1312,7 +1311,7 @@ const confirmCollectionReidentify = async () => {
     }
     const ep = reidentifyCollectionModal.value.episodeNumber
     if (ep != null && ep >= 1) body.episode_number = ep
-    const res = await fetch(`${backendUrl}/collections/${reidentifyCollectionModal.value.collectionId}/reidentify`, {
+    const res = await fetch(`${apiUrl}/collections/${reidentifyCollectionModal.value.collectionId}/reidentify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -1339,7 +1338,7 @@ const searchTMDB = async () => {
     const mediaType = reidentifyCollectionModal.value.open
       ? 'multi'
       : (props.type === 'movies' ? 'movie' : 'tv')
-    const res = await fetch(`${backendUrl}/tmdb/search?query=${encodeURIComponent(searchQueryTMDB.value.trim())}&media_type=${mediaType}`)
+    const res = await fetch(`${apiUrl}/tmdb/search?query=${encodeURIComponent(searchQueryTMDB.value.trim())}&media_type=${mediaType}`)
     if (res.ok) {
       searchResultsTMDB.value = await res.json()
     }
@@ -1357,7 +1356,7 @@ const selectTMDBReidentify = async (newTmdbId: number) => {
     const endpoint = props.type === 'movies' 
       ? `/movies/${props.id}/reidentify?new_tmdb_id=${newTmdbId}` 
       : `/series/${props.id}/reidentify?new_tmdb_id=${newTmdbId}`
-    const res = await fetch(`${backendUrl}${endpoint}`, { method: 'POST' })
+    const res = await fetch(`${apiUrl}${endpoint}`, { method: 'POST' })
     if (res.ok) {
       alert("Item re-identified successfully. Info has been updated and files re-mapped.")
       fetchItem() // refresh
@@ -1444,7 +1443,7 @@ const deleteSelectedFiles = async () => {
   if (!selectedFileIds.value.length) return
   if (!confirm(`Delete ${selectedFileIds.value.length} file(s)? Empty collections will be removed automatically.`)) return
   try {
-    const res = await fetch(`${backendUrl}/files/batch-delete`, {
+    const res = await fetch(`${apiUrl}/files/batch-delete`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ file_ids: selectedFileIds.value })
@@ -1468,7 +1467,7 @@ const openMoveToModal = () => {
 
 const confirmMoveFiles = async (targetId: number) => {
   try {
-    const res = await fetch(`${backendUrl}/files/batch-move`, {
+    const res = await fetch(`${apiUrl}/files/batch-move`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ file_ids: selectedFileIds.value, collection_id: targetId })
@@ -1497,7 +1496,7 @@ const confirmNewCollection = async () => {
   const source = getSourceCollection()
   if (!source) { newColModal.value.loading = false; return }
   try {
-    const createRes = await fetch(`${backendUrl}/collections`, {
+    const createRes = await fetch(`${apiUrl}/collections`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1509,7 +1508,7 @@ const confirmNewCollection = async () => {
     })
     if (!createRes.ok) { alert('Error creating collection.'); newColModal.value.loading = false; return }
     const newCol = await createRes.json()
-    const moveRes = await fetch(`${backendUrl}/files/batch-move`, {
+    const moveRes = await fetch(`${apiUrl}/files/batch-move`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ file_ids: selectedFileIds.value, collection_id: newCol.id })
@@ -1536,7 +1535,7 @@ const deleteItem = async () => {
   
   try {
     const endpoint = props.type === 'movies' ? `/movies/${props.id}` : `/series/${props.id}`
-    const res = await fetch(`${backendUrl}${endpoint}`, { method: 'DELETE' })
+    const res = await fetch(`${apiUrl}${endpoint}`, { method: 'DELETE' })
     if (res.ok) {
       alert("Deleted successfully.")
       window.history.back()

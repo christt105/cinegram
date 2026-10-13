@@ -1,33 +1,45 @@
 using Bot;
+using Bot.Data;
 using Bot.Services;
 using Bot.Utils;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 if (args.Length > 0 && args[0] == "auth")
     return await ConsoleAuth.RunAsync();
 
 var builder = WebApplication.CreateBuilder(args);
+var databasePath = Environment.GetEnvironmentVariable("DATABASE_PATH") ?? CinegramDb.DefaultPath;
+builder.Services.AddDbContextFactory<CinegramDb>(options => options.UseSqlite(CinegramDb.ConnectionString(databasePath)));
+builder.Services.AddSingleton<ITmdbLookup>(_ => TmdbIdentifier.FromEnvironment());
+builder.Services.AddSingleton<WatchedFiles>();
+builder.Services.AddSingleton<TransferTasks>();
+builder.Services.AddSingleton<CatalogIdentifier>();
+builder.Services.AddSingleton<Catalog>();
+builder.Services.AddSingleton<DatabaseBackup>();
 builder.Services.AddSingleton<BotHolder>();
+builder.Services.AddSingleton(_ => JellyfinProxy.FromEnvironment());
 builder.Services.AddHostedService<Worker>();
-builder.Services.AddCors(options =>
-{
-    options.AddDefaultPolicy(policy => policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
-});
 
 // Keep Kestrel on a fixed internal port
 builder.WebHost.UseUrls("http://0.0.0.0:8080");
 
 var app = builder.Build();
 
-app.UseCors();
+if (!await DatabaseSchema.RunAsync(databasePath, CancellationToken.None))
+    return 1;
 
-// Health check
-app.MapGet("/", () => Results.Ok(new { status = "ok" }));
+app.UseDefaultFiles();
+app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = WebCache.Apply });
 
-app.MapGet("/version", () => Results.Ok(new { version = AppVersion.Current }));
+var api = app.MapGroup("/api");
+
+api.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+api.MapGet("/version", () => Results.Ok(new { version = AppVersion.Current }));
 
 // Trigger preview of a single movie collection (info card + files)
-app.MapPost("/preview/collection/{collectionId:int}", async (int collectionId, IServiceProvider sp) =>
+api.MapPost("/preview/collection/{collectionId:int}", async (int collectionId, IServiceProvider sp) =>
 {
     var preview = ActivatorUtilities.CreateInstance<PreviewService>(sp);
     var (ok, error) = await preview.SendCollectionPreviewAsync(collectionId);
@@ -35,7 +47,7 @@ app.MapPost("/preview/collection/{collectionId:int}", async (int collectionId, I
 });
 
 // Trigger preview of all files in a season
-app.MapPost("/preview/series/{seriesId:int}/season/{seasonNumber:int}", async (int seriesId, int seasonNumber, IServiceProvider sp) =>
+api.MapPost("/preview/series/{seriesId:int}/season/{seasonNumber:int}", async (int seriesId, int seasonNumber, IServiceProvider sp) =>
 {
     var preview = ActivatorUtilities.CreateInstance<PreviewService>(sp);
     var (ok, error) = await preview.SendSeasonPreviewAsync(seriesId, seasonNumber);
@@ -43,7 +55,7 @@ app.MapPost("/preview/series/{seriesId:int}/season/{seasonNumber:int}", async (i
 });
 
 // List the video files sitting in the mounted library directories
-app.MapGet("/local/files", (
+api.MapGet("/local/files", (
     string? q,
     [FromQuery(Name = "tmdb_id")] int? tmdbId,
     [FromQuery(Name = "tvdb_id")] int? tvdbId,
@@ -54,7 +66,7 @@ app.MapGet("/local/files", (
 });
 
 // Read a local file with ffprobe and store it as a collection's technical metadata
-app.MapPost("/probe/collection/{collectionId:int}", async (int collectionId, ProbeRequest request, IServiceProvider sp) =>
+api.MapPost("/probe/collection/{collectionId:int}", async (int collectionId, ProbeRequest request, IServiceProvider sp) =>
 {
     var localMedia = ActivatorUtilities.CreateInstance<LocalMediaService>(sp);
     var (ok, error) = await localMedia.ProbeIntoCollectionAsync(collectionId, request.Path);
@@ -63,48 +75,40 @@ app.MapPost("/probe/collection/{collectionId:int}", async (int collectionId, Pro
 
 // Match a series' episodes against local files under its library folder and probe the
 // unambiguous ones straight into their collection
-app.MapPost("/probe/series/{seriesId:int}", async (int seriesId, IServiceProvider sp) =>
+api.MapPost("/probe/series/{seriesId:int}", async (int seriesId, IServiceProvider sp) =>
 {
     var localMedia = ActivatorUtilities.CreateInstance<LocalMediaService>(sp);
     var (ok, error, plan) = await localMedia.MatchSeriesAsync(seriesId);
     return ok ? Results.Ok(plan) : Results.Problem(error);
 });
 
-// Look up document_id and forward origin for historical messages, for the backend's backfill script
-app.MapPost("/messages/forward-origin", async (int[] messageIds, IServiceProvider sp) =>
-{
-    var forwardOrigin = ActivatorUtilities.CreateInstance<ForwardOriginService>(sp);
-    try
-    {
-        return Results.Ok(await forwardOrigin.LookupAsync(messageIds));
-    }
-    catch (InvalidOperationException ex)
-    {
-        return Results.Problem(ex.Message, statusCode: 503);
-    }
-});
+// Watched files in the downloads folder: list, re-identify, confirm/correct and rescan
+WatchEndpoints.Map(api);
 
-// Sweep the downloads folder for files the FileSystemWatcher missed
-app.MapPost("/watch/rescan", async (BotHolder holder) =>
-{
-    try
-    {
-        var diff = await holder.WatchedFolder.RescanAsync(CancellationToken.None);
-        return Results.Ok(new { @new = diff.New.Count, missing = diff.Missing.Count });
-    }
-    catch (InvalidOperationException ex)
-    {
-        return Results.Problem(ex.Message, statusCode: 503);
-    }
-});
+// Download and upload queues: enqueue, list, cancel and retry
+TransferEndpoints.Map(api);
+
+// The library: movies, series, collections, files and TMDB search
+CatalogEndpoints.Map(api);
+
+// Database backup, orphaned collections and the forward-origin exposure report
+MaintenanceEndpoints.Map(api);
 
 // Delete a collection's downloaded file, keeping the collection itself
-app.MapDelete("/local/collection/{collectionId:int}", async (int collectionId, IServiceProvider sp) =>
+api.MapDelete("/local/collection/{collectionId:int}", async (int collectionId, IServiceProvider sp) =>
 {
     var localMedia = ActivatorUtilities.CreateInstance<LocalMediaService>(sp);
     var (ok, error) = await localMedia.DeleteLocalCopyAsync(collectionId);
     return ok ? Results.Ok(new { status = "ok" }) : Results.Problem(error);
 });
+
+// Jellyfin reads for the web, with the token kept on the server
+JellyfinProxy.Map(api);
+
+api.MapFallback(() => Results.NotFound());
+
+// The web's client-side routes
+app.MapFallbackToFile("index.html", new StaticFileOptions { OnPrepareResponse = WebCache.Apply });
 
 await app.RunAsync();
 return 0;

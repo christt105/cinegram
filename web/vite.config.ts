@@ -4,6 +4,11 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    proxy: {
+      '/api': process.env.CINEGRAM_URL ?? 'http://localhost:8080',
+    },
+  },
   plugins: [
     vue(),
     VitePWA({

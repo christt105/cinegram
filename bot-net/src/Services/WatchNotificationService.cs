@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using Bot.CallbackQueries.Callbacks.Watch;
+using Bot.Data;
 using Bot.Models;
 using Bot.Utils;
 using Telegram.Bot.Types.Enums;
@@ -7,71 +9,126 @@ using Telegram.Bot.Types.ReplyMarkups;
 namespace Bot.Services;
 
 /// <summary>
-/// Polls /watch/pending-notify and sends a Telegram message with a Confirm/Correct pair of
-/// buttons for each newly detected file. Also polls /watch?status=removed to catch a row that
-/// got deleted from disk after its notify message went out but before it was actioned, editing
-/// that message to say so instead of leaving a dead button behind — a lower-overhead approach
-/// than reacting to the FileSystemWatcher's own Deleted event directly, since that event fires
-/// in bot-net's own process and only WatchedFolderService listens to it. Also polls
-/// /watch?status=confirmed and /watch?status=corrected to pick up rows actioned from the web
-/// instead of a Telegram button tap — those never go through WatchedFileMoveFlow otherwise,
-/// since there's no Telegram callback to trigger it.
+/// Telegram side of the watch flow. Sends the Confirm/Correct message as soon as a file is found,
+/// edits a still-live message when its file disappears, and moves rows confirmed or corrected from
+/// the web. <see cref="NotifyPendingAsync"/> and <see cref="ResumeResolvedAsync"/> catch up on rows
+/// left behind by a restart or a failed send.
 /// </summary>
 public class WatchNotificationService
 {
-    private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
-
     private readonly WTelegram.Bot _bot;
-    private readonly ApiClient _apiClient;
+    private readonly WatchedFiles _watchedFiles;
     private readonly WatchedFileMessageRegistry _registry;
     private readonly JellyfinSeriesIdentifier? _jellyfin;
+    private readonly ConcurrentDictionary<int, byte> _notifying = new();
 
     public WatchNotificationService(
-        WTelegram.Bot bot, ApiClient apiClient, WatchedFileMessageRegistry registry,
+        WTelegram.Bot bot, WatchedFiles watchedFiles, WatchedFileMessageRegistry registry,
         JellyfinSeriesIdentifier? jellyfin = null)
     {
         _bot = bot;
-        _apiClient = apiClient;
+        _watchedFiles = watchedFiles;
         _registry = registry;
         _jellyfin = jellyfin;
     }
 
-    public async Task PollAndProcessAsync(CancellationToken stoppingToken)
+    /// <summary>Sends the notify message for a row that is still pending; a row already being
+    /// notified, or no longer pending, is skipped.</summary>
+    public async Task NotifyAsync(int watchedFileId)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        if (!_notifying.TryAdd(watchedFileId, 0)) return;
+
+        try
         {
-            try
-            {
-                await NotifyPendingAsync();
-                await ReconcileRemovedAsync();
-                await ProcessWebResolvedAsync("confirmed", stoppingToken);
-                await ProcessWebResolvedAsync("corrected", stoppingToken);
-            }
-            catch (Exception ex)
-            {
-                Log.Error("[WatchNotification] Error in polling loop", ex);
-            }
+            var row = await _watchedFiles.GetAsync(watchedFileId);
+            if (row is not { Status: "pending" }) return;
 
-            await Task.Delay(PollInterval, stoppingToken);
-        }
-    }
-
-    private async Task NotifyPendingAsync()
-    {
-        var pending = await _apiClient.GetPendingNotifyWatchedFilesAsync();
-        if (pending is null) return;
-
-        foreach (var row in pending)
-        {
-            var text = BuildNotifyMessageText(row);
-
-            var sent = await _bot.SendMessage(AuthConfig.OwnerUserId, text, ParseMode.Html,
+            var sent = await _bot.SendMessage(AuthConfig.OwnerUserId, BuildNotifyMessageText(row), ParseMode.Html,
                 replyMarkup: BuildNotifyButtons(row));
-
             _registry.Track(row.Id, sent.Chat.Id, sent.MessageId);
 
             Log.Info($"[WatchNotification] Notified about {row.Filename} (row {row.Id}).");
-            await _apiClient.PatchWatchedFileStatusAsync(row.Id, "notified");
+            await _watchedFiles.MarkNotifiedAsync(row.Id);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[WatchNotification] Failed to notify row {watchedFileId}", ex);
+        }
+        finally
+        {
+            _notifying.TryRemove(watchedFileId, out _);
+        }
+    }
+
+    public async Task NotifyPendingAsync()
+    {
+        foreach (var row in await _watchedFiles.ListAsync("pending"))
+            await NotifyAsync(row.Id);
+    }
+
+    /// <summary>Edits the row's live message, if any, so it doesn't keep offering buttons for a
+    /// file that is gone.</summary>
+    public async Task NotifyRemovedAsync(WatchedFile row)
+    {
+        if (row.Status != "removed" || !_registry.TryUntrack(row.Id, out var reference)) return;
+
+        Log.Info($"[WatchNotification] {row.Filename} (row {row.Id}) was removed before it was confirmed.");
+        try
+        {
+            await _bot.EditMessageText(
+                reference.ChatId, reference.MessageId,
+                WatchedFileMessages.BuildRemovedWhileNotifiedText(row.Filename));
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[WatchNotification] Failed to edit the message of row {row.Id}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Moves a row confirmed or corrected from the web, whether or not a notify message for it went
+    /// out, and edits that message with the outcome if it is still live. A Telegram tap racing it
+    /// for the same row is <see cref="WatchedFileMoveClaims"/>'s job: whichever claims the row first
+    /// moves it and reports the outcome.
+    /// </summary>
+    public async Task MoveResolvedAsync(WatchedFileResolution resolution, CancellationToken ct = default)
+    {
+        try
+        {
+            Log.Info($"[WatchNotification] Moving {resolution.Filename} (row {resolution.Id}, {resolution.Status} from the web).");
+            var outcome = await WatchedFileMoveFlow.MoveAndReportAsync(
+                _watchedFiles, resolution.Id, resolution, _jellyfin, ct);
+            if (outcome is null)
+            {
+                Log.Info($"[WatchNotification] {resolution.Filename} (row {resolution.Id}) is already being moved, leaving it.");
+                return;
+            }
+
+            Log.Info($"[WatchNotification] {resolution.Filename} (row {resolution.Id}): {outcome.Value.Text}");
+            if (_registry.TryUntrack(resolution.Id, out var reference))
+                await _bot.EditMessageText(reference.ChatId, reference.MessageId, outcome.Value.Text);
+        }
+        catch (Exception ex)
+        {
+            Log.Error($"[WatchNotification] Failed to move row {resolution.Id}", ex);
+        }
+    }
+
+    /// <summary>Moves rows left confirmed or corrected by a restart between settling their
+    /// identity and moving them.</summary>
+    public async Task ResumeResolvedAsync(CancellationToken ct)
+    {
+        foreach (var status in new[] { "confirmed", "corrected" })
+        foreach (var row in await _watchedFiles.ListAsync(status, ct))
+        {
+            var resolution = WatchedFileResolution.FromWatchedFile(row);
+            if (resolution is null)
+            {
+                Log.Error($"[WatchNotification] Row {row.Id} is {status} without a resolved guess, skipping.");
+                continue;
+            }
+
+            await MoveResolvedAsync(resolution, ct);
         }
     }
 
@@ -100,68 +157,5 @@ public class WatchNotificationService
         rows.Add([InlineKeyboardButton.WithCallbackData("✏️ Correct", CorrectWatchedFileCallback.Pack(row.Id))]);
 
         return rows.ToArray();
-    }
-
-    private async Task ReconcileRemovedAsync()
-    {
-        var live = _registry.Snapshot();
-        if (live.Count == 0) return;
-
-        var removed = await _apiClient.GetWatchedFilesAsync("removed");
-        if (removed is null || removed.Count == 0) return;
-
-        foreach (var row in removed)
-        {
-            if (!live.ContainsKey(row.Id)) continue;
-            if (!_registry.TryUntrack(row.Id, out var reference)) continue;
-
-            Log.Info($"[WatchNotification] {row.Filename} (row {row.Id}) was removed before it was confirmed.");
-            await _bot.EditMessageText(
-                reference.ChatId, reference.MessageId,
-                WatchedFileMessages.BuildRemovedWhileNotifiedText(row.Filename));
-        }
-    }
-
-    /// <summary>
-    /// A row confirmed/corrected from the web is moved here, whether or not a notify message for
-    /// it ever went out: the same row can perfectly well have been announced on Telegram first and
-    /// actioned on the web afterwards, and its still-live message is then edited with the outcome
-    /// so it doesn't keep offering buttons for a file that is no longer in the downloads folder.
-    /// Not racing the move a Telegram tap starts for that same row is <see cref="WatchedFileMoveClaims"/>'s
-    /// job, inside the move flow itself — whichever path claims the row first is the one that moves
-    /// it and the one that reports the outcome. The message is untracked only once there is an
-    /// outcome to show it, so a move that blows up mid-way leaves the row listed for the next cycle
-    /// to retry, message reference and all.
-    /// </summary>
-    private async Task ProcessWebResolvedAsync(string status, CancellationToken stoppingToken)
-    {
-        var rows = await _apiClient.GetWatchedFilesAsync(status);
-        if (rows is null || rows.Count == 0) return;
-
-        foreach (var row in rows)
-        {
-            var resolution = WatchedFileResolution.FromWatchedFile(row);
-            if (resolution is null)
-            {
-                Log.Error($"[WatchNotification] Row {row.Id} is {status} without a resolved guess, skipping.");
-                continue;
-            }
-
-            Log.Info($"[WatchNotification] Picking up {row.Filename} (row {row.Id}, {status} from the web).");
-            var outcome = await WatchedFileMoveFlow.MoveAndReportAsync(
-                _apiClient, row.Id, resolution, _jellyfin, stoppingToken);
-            if (outcome is null)
-            {
-                Log.Info($"[WatchNotification] {row.Filename} (row {row.Id}) is already being moved, leaving it.");
-                continue;
-            }
-
-            Log.Info($"[WatchNotification] {row.Filename} (row {row.Id}): {outcome.Value.Text}");
-
-            if (_registry.TryUntrack(row.Id, out var reference))
-            {
-                await _bot.EditMessageText(reference.ChatId, reference.MessageId, outcome.Value.Text);
-            }
-        }
     }
 }

@@ -8,13 +8,13 @@ namespace Bot.Commands;
 
 public class MovieCommand : ICommand
 {
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
 
-    public MovieCommand(WTelegram.Bot bot, ApiClient apiClient)
+    public MovieCommand(WTelegram.Bot bot, Catalog catalog)
     {
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     private static string TmdbidPrefix => "tmdbid-";
@@ -39,7 +39,7 @@ public class MovieCommand : ICommand
             return;
         }
 
-        var movie = isDatabaseId ? await _apiClient.GetMovieAsync(id) : await _apiClient.GetMovieByTmdbAsync(id);
+        var movie = isDatabaseId ? await _catalog.GetMovieAsync(id) : await _catalog.GetMovieByTmdbAsync(id);
 
         if (movie == null)
         {

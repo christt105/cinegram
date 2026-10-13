@@ -10,13 +10,13 @@ public class DeleteFileCallback : ICallbackQuery
     public const string Id = "delete-file";
     private int _fileId;
     private WTelegram.Bot _bot;
-    private ApiClient _apiClient;
+    private Catalog _catalog;
 
-    public DeleteFileCallback(int fileId, WTelegram.Bot bot, ApiClient apiClient)
+    public DeleteFileCallback(int fileId, WTelegram.Bot bot, Catalog catalog)
     {
         _fileId = fileId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
@@ -37,7 +37,7 @@ public class DeleteFileCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new DeleteFileCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new DeleteFileCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
     }
 
     public static string Parse(int fileId)

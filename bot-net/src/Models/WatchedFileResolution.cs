@@ -1,10 +1,10 @@
 using System.Text.Json.Serialization;
+using Bot.Data;
 
 namespace Bot.Models;
 
-/// <summary>Response of /watch/{id}/confirm and /watch/{id}/correct: the resolved identity
-/// bot-net needs to build the destination path and move the file. No file I/O happens
-/// server-side, only the identity resolution against TMDB.</summary>
+/// <summary>The settled identity of a watched file: what a move needs to build the destination
+/// path, and what /watch/{id}/confirm and /watch/{id}/correct return to the web.</summary>
 public class WatchedFileResolution
 {
     [JsonPropertyName("id")] public int Id { get; set; }
@@ -19,11 +19,7 @@ public class WatchedFileResolution
     [JsonPropertyName("episode")] public int? Episode { get; set; }
     [JsonPropertyName("status")] public string Status { get; set; } = "";
 
-    /// <summary>Builds the identity a move needs directly from a WatchedFile row, for rows that
-    /// reached confirmed/corrected without a POST /watch/{id}/confirm|correct round trip in this
-    /// process (e.g. actioned from the web) — the backend already persisted the resolved guess_*
-    /// fields on the row itself when it handled that request. Null if the row isn't actually
-    /// resolved yet (a defensive check; the caller filters by status already).</summary>
+    /// <summary>Null when the row has no settled TMDB identity yet.</summary>
     public static WatchedFileResolution? FromWatchedFile(WatchedFile row)
     {
         if (row.GuessTmdbId is null || row.GuessMediaType is null || row.GuessTitle is null) return null;

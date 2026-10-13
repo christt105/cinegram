@@ -12,20 +12,19 @@ public class CancelConfirmWatchedFileCallback : ICallbackQuery
     public const string Id = "cancel-confirm-watched-file";
 
     private readonly WTelegram.Bot _bot;
-    private readonly ApiClient _apiClient;
+    private readonly WatchedFiles _watchedFiles;
     private readonly int _watchedFileId;
 
-    private CancelConfirmWatchedFileCallback(int watchedFileId, WTelegram.Bot bot, ApiClient apiClient)
+    private CancelConfirmWatchedFileCallback(int watchedFileId, WTelegram.Bot bot, WatchedFiles watchedFiles)
     {
         _watchedFileId = watchedFileId;
         _bot = bot;
-        _apiClient = apiClient;
+        _watchedFiles = watchedFiles;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var rows = await _apiClient.GetWatchedFilesAsync();
-        var row = rows?.FirstOrDefault(r => r.Id == _watchedFileId);
+        var row = await _watchedFiles.GetAsync(_watchedFileId);
 
         if (row is null)
         {
@@ -42,5 +41,5 @@ public class CancelConfirmWatchedFileCallback : ICallbackQuery
     public static string Pack(int watchedFileId) => CallbackDataPacker.Pack(Id, [watchedFileId.ToString()]);
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher) =>
-        new CancelConfirmWatchedFileCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        new CancelConfirmWatchedFileCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.WatchedFiles);
 }

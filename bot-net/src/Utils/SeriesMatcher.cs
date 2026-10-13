@@ -1,5 +1,5 @@
 using System.Text.Json.Serialization;
-using Bot.Models;
+using Bot.Data;
 
 namespace Bot.Utils;
 
@@ -63,17 +63,17 @@ public static class SeriesMatcher
                     continue;
                 }
 
-                if (collections.Length == 0)
+                if (collections.Count == 0)
                 {
                     skips.Add(new Skip(season.SeasonNumber, episode.EpisodeNumber,
                         "No collection tracked for this episode yet."));
                     continue;
                 }
 
-                if (collections.Length > 1)
+                if (collections.Count > 1)
                 {
                     skips.Add(new Skip(season.SeasonNumber, episode.EpisodeNumber,
-                        $"{collections.Length} collections tracked for this episode; pick one manually."));
+                        $"{collections.Count} collections tracked for this episode; pick one manually."));
                     continue;
                 }
 

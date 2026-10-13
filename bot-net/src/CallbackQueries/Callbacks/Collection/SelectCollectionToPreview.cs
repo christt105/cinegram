@@ -10,21 +10,21 @@ namespace Bot.CallbackQueries.Callbacks.Collection;
 public class SelectCollectionToPreview : ICallbackQuery
 {
     public const string Id = "selectCollectionToPreview";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
 
     private readonly int _movieId;
 
-    private SelectCollectionToPreview(int movieId, WTelegram.Bot bot, ApiClient apiClient)
+    private SelectCollectionToPreview(int movieId, WTelegram.Bot bot, Catalog catalog)
     {
         _movieId = movieId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var movie = await _apiClient.GetMovieAsync(_movieId);
+        var movie = await _catalog.GetMovieAsync(_movieId);
 
         if (movie == null)
         {
@@ -33,16 +33,16 @@ public class SelectCollectionToPreview : ICallbackQuery
             return;
         }
 
-        if (movie.Collections == null || movie.Collections.Length == 0)
+        if (movie.Collections == null || movie.Collections.Count == 0)
         {
             await _bot.SendMessage(message.Chat.Id, "Movie does not contain any valid collections");
             return;
         }
 
-        if (movie.Collections.Length == 1)
+        if (movie.Collections.Count == 1)
         {
             // Only one collection just send
-            await new PreviewCollectionCallback(movie.Collections[0].Id, _bot, _apiClient).ExecuteAsync(message);
+            await new PreviewCollectionCallback(movie.Collections[0].Id, _bot, _catalog).ExecuteAsync(message);
             return;
         }
 
@@ -50,12 +50,12 @@ public class SelectCollectionToPreview : ICallbackQuery
 
         var collections = movie.Collections;
         List<List<InlineKeyboardButton>> buttons = new();
-        for (var i = 0; i < collections.Length; i++)
+        for (var i = 0; i < collections.Count; i++)
         {
             var c = collections[i];
             var qualityStr = Beautify.FormatCollectionQuality(c);
             var qualityLine = string.IsNullOrWhiteSpace(qualityStr) ? "" : $"\n    {qualityStr}";
-            var fileCount = c.Files?.Length ?? 0;
+            var fileCount = c.Files.Count;
             text += $"{i + 1}. <b>{c.Name}</b> (ID {c.Id}) — {fileCount} file(s){qualityLine}\n\n";
             buttons.Add([
                 InlineKeyboardButton.WithCallbackData($"{i + 1}. {c.Name}", PreviewCollectionCallback.Pack(c.Id))
@@ -73,7 +73,7 @@ public class SelectCollectionToPreview : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new SelectCollectionToPreview(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new SelectCollectionToPreview(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
     }
 
     public static string Pack(int movieId)
