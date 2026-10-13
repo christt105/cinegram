@@ -18,7 +18,6 @@ public class AddCommand : ICommand
     public async Task Execute(string[] args, Message msg)
     {
         var bot = _dispatcher.Bot;
-        var apiClient = _dispatcher.ApiClient;
 
         if (args.Length > 0)
         {
@@ -44,14 +43,13 @@ public class AddCommand : ICommand
     private async Task PerformSearchAndShowResults(Message originalMessage, string query)
     {
         var bot = _dispatcher.Bot;
-        var apiClient = _dispatcher.ApiClient;
 
         await bot.SendMessage(originalMessage.Chat.Id, $"🔍 Searching for \"{query}\" on TMDB...");
 
         try
         {
-            var results = await apiClient.SearchTmdbAsync(query);
-            if (results == null || results.Count == 0)
+            var results = await _dispatcher.Tmdb.SearchAsync(query, "multi");
+            if (results.Count == 0)
             {
                 await bot.SendMessage(originalMessage.Chat.Id, "❌ No results found on TMDB.");
                 return;

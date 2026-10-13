@@ -19,7 +19,7 @@ public class ImportCommand : ICommand
         await _dispatcher.Bot.SendMessage(msg.Chat.Id,
             $"🔍 Scanning for media files…\nMovies: {moviesDir}\nShows: {showsDir}");
 
-        var handler = new ImportHandler(_dispatcher.Bot, _dispatcher.ApiClient);
+        var handler = new ImportHandler(_dispatcher.Bot, _dispatcher.Catalog);
         _ = Task.Run(async () =>
         {
             try { await handler.Run(msg.Chat.Id, moviesDir, showsDir); }

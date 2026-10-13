@@ -9,20 +9,20 @@ namespace Bot.CallbackQueries.Callbacks.Movie;
 public class ShowMovieCallback : ICallbackQuery
 {
     public const string Id = "Movie";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
     private readonly int _movieId;
 
-    private ShowMovieCallback(int movieId, WTelegram.Bot bot, ApiClient apiClient)
+    private ShowMovieCallback(int movieId, WTelegram.Bot bot, Catalog catalog)
     {
         _movieId = movieId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var movie = await _apiClient.GetMovieAsync(_movieId);
+        var movie = await _catalog.GetMovieAsync(_movieId);
 
         var text = movie != null ? Beautify.FormatMovie(movie) : $"Movie with ID: {_movieId} not found";
 
@@ -49,7 +49,7 @@ public class ShowMovieCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new ShowMovieCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new ShowMovieCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
     }
 
     public static string Pack(int movieId)

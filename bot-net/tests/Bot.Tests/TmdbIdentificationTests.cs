@@ -226,6 +226,17 @@ public class TmdbIdentificationTests
     }
 
     [Fact]
+    public void Parse_KeepsPosterAndOverviewAsTmdbSendsThem()
+    {
+        using var doc = System.Text.Json.JsonDocument.Parse(
+            """{"id": 7, "title": "Short", "poster_path": "/p.jpg", "overview": ""}""");
+
+        var title = TmdbApi.Parse(doc.RootElement, "movie");
+
+        Assert.Equal(("/p.jpg", ""), (title!.PosterPath, title.Overview));
+    }
+
+    [Fact]
     public void Parse_SkipsPeopleInAMultiSearch()
     {
         using var doc = System.Text.Json.JsonDocument.Parse("""{"id": 5, "name": "Someone", "media_type": "person"}""");
@@ -261,5 +272,8 @@ public class TmdbIdentificationTests
         }
 
         public Task<int?> GetTvdbIdAsync(int tvId, CancellationToken ct = default) => Task.FromResult<int?>(null);
+
+        public Task<IReadOnlyList<string>> GetPosterPathsAsync(string mediaType, int id, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
     }
 }

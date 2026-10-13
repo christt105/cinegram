@@ -8,23 +8,23 @@ namespace Bot.CallbackQueries.Callbacks.Series;
 public class PreviewSeasonCallback : ICallbackQuery
 {
     private const string Id = "PreviewSeason";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
 
     private readonly int _seriesId;
     private readonly int _seasonId;
 
-    public PreviewSeasonCallback(int seriesId, int seasonId, WTelegram.Bot bot, ApiClient apiClient)
+    public PreviewSeasonCallback(int seriesId, int seasonId, WTelegram.Bot bot, Catalog catalog)
     {
         _seriesId = seriesId;
         _seasonId = seasonId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var series = await _apiClient.GetSeriesAsync(_seriesId);
+        var series = await _catalog.GetSeriesAsync(_seriesId);
         if (series == null || series.Seasons == null)
         {
             await _bot.SendMessage(message!.Chat.Id, "Series or seasons not found.");
@@ -39,7 +39,7 @@ public class PreviewSeasonCallback : ICallbackQuery
             return;
         }
 
-        var allFiles = new List<Bot.Models.File>();
+        var allFiles = new List<Bot.Data.TelegramFile>();
 
         // Add files from season-level collections
         if (season.Collections != null)
@@ -72,7 +72,7 @@ public class PreviewSeasonCallback : ICallbackQuery
         }
 
         // Gather quality info from all collections in the season
-        var allCollections = new List<Bot.Models.Collection>();
+        var allCollections = new List<Bot.Data.Collection>();
         if (season.Collections != null) allCollections.AddRange(season.Collections);
         if (season.Episodes != null)
             foreach (var ep in season.Episodes)
@@ -119,7 +119,7 @@ public class PreviewSeasonCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new PreviewSeasonCallback(int.Parse(fields[0]), int.Parse(fields[1]), dispatcher.Bot, dispatcher.ApiClient);
+        return new PreviewSeasonCallback(int.Parse(fields[0]), int.Parse(fields[1]), dispatcher.Bot, dispatcher.Catalog);
     }
 
     public static string Pack(int seriesId, int seasonId)

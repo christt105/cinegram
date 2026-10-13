@@ -13,27 +13,30 @@ public class ReidentifyCollectionCallback : ICallbackQuery
 
     private readonly int _collectionId;
     private readonly WTelegram.Bot _bot;
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
+    private readonly CatalogIdentifier _identifier;
     private readonly PendingActionHandler _pendingActionHandler;
     private readonly string? _subAction;
 
     public ReidentifyCollectionCallback(
         int collectionId,
         WTelegram.Bot bot,
-        ApiClient apiClient,
+        Catalog catalog,
+        CatalogIdentifier identifier,
         PendingActionHandler pendingActionHandler,
         string? subAction = null)
     {
+        _identifier = identifier;
         _collectionId = collectionId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
         _pendingActionHandler = pendingActionHandler;
         _subAction = subAction;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var collection = await _apiClient.GetCollectionAsync(_collectionId);
+        var collection = await _catalog.GetCollectionAsync(_collectionId);
         if (collection is null)
         {
             await _bot.SendMessage(message!.Chat.Id, $"Collection {_collectionId} not found.");
@@ -42,13 +45,13 @@ public class ReidentifyCollectionCallback : ICallbackQuery
 
         if (_subAction == "auto")
         {
-            await RunAuto(message!, collection.Name);
+            await RunAuto(message!, collection.Name ?? $"Collection {_collectionId}");
             return;
         }
 
         if (_subAction == "manual")
         {
-            await RunManual(message!, collection.Name);
+            await RunManual(message!, collection.Name ?? $"Collection {_collectionId}");
             return;
         }
 
@@ -75,7 +78,7 @@ public class ReidentifyCollectionCallback : ICallbackQuery
 
         try
         {
-            var success = await _apiClient.ReidentifyCollectionAsync(_collectionId);
+            var success = await _identifier.ReidentifyAsync(_collectionId, new CatalogIdentifier.Request());
             var result = success
                 ? "✅ Collection successfully re-identified!"
                 : "❌ Auto-detect failed. Try manual identification with a TMDB ID.";
@@ -117,7 +120,7 @@ public class ReidentifyCollectionCallback : ICallbackQuery
                     "⏳ Re-identifying collection… Please wait…");
                 try
                 {
-                    var success = await _apiClient.ReidentifyCollectionAsync(_collectionId, newTmdbId);
+                    var success = await _identifier.ReidentifyAsync(_collectionId, new CatalogIdentifier.Request(newTmdbId));
                     var result = success
                         ? "✅ Collection successfully re-identified!"
                         : "❌ Failed to re-identify. Make sure the TMDB ID is valid.";
@@ -132,7 +135,7 @@ public class ReidentifyCollectionCallback : ICallbackQuery
             async () =>
             {
                 _pendingActionHandler.Clear();
-                await new EditCollectionCallback(_collectionId, _bot, _apiClient).ExecuteAsync(message);
+                await new EditCollectionCallback(_collectionId, _bot, _catalog).ExecuteAsync(message);
             }
         ));
     }
@@ -151,7 +154,8 @@ public class ReidentifyCollectionCallback : ICallbackQuery
         return new ReidentifyCollectionCallback(
             collectionId,
             dispatcher.Bot,
-            dispatcher.ApiClient,
+            dispatcher.Catalog,
+            dispatcher.Identifier,
             dispatcher.PendingActionHandler,
             subAction);
     }

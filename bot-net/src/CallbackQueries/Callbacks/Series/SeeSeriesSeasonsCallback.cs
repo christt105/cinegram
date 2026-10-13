@@ -9,21 +9,21 @@ namespace Bot.CallbackQueries.Callbacks.Series;
 public class SeeSeriesSeasonsCallback : ICallbackQuery
 {
     public const string Id = "SeeSeriesSeasons";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
     private readonly int _seriesId;
 
-    private SeeSeriesSeasonsCallback(int seriesId, WTelegram.Bot bot, ApiClient apiClient)
+    private SeeSeriesSeasonsCallback(int seriesId, WTelegram.Bot bot, Catalog catalog)
     {
         _seriesId = seriesId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var series = await _apiClient.GetSeriesAsync(_seriesId);
-        if (series == null || series.Seasons == null || series.Seasons.Length == 0)
+        var series = await _catalog.GetSeriesAsync(_seriesId);
+        if (series == null || series.Seasons == null || series.Seasons.Count == 0)
         {
             await _bot.SendMessage(message!.Chat.Id, "No seasons found for this series.");
             return;
@@ -35,7 +35,7 @@ public class SeeSeriesSeasonsCallback : ICallbackQuery
             buttons.Add(new[]
             {
                 InlineKeyboardButton.WithCallbackData(
-                    $"Season {season.SeasonNumber} ({season.Episodes?.Length ?? 0} eps)",
+                    $"Season {season.SeasonNumber} ({season.Episodes?.Count ?? 0} eps)",
                     SeeSeasonEpisodesCallback.Pack(_seriesId, season.Id))
             });
         }
@@ -55,7 +55,7 @@ public class SeeSeriesSeasonsCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new SeeSeriesSeasonsCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new SeeSeriesSeasonsCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
     }
 
     public static string Pack(int seriesId)

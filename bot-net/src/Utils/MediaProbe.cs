@@ -14,9 +14,9 @@ public static class MediaProbe
     /// Pulls a collection-ready summary out of ffprobe's raw JSON: the distinct language
     /// tags of the audio and subtitle streams. Null fields mean the file said nothing
     /// usable for that piece (no streams of that type, or none with a "language"/
-    /// "LANGUAGE" tag). Resolution is deliberately not extracted here: the backend already
-    /// derives "quality" from technical_metadata itself on patch (with HDR/2K handling
-    /// this would only duplicate worse), as long as the request doesn't also set "quality".
+    /// "LANGUAGE" tag). Resolution is deliberately not extracted here:
+    /// <see cref="Services.Catalog.UpdateCollectionAsync"/> derives quality and codec from the
+    /// technical metadata itself, as long as the same change doesn't also set them.
     /// </summary>
     public static Summary Summarize(string ffprobeJson)
     {
@@ -52,7 +52,7 @@ public static class MediaProbe
 
     /// <summary>
     /// Runs ffprobe on a file and returns its raw JSON report (format + streams),
-    /// which is what the backend stores as the collection's technical metadata.
+    /// which is what the catalogue stores as the collection's technical metadata.
     /// </summary>
     /// <param name="filePath">Path of the media file to inspect.</param>
     /// <returns>The ffprobe JSON output.</returns>

@@ -9,6 +9,7 @@ public class ReleaseNameParserTests
     {
         { @"Show S01E02.mkv", new ParsedReleaseName(null, @"Show", "tv", 1, 2, null) },
         { @"Show 1x08.mkv", new ParsedReleaseName(null, @"Show", "tv", 1, 8, null) },
+        { @"Dexter Pecado Original 1X03 (WEB-DL1080p x265)", new ParsedReleaseName(null, @"Dexter Pecado Original", "tv", 1, 3, null) },
         { @"Show S01-08.mkv", new ParsedReleaseName(null, @"Show", "tv", 1, 8, null) },
         { @"Show S01_08.mkv", new ParsedReleaseName(null, @"Show", "tv", 1, 8, null) },
         { @"Show - 08.mkv", new ParsedReleaseName(null, @"Show", "tv", 1, 8, null) },

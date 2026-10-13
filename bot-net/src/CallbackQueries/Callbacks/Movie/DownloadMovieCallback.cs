@@ -8,20 +8,20 @@ public class DownloadMovieCallback : ICallbackQuery
 {
     private readonly int _collectionId;
     private readonly WTelegram.Bot _bot;
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
 
-    public DownloadMovieCallback(int collectionId, WTelegram.Bot bot, ApiClient apiClient)
+    public DownloadMovieCallback(int collectionId, WTelegram.Bot bot, Catalog catalog)
     {
         _collectionId = collectionId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public const string Id = "download-movie";
 
     public async Task ExecuteAsync(Message? message)
     {
-        var collection = await _apiClient.GetCollectionAsync(_collectionId);
+        var collection = await _catalog.GetCollectionAsync(_collectionId);
 
         if (collection is null)
         {
@@ -41,6 +41,6 @@ public class DownloadMovieCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new DownloadMovieCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new DownloadMovieCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
     }
 }

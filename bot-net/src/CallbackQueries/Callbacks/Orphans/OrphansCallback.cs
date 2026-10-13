@@ -1,7 +1,6 @@
 using Bot.Handlers;
 using Bot.Commands;
 using Bot.Services;
-using Bot.Models;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
@@ -30,7 +29,7 @@ public class OrphansCallback : ICallbackQuery
         if (message == null) return;
 
         var bot = _dispatcher.Bot;
-        var apiClient = _dispatcher.ApiClient;
+        var catalog = _dispatcher.Catalog;
 
         if (_action == "page" || _action == "refresh")
         {
@@ -53,7 +52,7 @@ public class OrphansCallback : ICallbackQuery
         }
         else if (_action == "delete" && int.TryParse(_targetIdStr, out var delId))
         {
-            var ok = await apiClient.DeleteCollectionAsync(delId);
+            var ok = await catalog.DeleteCollectionAsync(delId);
             if (ok)
             {
                 await bot.SendMessage(message.Chat.Id, "✅ Collection deleted successfully.");
@@ -89,9 +88,10 @@ public class OrphansCallback : ICallbackQuery
         else if (_action == "link" && _targetIdStr != null)
         {
             var parts = _targetIdStr.Split("_");
-            if (parts.Length == 2 && int.TryParse(parts[0], out var colId) && int.TryParse(parts[1], out var tmdbId))
+            if (parts.Length is 2 or 3 && int.TryParse(parts[0], out var colId) && int.TryParse(parts[1], out var tmdbId))
             {
-                var ok = await apiClient.IdentifyCollectionAsync(colId, tmdbId);
+                var mediaType = parts.Length == 3 ? parts[2] : null;
+                var ok = await _dispatcher.Identifier.IdentifyAsync(colId, new CatalogIdentifier.Request(tmdbId, mediaType));
                 if (ok)
                 {
                     await bot.SendMessage(message.Chat.Id, "✅ Collection linked successfully.");
@@ -109,11 +109,10 @@ public class OrphansCallback : ICallbackQuery
     private async Task ProcessManualInput(Message originalMessage, int collectionId, string text, int returnPage)
     {
         var bot = _dispatcher.Bot;
-        var apiClient = _dispatcher.ApiClient;
 
         if (int.TryParse(text.Trim(), out var tmdbId))
         {
-            var ok = await apiClient.IdentifyCollectionAsync(collectionId, tmdbId);
+            var ok = await _dispatcher.Identifier.IdentifyAsync(collectionId, new CatalogIdentifier.Request(tmdbId));
             if (ok)
             {
                 await bot.SendMessage(originalMessage.Chat.Id, "✅ Collection linked successfully.");
@@ -129,8 +128,8 @@ public class OrphansCallback : ICallbackQuery
         await bot.SendMessage(originalMessage.Chat.Id, $"🔍 Searching for \"{text}\" on TMDB...");
         try
         {
-            var results = await apiClient.SearchTmdbAsync(text);
-            if (results == null || results.Count == 0)
+            var results = await _dispatcher.Tmdb.SearchAsync(text, "multi");
+            if (results.Count == 0)
             {
                 await bot.SendMessage(originalMessage.Chat.Id, "❌ No results found on TMDB.");
                 await RefreshMessage(originalMessage, returnPage);
@@ -145,7 +144,7 @@ public class OrphansCallback : ICallbackQuery
                 {
                     InlineKeyboardButton.WithCallbackData(
                         $"{typeLabel} {r.Title} ({r.Year})", 
-                        Pack("link", returnPage, $"{collectionId}_{r.Id}")
+                        Pack("link", returnPage, $"{collectionId}_{r.Id}_{r.MediaType}")
                     )
                 });
             }
@@ -167,7 +166,7 @@ public class OrphansCallback : ICallbackQuery
     {
         try
         {
-            var (text, markup) = await OrphansMessageBuilder.BuildOrphansMessage(_dispatcher.ApiClient, page);
+            var (text, markup) = await OrphansMessageBuilder.BuildOrphansMessage(_dispatcher.Catalog, page);
             await _dispatcher.Bot.EditMessageText(message.Chat.Id, message.MessageId, text,
                 parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
                 replyMarkup: markup);

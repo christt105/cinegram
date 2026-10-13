@@ -8,7 +8,7 @@ namespace Bot.Services;
 public class DownloadService
 {
     private readonly WTelegram.Bot _bot;
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly TransferTasks _tasks;
     private readonly TaskQueue _queue;
     private readonly UserClientService? _userClient;
@@ -16,11 +16,11 @@ public class DownloadService
     /// <summary>How long to wait before reading the queue again after the database failed.</summary>
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(30);
 
-    public DownloadService(WTelegram.Bot bot, ApiClient apiClient, TransferTasks tasks, TaskQueue queue,
+    public DownloadService(WTelegram.Bot bot, Catalog catalog, TransferTasks tasks, TaskQueue queue,
         UserClientService? userClient = null)
     {
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
         _tasks = tasks;
         _queue = queue;
         _userClient = userClient;
@@ -243,7 +243,7 @@ public class DownloadService
             var finalDir = Path.GetDirectoryName(fullPath)!;
             Directory.CreateDirectory(finalDir);
 
-            var collection = await _apiClient.GetCollectionAsync(task.CollectionId);
+            var collection = await _catalog.GetCollectionAsync(task.CollectionId);
             var resolvedPath = MediaNaming.ResolveFreePath(fullPath, collection?.LocalPath);
             if (resolvedPath != fullPath)
                 Log.Info($"[Downloader] {fullPath} is taken by another collection, using {resolvedPath} instead.");
@@ -341,10 +341,7 @@ public class DownloadService
         try
         {
             var metadata = await MediaProbe.ReadMetadataAsync(filePath);
-            await _apiClient.PatchCollectionAsync(collectionId, new UpdateCollectionRequest
-            {
-                TechnicalMetadata = metadata
-            });
+            await _catalog.UpdateCollectionAsync(collectionId, new Catalog.CollectionChanges { TechnicalMetadata = metadata });
             Log.Info($"[Downloader] Stored technical metadata for collection {collectionId}.");
         }
         catch (Exception ex)

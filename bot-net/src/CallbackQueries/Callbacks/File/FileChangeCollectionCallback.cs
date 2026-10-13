@@ -1,6 +1,5 @@
 ﻿using Bot.CallbackQueries.Callbacks.Collection;
 using Bot.Handlers;
-using Bot.Models;
 using Bot.Services;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -11,17 +10,17 @@ namespace Bot.CallbackQueries.Callbacks.File;
 public class FileChangeCollectionCallback : ICallbackQuery
 {
     public const string Id = "file-change-collection";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
     private readonly int _fileId;
     private readonly PendingActionHandler _pendingActionHandler;
 
-    public FileChangeCollectionCallback(int fileId, WTelegram.Bot bot, ApiClient apiClient,
+    public FileChangeCollectionCallback(int fileId, WTelegram.Bot bot, Catalog catalog,
         PendingActionHandler pendingActionHandler)
     {
         _fileId = fileId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
         _pendingActionHandler = pendingActionHandler;
     }
 
@@ -47,7 +46,7 @@ public class FileChangeCollectionCallback : ICallbackQuery
             input => Callback(input, message),
             async () =>
             {
-                var callback = new ShowFileCallback(_fileId, _bot, _apiClient);
+                var callback = new ShowFileCallback(_fileId, _bot, _catalog);
                 await callback.ExecuteAsync(message);
                 _pendingActionHandler.Clear();
             }
@@ -60,31 +59,31 @@ public class FileChangeCollectionCallback : ICallbackQuery
         {
             Log.Error("Invalid collection ID input");
             await _bot.SendMessage(message.Chat.Id, "Invalid collection ID. Operation cancelled.");
-            await new ShowFileCallback(_fileId, _bot, _apiClient).ExecuteAsync(message);
+            await new ShowFileCallback(_fileId, _bot, _catalog).ExecuteAsync(message);
             return;
         }
 
-        var previousCollectionId = (await _apiClient.GetFileAsync(_fileId))?.CollectionId;
-        var file = await _apiClient.PatchFileAsync(_fileId, new FileUpdate { CollectionId = collectionId });
+        var previousCollectionId = (await _catalog.GetFileAsync(_fileId))?.CollectionId;
+        var (file, _) = await _catalog.MoveFileAsync(_fileId, collectionId);
 
         if (file is null)
         {
             Log.Error($"Failed to change collection ID for file {_fileId}.");
             await _bot.SendMessage(message.Chat.Id, "Failed to change collection ID. Operation cancelled.");
-            await new ShowFileCallback(_fileId, _bot, _apiClient).ExecuteAsync(message);
+            await new ShowFileCallback(_fileId, _bot, _catalog).ExecuteAsync(message);
             return;
         }
 
         Log.Info($"Collection ID for file {_fileId} changed to {collectionId}");
         await _bot.SendMessage(message.Chat.Id, $"Collection ID changed to {collectionId}.");
         if (previousCollectionId.HasValue)
-            await new ShowCollectionCallback(previousCollectionId.Value, _bot, _apiClient)
+            await new ShowCollectionCallback(previousCollectionId.Value, _bot, _catalog)
                 .ExecuteAsync(message);
     }
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new FileChangeCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient,
+        return new FileChangeCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog,
             dispatcher.PendingActionHandler);
     }
 

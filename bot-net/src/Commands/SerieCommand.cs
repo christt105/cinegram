@@ -8,13 +8,13 @@ namespace Bot.Commands;
 
 public class SerieCommand : ICommand
 {
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
 
-    public SerieCommand(WTelegram.Bot bot, ApiClient apiClient)
+    public SerieCommand(WTelegram.Bot bot, Catalog catalog)
     {
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task Execute(string[] args, Message msg)
@@ -35,7 +35,7 @@ public class SerieCommand : ICommand
             return;
         }
 
-        var series = await _apiClient.GetSeriesAsync(id);
+        var series = await _catalog.GetSeriesAsync(id);
         if (series == null)
         {
             Log.Error($"Failed to get series for {id}.");

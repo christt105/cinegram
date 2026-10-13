@@ -17,7 +17,9 @@ public sealed record TmdbTitle(
     string? ReleaseDate = null,
     string? FirstAirDate = null,
     double Popularity = 0,
-    double? MatchScore = null)
+    double? MatchScore = null,
+    string? PosterPath = null,
+    string? Overview = null)
 {
     public string? DisplayTitle => (MediaType == "movie" ? Title : Name) ?? Title ?? Name;
 
@@ -44,9 +46,25 @@ public interface ITmdbApi
     Task<IReadOnlyList<TmdbTitle>> SearchAsync(string kind, string query, int? year, CancellationToken ct = default);
 
     Task<int?> GetTvdbIdAsync(int tvId, CancellationToken ct = default);
+
+    /// <summary>File paths of every poster TMDB has for the title, in any language.</summary>
+    Task<IReadOnlyList<string>> GetPosterPathsAsync(string mediaType, int id, CancellationToken ct = default);
 }
 
-/// <summary>Identification of a file against TMDB, as the watch flow uses it.</summary>
+/// <summary>A search result as the web and the bot list it. <see cref="Year"/> is "Unknown"
+/// without a date.</summary>
+public sealed record TmdbSearchHit(int Id, string? Title, string MediaType, string Year, string? PosterPath, string? Overview)
+{
+    public static TmdbSearchHit From(TmdbTitle t) => new(
+        t.Id,
+        t.MediaType == "movie" ? t.Title : t.Name,
+        t.MediaType,
+        (t.MediaType == "movie" ? t.ReleaseDate : t.FirstAirDate)?.Split('-')[0] ?? "Unknown",
+        t.PosterPath,
+        t.Overview);
+}
+
+/// <summary>Identification of a file against TMDB, and the lookups the catalogue needs.</summary>
 public interface ITmdbLookup
 {
     Task<TmdbTitle?> IdentifyByFilenameAsync(string filename, CancellationToken ct = default);
@@ -56,6 +74,17 @@ public interface ITmdbLookup
     Task<TmdbTitle?> IdentifyByTmdbIdAsync(int tmdbId, string? mediaTypeHint, CancellationToken ct = default);
 
     Task<int?> GetTvdbIdAsync(int tvId, CancellationToken ct = default);
+
+    /// <summary>Exactly <paramref name="mediaType"/>, without trying the other kind. Null when the
+    /// id doesn't exist or the lookup fails.</summary>
+    Task<TmdbTitle?> GetAsync(string mediaType, int tmdbId, CancellationToken ct = default);
+
+    /// <summary>By title, or by id when <paramref name="query"/> is a number. <paramref name="kind"/>
+    /// is movie, tv or multi. Throws when TMDB can't be reached.</summary>
+    Task<IReadOnlyList<TmdbSearchHit>> SearchAsync(string query, string kind, CancellationToken ct = default);
+
+    /// <summary>Empty when the lookup fails.</summary>
+    Task<IReadOnlyList<string>> GetPosterPathsAsync(string mediaType, int tmdbId, CancellationToken ct = default);
 }
 
 public class TmdbIdentifier(ITmdbApi api) : ITmdbLookup
@@ -73,6 +102,26 @@ public class TmdbIdentifier(ITmdbApi api) : ITmdbLookup
     }
 
     public Task<int?> GetTvdbIdAsync(int tvId, CancellationToken ct = default) => api.GetTvdbIdAsync(tvId, ct);
+
+    public Task<TmdbTitle?> GetAsync(string mediaType, int tmdbId, CancellationToken ct = default) =>
+        api.GetAsync(mediaType, tmdbId, ct);
+
+    public Task<IReadOnlyList<string>> GetPosterPathsAsync(string mediaType, int tmdbId, CancellationToken ct = default) =>
+        api.GetPosterPathsAsync(mediaType, tmdbId, ct);
+
+    public async Task<IReadOnlyList<TmdbSearchHit>> SearchAsync(string query, string kind, CancellationToken ct = default)
+    {
+        query = query.Trim();
+        if (query.Length > 0 && query.All(char.IsAsciiDigit) && int.TryParse(query, out var id))
+        {
+            var byId = new List<TmdbTitle?>();
+            if (kind is "movie" or "multi") byId.Add(await api.GetAsync("movie", id, ct));
+            if (kind is "tv" or "multi") byId.Add(await api.GetAsync("tv", id, ct));
+            return byId.OfType<TmdbTitle>().Select(TmdbSearchHit.From).ToList();
+        }
+
+        return (await api.SearchAsync(kind, query, null, ct)).Select(TmdbSearchHit.From).ToList();
+    }
 
     public async Task<TmdbTitle?> IdentifyByFilenameAsync(string filename, CancellationToken ct = default)
     {
@@ -175,6 +224,23 @@ public class TmdbApi : ITmdbApi, IDisposable
         }
     }
 
+    public async Task<IReadOnlyList<string>> GetPosterPathsAsync(string mediaType, int id, CancellationToken ct = default)
+    {
+        try
+        {
+            using var doc = await GetJsonAsync($"{mediaType}/{id}/images", [], ct);
+            if (!doc.RootElement.TryGetProperty("posters", out var posters) || posters.ValueKind != JsonValueKind.Array)
+                return [];
+
+            return posters.EnumerateArray().Select(p => Text(p, "file_path")).OfType<string>().ToList();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            Log.Error($"[TMDB] Error fetching posters for {mediaType} {id}", ex);
+            return [];
+        }
+    }
+
     /// <summary>Null for results that are neither a movie nor a series (people, in a multi search).</summary>
     public static TmdbTitle? Parse(JsonElement e, string? mediaType)
     {
@@ -190,7 +256,11 @@ public class TmdbApi : ITmdbApi, IDisposable
             Text(e, "original_name"),
             Text(e, "release_date"),
             Text(e, "first_air_date"),
-            e.TryGetProperty("popularity", out var p) && p.ValueKind == JsonValueKind.Number ? p.GetDouble() : 0);
+            e.TryGetProperty("popularity", out var p) && p.ValueKind == JsonValueKind.Number ? p.GetDouble() : 0,
+            PosterPath: Text(e, "poster_path"),
+            Overview: e.TryGetProperty("overview", out var overview) && overview.ValueKind == JsonValueKind.String
+                ? overview.GetString()
+                : null);
     }
 
     private static string? Text(JsonElement e, string property) =>

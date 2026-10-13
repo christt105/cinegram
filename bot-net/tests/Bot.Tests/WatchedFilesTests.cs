@@ -377,5 +377,14 @@ public class WatchedFilesTests : IAsyncLifetime
 
         public Task<int?> GetTvdbIdAsync(int tvId, CancellationToken ct = default) =>
             Task.FromResult<int?>(tvId == 42 ? 9999 : null);
+
+        public Task<TmdbTitle?> GetAsync(string mediaType, int tmdbId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+
+        public Task<IReadOnlyList<TmdbSearchHit>> SearchAsync(string query, string kind, CancellationToken ct = default) =>
+            throw new NotSupportedException();
+
+        public Task<IReadOnlyList<string>> GetPosterPathsAsync(string mediaType, int tmdbId, CancellationToken ct = default) =>
+            throw new NotSupportedException();
     }
 }

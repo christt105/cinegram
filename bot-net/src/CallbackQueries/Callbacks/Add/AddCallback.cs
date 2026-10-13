@@ -27,7 +27,6 @@ public class AddCallback : ICallbackQuery
         if (message == null) return;
 
         var bot = _dispatcher.Bot;
-        var apiClient = _dispatcher.ApiClient;
 
         if (_action == "create" && int.TryParse(_tmdbIdStr, out var tmdbId))
         {
@@ -41,7 +40,8 @@ public class AddCallback : ICallbackQuery
             
             try
             {
-                var ok = await apiClient.CreateManualMediaAsync(tmdbId, _mediaType);
+                var ok = (await _dispatcher.Identifier.CreateManualAsync(tmdbId, _mediaType)).Error
+                         == CatalogIdentifier.CreateError.None;
                 
                 try
                 {
@@ -56,7 +56,7 @@ public class AddCallback : ICallbackQuery
                 }
                 else
                 {
-                    await bot.SendMessage(message.Chat.Id, $"❌ Error adding the item to the local library (it may already exist or there may be issues with TMDB).");
+                    await bot.SendMessage(message.Chat.Id, $"❌ Error adding the item to the local library (TMDB doesn't know that ID).");
                 }
             }
             catch (Exception ex)

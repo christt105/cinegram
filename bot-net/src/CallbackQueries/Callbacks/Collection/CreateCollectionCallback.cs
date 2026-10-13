@@ -1,6 +1,5 @@
 ﻿using Bot.CallbackQueries.Callbacks.Movie;
 using Bot.Handlers;
-using Bot.Models;
 using Bot.Services;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -11,17 +10,17 @@ namespace Bot.CallbackQueries.Callbacks.Collection;
 public class CreateCollectionCallback : ICallbackQuery
 {
     public const string Id = "create-collection";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
     private readonly int _movieId;
     private readonly PendingActionHandler _pendingActionHandler;
 
-    private CreateCollectionCallback(int movieId, WTelegram.Bot bot, ApiClient apiClient,
+    private CreateCollectionCallback(int movieId, WTelegram.Bot bot, Catalog catalog,
         PendingActionHandler pendingActionHandler)
     {
         _movieId = movieId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
         _pendingActionHandler = pendingActionHandler;
     }
 
@@ -46,23 +45,19 @@ public class CreateCollectionCallback : ICallbackQuery
 
     private async Task Callback(string input, Message message)
     {
-        var collection = await _apiClient.CreateCollectionAsync(new CreateCollectionRequest
-        {
-            MovieId = _movieId,
-            Name = input.Trim()
-        });
+        await _catalog.CreateCollectionAsync(new Catalog.CollectionDraft(input.Trim(), MovieId: _movieId));
 
-        await new SeeMovieCollectionsCallback(_movieId, _bot, _apiClient).ExecuteAsync(message);
+        await new SeeMovieCollectionsCallback(_movieId, _bot, _catalog).ExecuteAsync(message);
     }
 
     private async Task CancelCallback(Message? message)
     {
-        await new SeeMovieCollectionsCallback(_movieId, _bot, _apiClient).ExecuteAsync(message);
+        await new SeeMovieCollectionsCallback(_movieId, _bot, _catalog).ExecuteAsync(message);
     }
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new CreateCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient,
+        return new CreateCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog,
             dispatcher.PendingActionHandler);
     }
 

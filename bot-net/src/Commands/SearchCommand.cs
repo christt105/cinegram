@@ -9,13 +9,13 @@ namespace Bot.Commands;
 
 public class SearchCommand : ICommand
 {
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
 
-    public SearchCommand(WTelegram.Bot bot, ApiClient apiClient)
+    public SearchCommand(WTelegram.Bot bot, Catalog catalog)
     {
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task Execute(string[] args, Message msg)
@@ -31,8 +31,8 @@ public class SearchCommand : ICommand
         var rawQuery = string.Join(" ", args);
         var query = TextNormalizer.Normalize(rawQuery);
 
-        var movies = await _apiClient.GetMoviesAsync();
-        var series = await _apiClient.GetSeriesAsync();
+        var movies = await _catalog.ListMoviesAsync();
+        var series = await _catalog.ListSeriesAsync();
 
         var matchedMovies = movies?.Where(m => m.Title != null && TextNormalizer.Normalize(m.Title).Contains(query)).ToList() ?? new();
         var matchedSeries = series?.Where(s => s.ManualTitle != null && TextNormalizer.Normalize(s.ManualTitle).Contains(query)).ToList() ?? new();

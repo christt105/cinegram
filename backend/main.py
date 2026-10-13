@@ -1,19 +1,11 @@
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlmodel import Session
 
 from config import settings
-from database import init_db, get_session
-from crud import create_file, identify_collection
-from tmdb import TMDB
-from schemas import UploadIn, ItemOut
+from database import init_db
 
-from routers.movies import router as movies_router
-from routers.series import router as series_router
-from routers.collections import router as collections_router
-from routers.files import router as files_router
 from routers.maintenance import router as maintenance_router
 
 @asynccontextmanager
@@ -32,8 +24,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-tmdb = TMDB()
-
 @app.get("/")
 def root():
     return {"status": "ok", "message": "Backend is running"}
@@ -42,50 +32,4 @@ def root():
 def version():
     return {"name": settings.PROJECT_NAME, "version": settings.APP_VERSION}
 
-@app.post("/upload", response_model=ItemOut)
-def upload_endpoint(payload: UploadIn, session: Session = Depends(get_session)):
-    file, collection, duplicate = create_file(
-        session,
-        message_id=payload.message_id,
-        user_message_id=payload.user_message_id,
-        filename=payload.filename,
-        filesize=payload.filesize,
-        mime_type=payload.mime_type,
-        created_at=payload.created_at,
-        tmdb_id=payload.tmdb_id,
-        technical_metadata=payload.technical_metadata,
-        storage_peer=payload.storage_peer,
-        document_id=payload.document_id,
-        fwd_from_type=payload.fwd_from_type,
-        fwd_from_id=payload.fwd_from_id,
-        fwd_from_name=payload.fwd_from_name,
-        fwd_from_hidden=payload.fwd_from_hidden
-    )
-
-    if not duplicate and collection.movie_id is None and collection.episode_id is None and collection.season_id is None:
-        identify_collection(
-            session, collection.id, tmdb,
-            forced_tmdb_id=payload.tmdb_id
-        )
-        session.refresh(collection)
-
-    return {
-        "id": file.id,
-        "message_id": file.message_id,
-        "filename": file.filename,
-        "collection_id": collection.id,
-        "movie_id": collection.movie_id,
-        "season_id": collection.season_id,
-        "episode_id": collection.episode_id,
-        "duplicate": duplicate
-    }
-
-from routers.search import router as search_router
-
-# Register APIRouters
-app.include_router(movies_router)
-app.include_router(series_router)
-app.include_router(collections_router)
-app.include_router(files_router)
 app.include_router(maintenance_router)
-app.include_router(search_router)

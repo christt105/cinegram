@@ -10,12 +10,19 @@ public class Worker : BackgroundService
     private readonly BotHolder _botHolder;
     private readonly WatchedFiles _watchedFiles;
     private readonly TransferTasks _transfers;
+    private readonly Catalog _catalog;
+    private readonly CatalogIdentifier _identifier;
+    private readonly ITmdbLookup _tmdb;
 
-    public Worker(BotHolder botHolder, WatchedFiles watchedFiles, TransferTasks transfers)
+    public Worker(BotHolder botHolder, WatchedFiles watchedFiles, TransferTasks transfers, Catalog catalog,
+        CatalogIdentifier identifier, ITmdbLookup tmdb)
     {
         _botHolder = botHolder;
         _watchedFiles = watchedFiles;
         _transfers = transfers;
+        _catalog = catalog;
+        _identifier = identifier;
+        _tmdb = tmdb;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -45,9 +52,9 @@ public class Worker : BackgroundService
             TransferTuning.Apply(bot.Client, "Bot", defaultParallelTransfers: 4);
 
             // Register so PreviewService and HTTP endpoints can use the live bot instance
-            _botHolder.Register(bot, apiClient, authUserId);
+            _botHolder.Register(bot, authUserId);
 
-            var botDispatcher = new BotDispatcher(bot, apiClient, _watchedFiles, _transfers, _queue, userClient, jellyfinClient);
+            var botDispatcher = new BotDispatcher(bot, apiClient, _catalog, _identifier, _tmdb, _watchedFiles, _transfers, _queue, userClient, jellyfinClient);
 
             await botDispatcher.InitBot();
 
@@ -60,10 +67,10 @@ public class Worker : BackgroundService
             if (restartedDownloads + failedUploads > 0)
                 Log.Info($"[Startup] A restart cut off {restartedDownloads} download(s), queued again, and {failedUploads} upload(s), marked failed.");
 
-            var downloadService = new DownloadService(bot, apiClient, _transfers, _queue, userClient);
+            var downloadService = new DownloadService(bot, _catalog, _transfers, _queue, userClient);
             _ = downloadService.RunAsync(stoppingToken);
 
-            var uploadService = new UploadService(bot, apiClient, _transfers, _queue, userClient, botDispatcher.UploadEchoes);
+            var uploadService = new UploadService(bot, _catalog, _transfers, _queue, userClient, botDispatcher.UploadEchoes);
             _ = uploadService.RunAsync(stoppingToken);
 
             var jellyfinBackupOptions = JellyfinBackupOptions.FromEnvironment(

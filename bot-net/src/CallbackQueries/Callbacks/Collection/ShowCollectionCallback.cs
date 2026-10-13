@@ -12,20 +12,20 @@ namespace Bot.CallbackQueries.Callbacks.Collection;
 public class ShowCollectionCallback : ICallbackQuery
 {
     public const string Id = "see-collection";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
     private readonly int _collectionId;
 
-    public ShowCollectionCallback(int collectionId, WTelegram.Bot bot, ApiClient apiClient)
+    public ShowCollectionCallback(int collectionId, WTelegram.Bot bot, Catalog catalog)
     {
         _collectionId = collectionId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var collection = await _apiClient.GetCollectionAsync(_collectionId);
+        var collection = await _catalog.GetCollectionAsync(_collectionId);
 
         if (collection is null)
         {
@@ -59,7 +59,7 @@ public class ShowCollectionCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] packedFields, BotDispatcher dispatcher)
     {
-        return new ShowCollectionCallback(int.Parse(packedFields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new ShowCollectionCallback(int.Parse(packedFields[0]), dispatcher.Bot, dispatcher.Catalog);
     }
 
     public static string Pack(int collectionId)

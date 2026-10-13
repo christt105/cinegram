@@ -8,21 +8,21 @@ namespace Bot.CallbackQueries.Callbacks.Collection;
 public class PreviewCollectionCallback : ICallbackQuery
 {
     private const string Id = "PreviewCollection";
-    private readonly ApiClient _apiClient;
+    private readonly Catalog _catalog;
     private readonly WTelegram.Bot _bot;
 
     private readonly int _collectionId;
 
-    public PreviewCollectionCallback(int collectionId, WTelegram.Bot bot, ApiClient apiClient)
+    public PreviewCollectionCallback(int collectionId, WTelegram.Bot bot, Catalog catalog)
     {
         _collectionId = collectionId;
         _bot = bot;
-        _apiClient = apiClient;
+        _catalog = catalog;
     }
 
     public async Task ExecuteAsync(Message? message)
     {
-        var collection = await _apiClient.GetCollectionAsync(_collectionId);
+        var collection = await _catalog.GetCollectionAsync(_collectionId);
 
         if (collection is null)
         {
@@ -32,7 +32,7 @@ public class PreviewCollectionCallback : ICallbackQuery
             return;
         }
 
-        if (collection.Files == null || collection.Files.Length == 0)
+        if (collection.Files == null || collection.Files.Count == 0)
         {
             var error = $"Collection with ID {_collectionId} is empty";
             Log.Error(error);
@@ -42,7 +42,7 @@ public class PreviewCollectionCallback : ICallbackQuery
 
         if (collection.MovieId != null)
         {
-            var movie = await _apiClient.GetMovieAsync(collection.MovieId.Value);
+            var movie = await _catalog.GetMovieAsync(collection.MovieId.Value);
 
             if (movie != null)
             {
@@ -103,7 +103,7 @@ public class PreviewCollectionCallback : ICallbackQuery
 
     public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
     {
-        return new PreviewCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.ApiClient);
+        return new PreviewCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
     }
 
     public static string Pack(int collectionId)
