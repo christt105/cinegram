@@ -1,6 +1,10 @@
 using Bot.Data;
+using Bot.Data.Migrations;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Xunit;
 
 namespace Bot.Tests;
@@ -13,7 +17,7 @@ public class CinegramDbTests : IDisposable
     public CinegramDbTests()
     {
         _path = Path.Combine(_dir, "database.db");
-        CreateBackendDatabase(_path, CinegramDb.ExpectedAlembicRevision);
+        CreateBackendDatabase(_path, Baseline.LegacyAlembicRevision);
     }
 
     public void Dispose()
@@ -22,7 +26,7 @@ public class CinegramDbTests : IDisposable
         Directory.Delete(_dir, recursive: true);
     }
 
-    /// <summary>Builds a database the way the backend's Alembic head leaves it.</summary>
+    /// <summary>Builds a database the way the v2 backend's Alembic migrations left it.</summary>
     internal static void CreateBackendDatabase(string path, string revision)
     {
         var schema = System.IO.File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "backend-schema.sql"));
@@ -142,29 +146,38 @@ public class CinegramDbTests : IDisposable
         Assert.Null(watched.NotifiedAt);
     }
 
-    [Fact]
-    public async Task Check_ReportsAMissingFile()
-    {
-        var result = await DatabaseCheck.RunAsync(Path.Combine(_dir, "absent.db"));
+    private static string Normalize(string sql) => string.Join(' ', sql.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
 
-        Assert.Equal(DatabaseStatus.Missing, result.Status);
-        Assert.False(System.IO.File.Exists(Path.Combine(_dir, "absent.db")));
+    private static List<string> LegacySchema(string path)
+    {
+        using var connection = new SqliteConnection($"Data Source={path};Pooling=False");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT sql FROM sqlite_master
+            WHERE sql IS NOT NULL AND tbl_name NOT IN ('alembic_version', '__EFMigrationsHistory')
+            ORDER BY tbl_name, type DESC, name
+            """;
+        using var reader = command.ExecuteReader();
+        var schema = new List<string>();
+        while (reader.Read()) schema.Add(Normalize(reader.GetString(0)));
+        return schema;
+    }
+
+    private static List<string> AppliedMigrations(string path)
+    {
+        using var connection = new SqliteConnection($"Data Source={path};Pooling=False");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT MigrationId FROM __EFMigrationsHistory ORDER BY MigrationId";
+        using var reader = command.ExecuteReader();
+        var ids = new List<string>();
+        while (reader.Read()) ids.Add(reader.GetString(0));
+        return ids;
     }
 
     [Fact]
-    public async Task Check_RejectsAnotherAlembicRevision()
-    {
-        var path = Path.Combine(_dir, "old.db");
-        CreateBackendDatabase(path, "0009_forward_origin");
-
-        var result = await DatabaseCheck.RunAsync(path);
-
-        Assert.Equal(DatabaseStatus.UnexpectedSchema, result.Status);
-        Assert.Equal("0009_forward_origin", result.Revision);
-    }
-
-    [Fact]
-    public async Task Check_ReadsAReadyDatabaseAndSwitchesItToWal()
+    public async Task Migrate_AdoptsAV2DatabaseWithoutChangingItsTables()
     {
         await using (var db = Open())
         {
@@ -172,11 +185,69 @@ public class CinegramDbTests : IDisposable
             db.Series.AddRange(new Series { ManualTitle = "B" }, new Series { ManualTitle = "C" });
             await db.SaveChangesAsync();
         }
+        var before = LegacySchema(_path);
 
-        var result = await DatabaseCheck.RunAsync(_path);
+        var result = await DatabaseSchema.MigrateAsync(_path);
 
-        Assert.Equal(new DatabaseCheckResult(DatabaseStatus.Ready, CinegramDb.ExpectedAlembicRevision, 1, 2), result);
+        Assert.Equal(DatabaseOrigin.AdoptedFromV2, result.Origin);
+        Assert.Empty(result.Applied);
+        Assert.Equal((1, 2), (result.Movies, result.Series));
+        Assert.Equal(before, LegacySchema(_path));
+        Assert.Equal([DatabaseSchema.BaselineId], AppliedMigrations(_path));
+        Assert.Equal(Baseline.LegacyAlembicRevision, Scalar(_path, "SELECT version_num FROM alembic_version"));
         Assert.Equal("wal", Scalar(_path, "PRAGMA journal_mode"));
+    }
+
+    [Fact]
+    public async Task Migrate_LeavesAnAdoptedDatabaseAloneTheSecondTime()
+    {
+        await DatabaseSchema.MigrateAsync(_path);
+
+        var result = await DatabaseSchema.MigrateAsync(_path);
+
+        Assert.Equal(DatabaseOrigin.Existing, result.Origin);
+        Assert.Empty(result.Applied);
+    }
+
+    [Fact]
+    public async Task Migrate_RejectsAnOlderBackendRevision()
+    {
+        var path = Path.Combine(_dir, "old.db");
+        CreateBackendDatabase(path, "0009_forward_origin");
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => DatabaseSchema.MigrateAsync(path));
+
+        Assert.Contains("0009_forward_origin", error.Message);
+        Assert.Equal(0L, Scalar(path, "SELECT count(*) FROM sqlite_master WHERE name = '__EFMigrationsHistory'"));
+    }
+
+    [Fact]
+    public async Task Migrate_CreatesAMissingDatabaseWithTheV2Schema()
+    {
+        var path = Path.Combine(_dir, "new", "database.db");
+
+        var result = await DatabaseSchema.MigrateAsync(path);
+
+        Assert.Equal(DatabaseOrigin.Created, result.Origin);
+        Assert.Equal([DatabaseSchema.BaselineId], result.Applied);
+        Assert.Equal(LegacySchema(_path), LegacySchema(path));
+        Assert.Equal(0L, Scalar(path, "SELECT count(*) FROM sqlite_master WHERE name = 'alembic_version'"));
+        Assert.Equal("wal", Scalar(path, "PRAGMA journal_mode"));
+    }
+
+    [Fact]
+    public void Model_HasNoChangesMissingAMigration()
+    {
+        using var db = Open();
+        var snapshot = db.GetService<IMigrationsAssembly>().ModelSnapshot!.Model;
+        if (snapshot is IMutableModel mutable)
+            snapshot = mutable.FinalizeModel();
+        snapshot = db.GetService<IModelRuntimeInitializer>().Initialize(snapshot);
+
+        var differences = db.GetService<IMigrationsModelDiffer>().GetDifferences(
+            snapshot.GetRelationalModel(), db.GetService<IDesignTimeModel>().Model.GetRelationalModel());
+
+        Assert.Empty(differences);
     }
 
     /// <summary>
@@ -189,7 +260,7 @@ public class CinegramDbTests : IDisposable
         var path = Environment.GetEnvironmentVariable("CINEGRAM_REAL_DB");
         if (string.IsNullOrEmpty(path)) return;
 
-        Assert.Equal(DatabaseStatus.Ready, (await DatabaseCheck.RunAsync(path)).Status);
+        await DatabaseSchema.MigrateAsync(path);
         await using var db = new CinegramDb(CinegramDb.Options(path));
         var counts = new Dictionary<string, int>
         {

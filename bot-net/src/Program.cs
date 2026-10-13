@@ -29,7 +29,8 @@ builder.WebHost.UseUrls("http://0.0.0.0:8080");
 
 var app = builder.Build();
 
-await DatabaseCheck.LogAsync(databasePath, CancellationToken.None);
+if (!await DatabaseSchema.RunAsync(databasePath, CancellationToken.None))
+    return 1;
 
 app.UseCors();
 

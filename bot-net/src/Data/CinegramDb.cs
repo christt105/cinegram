@@ -7,15 +7,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Bot.Data;
 
 /// <summary>
-/// EF Core view of the Cinegram database (<c>database.db</c>), whose schema is still owned by the
-/// backend's Alembic migrations. Column names and timestamp format follow SQLAlchemy's so both
-/// services can read and write the same rows while they share the file.
+/// EF Core view of the Cinegram database (<c>database.db</c>). Column names and timestamp format
+/// follow the SQLAlchemy ones the Python backend used, so databases from v2 keep working unchanged.
 /// </summary>
 public class CinegramDb(DbContextOptions<CinegramDb> options) : DbContext(options)
 {
-    /// <summary>Alembic revision whose schema this model maps.</summary>
-    public const string ExpectedAlembicRevision = "0010_collection_codec";
-
     public const string DefaultPath = "/data/db/database.db";
 
     private const string TimestampFormat = "yyyy-MM-dd HH:mm:ss.ffffff";
@@ -79,8 +75,8 @@ public class CinegramDb(DbContextOptions<CinegramDb> options) : DbContext(option
     }
 
     /// <summary>
-    /// Stores timestamps as naive UTC text with microseconds, the format SQLAlchemy writes, so
-    /// ordering and comparisons in SQL keep working across rows written by either service.
+    /// Stores timestamps as naive UTC text with microseconds, the format SQLAlchemy wrote, so
+    /// ordering and comparisons in SQL keep working across rows from before v3.
     /// </summary>
     private class TimestampConverter() : ValueConverter<DateTime, string>(
         v => (v.Kind == DateTimeKind.Local ? v.ToUniversalTime() : v).ToString(TimestampFormat, CultureInfo.InvariantCulture),
