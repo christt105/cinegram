@@ -2,6 +2,26 @@
 
 Breaking changes that require manual action when upgrading an existing deployment. Entries are added when a change lands, in descending order (newest first). Non-breaking changes aren't listed here — see the [GitHub Releases](https://github.com/christt105/cinegram/releases) for the full changelog.
 
+## v3.1.0: one appdata volume
+
+`./appdata/bot-net` and `./appdata/backend` were v2 names for what is now one service. `docker-compose.yml` mounts `./appdata` at `/data` instead, with the database in `./appdata/db`. Paths inside the container don't change, so this only moves folders on the host.
+
+**To upgrade** (from the folder holding `docker-compose.yml`):
+
+1. Stop the stack and back up `./appdata`:
+   ```bash
+   docker compose down
+   cp -a appdata appdata.bak-pre-single-volume
+   ```
+2. Move the folders. `appdata/bot-net/db` is the empty mount point the old layout left behind:
+   ```bash
+   rmdir appdata/bot-net/db
+   mv appdata/backend appdata/bot-net/db
+   mv appdata/bot-net appdata.new && rmdir appdata && mv appdata.new appdata
+   ```
+3. Replace `docker-compose.yml` with the new one. If you keep a `docker-compose.override.yml` with absolute paths, replace its two `appdata/bot-net` and `appdata/backend` entries with a single `<absolute path>/appdata:/data`.
+4. `docker compose up -d`. The log should say `[Database] /data/db/database.db up to date`.
+
 ## v3.0.0
 
 Cinegram is now a single container. The Python `backend` and the nginx `web` container are gone: the .NET service owns the database and its migrations, serves the web panel and the API (under `/api`) on `WEB_PORT`, and proxies the web's Jellyfin reads so `JELLYFIN_TOKEN` no longer reaches the browser. The database file is the same one, so nothing is converted or copied.
