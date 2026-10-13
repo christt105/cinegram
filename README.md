@@ -34,6 +34,21 @@ User ─▶ Cinegram (.NET) ─▶ SQLite / TMDB
           └─▶ Host disk (Jellyfin media)
 ```
 
+The server code in `server/src` is grouped by feature, each folder holding its services, endpoints and helpers:
+
+| Folder           | Contents                                                                                  |
+| ---------------- | ----------------------------------------------------------------------------------------- |
+| `Library`        | Movies, series, collections and files (the catalogue), identification, local file probing, maintenance endpoints. |
+| `Transfers`      | Download and upload queues and the Telegram transfers behind them.                        |
+| `Watch`          | The watched downloads folder: detection, Telegram confirmations and moving into the library. |
+| `TelegramBot`    | Bot commands, callback queries and message handlers, plus the user-account client.        |
+| `Jellyfin`       | Jellyfin API client, the web's read-only proxy and path translation.                     |
+| `Tmdb`           | TMDB client and release-name parsing.                                                     |
+| `Backups`        | Database backup and periodic Jellyfin backups.                                           |
+| `MediaFiles`     | Naming and probing of video files on disk, shared by the features above.                  |
+| `Data`           | EF Core context, entities and migrations.                                                 |
+| `Infrastructure` | Logging, versioning and other cross-cutting helpers.                                      |
+
 The worker authenticates as a Telegram **bot**, which caps file transfers at 2 GB; files larger than that are split into **1.95 GB** parts with `7z` (store-only) on upload and rejoined on download. Optionally it can also log in as a Telegram **user account**; if that account has Premium, parts go up to 3.9 GB — see [Telegram user account](#telegram-user-account-optional).
 
 ## Prerequisites
