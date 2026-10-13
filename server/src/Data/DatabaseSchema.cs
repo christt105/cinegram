@@ -3,6 +3,7 @@ using Cinegram.Data.Migrations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
+using Cinegram.Infrastructure;
 
 namespace Cinegram.Data;
 

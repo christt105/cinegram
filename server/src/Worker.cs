@@ -1,6 +1,12 @@
-using Cinegram.Services;
-using Cinegram.Utils;
 using Microsoft.Data.Sqlite;
+using Cinegram.Backups;
+using Cinegram.Infrastructure;
+using Cinegram.Jellyfin;
+using Cinegram.Library;
+using Cinegram.TelegramBot;
+using Cinegram.Tmdb;
+using Cinegram.Transfers;
+using Cinegram.Watch;
 
 namespace Cinegram;
 
@@ -31,7 +37,7 @@ public class Worker : BackgroundService
     {
         try
         {
-            if (!Cinegram.Utils.DependencyChecker.CheckExecutables(out var missing))
+            if (!Cinegram.Infrastructure.DependencyChecker.CheckExecutables(out var missing))
             {
                 Log.Warning($"[Startup] Required system dependencies are missing: {string.Join(", ", missing)}. Make sure they are installed and available in the PATH.");
             }
