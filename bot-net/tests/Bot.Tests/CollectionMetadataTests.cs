@@ -86,6 +86,13 @@ public class CollectionMetadataTests
         Assert.Equal("Unknown language code(s): klingon", ex.Message);
     }
 
+    [Theory]
+    [InlineData("spa,klingon,nob", "spa,nor")]
+    [InlineData("klingon", null)]
+    [InlineData(null, null)]
+    public void Known_languages_drop_codes_outside_the_vocabulary(string? value, string? expected) =>
+        Assert.Equal(expected, CollectionMetadata.KnownLanguages(value));
+
     [Fact]
     public void The_vocabulary_offers_every_detectable_quality()
     {

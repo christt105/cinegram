@@ -12,9 +12,9 @@ public static class MediaProbe
 
     /// <summary>
     /// Pulls a collection-ready summary out of ffprobe's raw JSON: the distinct language
-    /// tags of the audio and subtitle streams. Null fields mean the file said nothing
-    /// usable for that piece (no streams of that type, or none with a "language"/
-    /// "LANGUAGE" tag). Resolution is deliberately not extracted here:
+    /// tags of the audio and subtitle streams, normalized to the collection vocabulary (codes
+    /// outside it are dropped). Null fields mean the file said nothing usable for that piece
+    /// (no streams of that type, or none with a known "language"/"LANGUAGE" tag). Resolution is deliberately not extracted here:
     /// <see cref="Services.Catalog.UpdateCollectionAsync"/> derives quality and codec from the
     /// technical metadata itself, as long as the same change doesn't also set them.
     /// </summary>
@@ -42,7 +42,7 @@ public static class MediaProbe
             .Distinct()
             .ToList();
 
-        return languages.Count == 0 ? null : string.Join(",", languages);
+        return CollectionMetadata.KnownLanguages(string.Join(",", languages));
     }
 
     private static string? GetString(JsonElement element, string property) =>
