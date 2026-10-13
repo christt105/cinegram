@@ -258,7 +258,9 @@ public class TmdbApi : ITmdbApi, IDisposable
             Text(e, "first_air_date"),
             e.TryGetProperty("popularity", out var p) && p.ValueKind == JsonValueKind.Number ? p.GetDouble() : 0,
             PosterPath: Text(e, "poster_path"),
-            Overview: Text(e, "overview"));
+            Overview: e.TryGetProperty("overview", out var overview) && overview.ValueKind == JsonValueKind.String
+                ? overview.GetString()
+                : null);
     }
 
     private static string? Text(JsonElement e, string property) =>
