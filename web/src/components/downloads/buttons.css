@@ -1,0 +1,32 @@
+.glass-button.btn-sm {
+  padding: 5px 10px;
+  font-size: 0.78rem;
+}
+
+.glass-button.success {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #a7f3d0;
+}
+
+.glass-button.success:hover:not(:disabled) {
+  filter: brightness(1.15);
+}
+
+.glass-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.glass-button.icon-only {
+  padding: 0;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
