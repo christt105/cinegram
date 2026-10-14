@@ -1,10 +1,13 @@
 import { ref, computed } from 'vue'
 import { apiUrl } from '../config'
 import { findJellyfinItemByTmdbId } from '../api/jellyfin'
+import type { CatalogMovie, CatalogSeries, SeriesMatchPlan } from '../api/cinegram'
 
 /** Loads a catalogue movie or series and runs the actions that act on the whole title. */
 export function useCatalogItem(props: { type: string; id: string }) {
-  const item = ref<any>(null)
+  const movie = ref<CatalogMovie | null>(null)
+  const series = ref<CatalogSeries | null>(null)
+  const item = computed(() => movie.value ?? series.value)
   const isLoading = ref(true)
   const jellyfinItemId = ref<string | null>(null)
   const matchingWithJellyfin = ref(false)
@@ -27,16 +30,17 @@ export function useCatalogItem(props: { type: string; id: string }) {
     try {
       const res = await fetch(`${apiUrl}${itemPath.value}`)
       if (res.ok) {
-        const data = await res.json()
-        if (data.seasons) {
-          data.seasons.sort((a: any, b: any) => a.season_number - b.season_number)
-          data.seasons.forEach((season: any) => {
+        const data: CatalogMovie | CatalogSeries = await res.json()
+        if ('seasons' in data && data.seasons) {
+          data.seasons.sort((a, b) => a.season_number - b.season_number)
+          data.seasons.forEach((season) => {
             if (season.episodes) {
-              season.episodes.sort((a: any, b: any) => a.episode_number - b.episode_number)
+              season.episodes.sort((a, b) => a.episode_number - b.episode_number)
             }
           })
         }
-        item.value = data
+        movie.value = props.type === 'movies' ? data as CatalogMovie : null
+        series.value = props.type === 'movies' ? null : data as CatalogSeries
         if (data.tmdb_id) {
           checkJellyfinItem(data.tmdb_id)
         }
@@ -92,13 +96,13 @@ export function useCatalogItem(props: { type: string; id: string }) {
     try {
       const res = await fetch(`${apiUrl}/probe/series/${props.id}`, { method: 'POST' })
       if (res.ok) {
-        const plan = await res.json()
+        const plan: SeriesMatchPlan = await res.json()
         const matched = plan.matches?.length ?? 0
         const skipped = plan.skips ?? []
         let message = `✅ Matched ${matched} episode${matched === 1 ? '' : 's'} with Jellyfin.`
         if (skipped.length > 0) {
           message += `\n\nSkipped ${skipped.length}:\n` + skipped
-            .map((s: any) => `S${String(s.season).padStart(2, '0')}E${String(s.episode).padStart(2, '0')}: ${s.reason}`)
+            .map((s) => `S${String(s.season).padStart(2, '0')}E${String(s.episode).padStart(2, '0')}: ${s.reason}`)
             .join('\n')
         }
         alert(message)
@@ -136,6 +140,8 @@ export function useCatalogItem(props: { type: string; id: string }) {
 
   return {
     item,
+    movie,
+    series,
     isLoading,
     itemPath,
     jellyfinItemId,

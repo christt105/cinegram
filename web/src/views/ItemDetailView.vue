@@ -21,11 +21,11 @@
       />
 
       <div class="item-actions">
-        <div v-if="type === 'movies'" class="collections-section">
+        <div v-if="movie" class="collections-section">
           <h2>Available Versions</h2>
-          <div v-if="item.collections && item.collections.length > 0" class="collection-list">
+          <div v-if="movie.collections && movie.collections.length > 0" class="collection-list">
             <CollectionCard
-              v-for="col in item.collections"
+              v-for="col in movie.collections"
               :key="col.id"
               :collection="col"
               :selecting="selectingCollectionId === col.id"
@@ -42,10 +42,10 @@
           <div v-else>No versions uploaded to Telegram yet.</div>
         </div>
 
-        <div v-if="type === 'series'" class="seasons-section">
+        <div v-if="series" class="seasons-section">
           <h2 style="margin-bottom: 1.5rem; font-size: 2rem;">Seasons</h2>
           <SeasonSection
-            v-for="season in item.seasons"
+            v-for="season in series.seasons"
             :key="season.id"
             :series-id="id"
             :season="season"
@@ -81,7 +81,7 @@
       v-if="probeTarget"
       :collection="probeTarget"
       :tmdb-id="item?.tmdb_id ?? null"
-      :tvdb-id="item?.tvdb_id ?? null"
+      :tvdb-id="series?.tvdb_id ?? null"
       @close="probeTarget = null"
       @probed="probeTarget = null; fetchItem()"
     />
@@ -123,7 +123,7 @@
     <ReidentifyItemModal
       v-if="showingReidentifyModal"
       :type="type"
-      :title="item?.title || item?.manual_title || ''"
+      :title="movie?.title || series?.manual_title || ''"
       @select="reidentifyItem"
       @close="showingReidentifyModal = false"
     />
@@ -139,7 +139,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
-import { fetchMetadataVocabulary, type MetadataVocabulary } from '../api/cinegram'
+import { fetchMetadataVocabulary, type MetadataVocabulary, type TelegramCollection } from '../api/cinegram'
 import { useCatalogItem } from '../composables/useCatalogItem'
 import { useFileSelection } from '../composables/useFileSelection'
 import ItemHero from '../components/item-detail/ItemHero.vue'
@@ -162,6 +162,8 @@ const props = defineProps<{
 
 const {
   item,
+  movie,
+  series,
   isLoading,
   itemPath,
   jellyfinItemId,
@@ -183,7 +185,7 @@ const {
   deleteSelectedFiles,
   moveSelectedFiles,
   moveSelectedToNewCollection
-} = useFileSelection(item, () => props.type, fetchItem)
+} = useFileSelection(movie, series, fetchItem)
 
 const metadataVocabulary = ref<MetadataVocabulary>({ qualities: [], codecs: [], languages: {} })
 
@@ -206,21 +208,21 @@ const toggleSeasonExpanded = (seasonId: number) => {
 }
 
 watch(item, (data, previous) => {
-  if (previous || !data?.seasons) return
+  if (previous || !data || !('seasons' in data) || !data.seasons) return
   const latestSeason = data.seasons[data.seasons.length - 1]
   expandedSeasonIds.value = latestSeason ? new Set([latestSeason.id]) : new Set()
 })
 
-const downloadTarget = ref<any>(null)
-const probeTarget = ref<any>(null)
-const reidentifyTarget = ref<any>(null)
-const editTarget = ref<{ collection: any; season: number | null; episode: number | null } | null>(null)
+const downloadTarget = ref<TelegramCollection | null>(null)
+const probeTarget = ref<TelegramCollection | null>(null)
+const reidentifyTarget = ref<TelegramCollection | null>(null)
+const editTarget = ref<{ collection: TelegramCollection; season: number | null; episode: number | null } | null>(null)
 const showingMoveModal = ref(false)
 const showingNewCollectionModal = ref(false)
 const showingPosterModal = ref(false)
 const showingReidentifyModal = ref(false)
 
-const openEdit = (collection: any, season: number | null, episode: number | null) => {
+const openEdit = (collection: TelegramCollection, season: number | null, episode: number | null) => {
   editTarget.value = { collection, season, episode }
 }
 

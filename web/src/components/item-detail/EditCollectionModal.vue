@@ -93,10 +93,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { apiUrl } from '../../config'
-import type { MetadataVocabulary } from '../../api/cinegram'
+import type { MetadataVocabulary, TelegramCollection } from '../../api/cinegram'
 
 const props = defineProps<{
-  collection: any
+  collection: TelegramCollection
   type: string
   seasonNumber: number | null
   episodeNumber: number | null
@@ -131,7 +131,7 @@ const toggleLanguage = (list: string[], code: string) => {
 
 const save = async () => {
   try {
-    const payload: any = {
+    const payload: Record<string, string | number | boolean | null> = {
       name: form.value.name,
       quality: form.value.quality,
       codec: form.value.codec,

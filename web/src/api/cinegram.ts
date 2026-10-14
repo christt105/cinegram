@@ -6,52 +6,73 @@ export interface TelegramFile {
   message_id: number;
   filename: string;
   filesize: number;
-  mime_type: string;
+  mime_type: string | null;
   created_at: string;
+  collection_id: number;
 }
 
 export interface TelegramCollection {
   id: number;
-  name: string;
-  quality: string;
-  codec?: string | null;
-  technical_metadata?: string | null;
-  local_path?: string | null;
+  name: string | null;
+  movie_id: number | null;
+  episode_id: number | null;
+  season_id: number | null;
   files: TelegramFile[];
+  quality: string | null;
+  codec: string | null;
+  audio_languages: string | null;
+  subtitle_languages: string | null;
+  tags: string | null;
+  notes: string | null;
+  technical_metadata: string | null;
+  local_path: string | null;
 }
 
 export interface CatalogMovie {
   id: number;
-  tmdb_id: number;
-  title: string;
-  poster_path: string;
-  release_year: number;
-  overview: string;
+  tmdb_id: number | null;
+  title: string | null;
+  poster_path: string | null;
   collections: TelegramCollection[];
+  release_year: number | null;
+  overview: string | null;
+  tags: string | null;
+  notes: string | null;
+  created_at: string;
 }
 
 export interface CatalogEpisode {
   id: number;
   episode_number: number;
-  title: string;
+  title: string | null;
   collections: TelegramCollection[];
 }
 
 export interface CatalogSeason {
   id: number;
   season_number: number;
+  local_metadata: boolean;
   episodes: CatalogEpisode[];
   collections: TelegramCollection[];
 }
 
 export interface CatalogSeries {
   id: number;
-  tmdb_id: number;
-  manual_title: string;
-  poster_path?: string;
-  overview?: string;
-  release_year?: number;
+  tmdb_id: number | null;
+  tvdb_id: number | null;
+  manual_title: string | null;
+  poster_path: string | null;
+  overview: string | null;
+  release_year: number | null;
   seasons: CatalogSeason[];
+  created_at: string;
+}
+
+export type CatalogItem = CatalogMovie | CatalogSeries;
+
+export interface SeriesMatchPlan {
+  matches: { collection_id: number; path: string; season: number; episode: number }[];
+  skips: { season: number; episode: number; reason: string }[];
 }
 
 export type WatchedFileStatus =

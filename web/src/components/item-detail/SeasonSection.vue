@@ -72,10 +72,11 @@ import { DownloadCloud, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import { apiUrl } from '../../config'
 import CollectionCard from './CollectionCard.vue'
 import EpisodeCard from './EpisodeCard.vue'
+import type { CatalogEpisode, CatalogSeason, TelegramCollection } from '../../api/cinegram'
 
 const props = defineProps<{
   seriesId: string
-  season: any
+  season: CatalogSeason
   expanded: boolean
   selectingCollectionId: number | null
   selectedFileIds: number[]
@@ -85,10 +86,10 @@ const emit = defineEmits<{
   'toggle-expanded': []
   'toggle-select': [collectionId: number]
   'toggle-file': [fileId: number]
-  download: [collection: any]
-  probe: [collection: any]
-  reidentify: [collection: any]
-  edit: [collection: any, season: number, episode: number | null]
+  download: [collection: TelegramCollection]
+  probe: [collection: TelegramCollection]
+  reidentify: [collection: TelegramCollection]
+  edit: [collection: TelegramCollection, season: number, episode: number | null]
   changed: []
 }>()
 
@@ -112,7 +113,7 @@ const toggleLocalMetadata = async () => {
   }
 }
 
-const updateEpisodeTitle = async (ep: any, newTitle: string) => {
+const updateEpisodeTitle = async (ep: CatalogEpisode, newTitle: string) => {
   const previous = ep.title
   ep.title = newTitle
   try {

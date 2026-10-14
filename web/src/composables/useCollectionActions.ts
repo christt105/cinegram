@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { apiUrl } from '../config'
+import type { TelegramCollection } from '../api/cinegram'
 
 /** Per-collection actions that run straight away, without a modal. `onChanged` reloads the title. */
 export function useCollectionActions(onChanged: () => void) {
@@ -24,7 +25,7 @@ export function useCollectionActions(onChanged: () => void) {
     }
   }
 
-  const deleteLocalCopy = async (col: any) => {
+  const deleteLocalCopy = async (col: TelegramCollection) => {
     if (!confirm(`Delete this file from disk?\n\n${col.local_path}\n\nThe Telegram collection is kept, so you can download it again later.`)) return
 
     deletingLocalCopy.value = col.id

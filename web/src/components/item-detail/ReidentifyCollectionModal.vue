@@ -76,16 +76,17 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { apiUrl } from '../../config'
+import type { TelegramCollection } from '../../api/cinegram'
 import { useTmdbSearch, type TmdbSearchResult } from '../../composables/useTmdbSearch'
 
-const props = defineProps<{ collection: any }>()
+const props = defineProps<{ collection: TelegramCollection }>()
 
 const emit = defineEmits<{
   close: []
   reidentified: []
 }>()
 
-const { query, results, searching, search } = useTmdbSearch('multi', props.collection.name)
+const { query, results, searching, search } = useTmdbSearch('multi', props.collection.name ?? '')
 
 const step = ref<'search' | 'episode-select'>('search')
 const loading = ref(false)

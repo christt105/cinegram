@@ -64,9 +64,10 @@ import { computed } from 'vue'
 import { DownloadCloud, Trash2, Edit3, Search, FileSearch, HardDrive } from 'lucide-vue-next'
 import { formatDate, formatSize, shortPath, technicalSummary } from '../../utils/format'
 import { useCollectionActions } from '../../composables/useCollectionActions'
+import type { TelegramCollection } from '../../api/cinegram'
 
 const props = defineProps<{
-  collection: any
+  collection: TelegramCollection
   seasonPack?: boolean
   selecting: boolean
   selectedFileIds: number[]
