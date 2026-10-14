@@ -1,0 +1,16 @@
+.btn-sm {
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  margin-left: 0.5rem;
+}
+.danger {
+  background: rgba(255, 180, 171, 0.15) !important;
+  border-color: rgba(255, 180, 171, 0.35) !important;
+  color: #ffb4ab !important;
+}
+.danger:hover {
+  background: rgba(255, 180, 171, 0.30) !important;
+}
+.icon-only {
+  padding: 4px 6px;
+}
