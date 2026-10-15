@@ -15,10 +15,12 @@ export function useTmdbSearch(mediaType: 'movie' | 'tv' | 'multi', initialQuery 
   const query = ref(initialQuery)
   const results = ref<TmdbSearchResult[]>([])
   const searching = ref(false)
+  const searched = ref(false)
 
   const search = async () => {
     if (!query.value.trim()) return
     searching.value = true
+    searched.value = true
     results.value = []
     try {
       const res = await fetch(`${apiUrl}/tmdb/search?query=${encodeURIComponent(query.value.trim())}&media_type=${mediaType}`)
@@ -32,5 +34,5 @@ export function useTmdbSearch(mediaType: 'movie' | 'tv' | 'multi', initialQuery 
     }
   }
 
-  return { query, results, searching, search }
+  return { query, results, searching, searched, search }
 }
