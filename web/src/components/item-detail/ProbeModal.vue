@@ -52,6 +52,7 @@ import { ref, onMounted } from 'vue'
 import { Search } from 'lucide-vue-next'
 import { apiUrl } from '../../config'
 import { collectionLabel, folderOf, formatDate, formatSize } from '../../utils/format'
+import type { TelegramCollection } from '../../api/cinegram'
 
 type LocalFile = {
   path: string
@@ -65,7 +66,7 @@ type LocalFile = {
 }
 
 const props = defineProps<{
-  collection: any
+  collection: TelegramCollection
   tmdbId: number | null
   tvdbId: number | null
 }>()

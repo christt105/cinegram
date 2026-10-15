@@ -1,8 +1,13 @@
 import { ref, computed, type Ref } from 'vue'
 import { apiUrl } from '../config'
+import type { CatalogMovie, CatalogSeries, TelegramCollection } from '../api/cinegram'
 
 /** Selecting files inside one collection of a title, and the batch actions on that selection. */
-export function useFileSelection(item: Ref<any>, type: () => string, onChanged: () => void) {
+export function useFileSelection(
+  movie: Ref<CatalogMovie | null>,
+  series: Ref<CatalogSeries | null>,
+  onChanged: () => void
+) {
   const selectingCollectionId = ref<number | null>(null)
   const selectedFileIds = ref<number[]>([])
 
@@ -24,11 +29,11 @@ export function useFileSelection(item: Ref<any>, type: () => string, onChanged: 
     selectedFileIds.value = []
   }
 
-  const allCollections = computed<any[]>(() => {
-    if (!item.value) return []
-    if (type() === 'movies') return item.value.collections || []
-    const all: any[] = []
-    for (const season of item.value.seasons || []) {
+  const allCollections = computed<TelegramCollection[]>(() => {
+    if (movie.value) return movie.value.collections || []
+    if (!series.value) return []
+    const all: TelegramCollection[] = []
+    for (const season of series.value.seasons || []) {
       all.push(...(season.collections || []))
       for (const ep of season.episodes || []) {
         all.push(...(ep.collections || []))

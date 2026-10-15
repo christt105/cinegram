@@ -8,7 +8,7 @@
     <img v-if="item.poster_path" :src="item.poster_path.startsWith('/') ? 'https://image.tmdb.org/t/p/w500' + item.poster_path : item.poster_path" class="hero-poster" />
     <div class="hero-info">
       <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
-        <h1 style="margin: 0; font-size: 2.2rem; font-weight: 700;">{{ item.title || item.manual_title || 'Unknown Title' }}</h1>
+        <h1 style="margin: 0; font-size: 2.2rem; font-weight: 700;">{{ title || 'Unknown Title' }}</h1>
         <span class="year-badge" style="background: rgba(255,255,255,0.1); padding: 0.25rem 0.6rem; border-radius: 8px; font-size: 0.9rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.15);">{{ item.release_year }}</span>
         <div v-if="item.tmdb_id" style="display: inline-flex; align-items: center; gap: 0.35rem;">
           <a :href="type === 'movies' ? 'https://www.themoviedb.org/movie/' + item.tmdb_id : 'https://www.themoviedb.org/tv/' + item.tmdb_id" target="_blank" rel="noopener noreferrer" class="tmdb-link" style="display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(13, 37, 63, 0.65); border: 1px solid rgba(1, 180, 228, 0.4); padding: 0.25rem 0.6rem; border-radius: 8px; font-size: 0.85rem; font-weight: 600; color: #90cea1; text-decoration: none; transition: all 0.2s; height: 30px;">
@@ -43,12 +43,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Copy, Check, FolderSync } from 'lucide-vue-next'
 import { copyText } from '../../utils/clipboard'
+import type { CatalogItem } from '../../api/cinegram'
 
 const props = defineProps<{
-  item: any
+  item: CatalogItem
   type: string
   jellyfinItemId: string | null
   matchingWithJellyfin: boolean
@@ -60,6 +61,8 @@ const emit = defineEmits<{
   'change-poster': []
   delete: []
 }>()
+
+const title = computed(() => 'title' in props.item ? props.item.title : props.item.manual_title)
 
 const copied = ref(false)
 

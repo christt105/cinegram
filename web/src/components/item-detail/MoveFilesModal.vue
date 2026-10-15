@@ -21,10 +21,11 @@
 
 <script setup lang="ts">
 import { collectionLabel } from '../../utils/format'
+import type { TelegramCollection } from '../../api/cinegram'
 
 defineProps<{
   fileCount: number
-  collections: any[]
+  collections: TelegramCollection[]
 }>()
 
 const emit = defineEmits<{

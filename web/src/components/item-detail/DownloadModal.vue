@@ -27,8 +27,9 @@
 import { ref } from 'vue'
 import { apiUrl } from '../../config'
 import { collectionLabel } from '../../utils/format'
+import type { TelegramCollection } from '../../api/cinegram'
 
-const props = defineProps<{ collection: any }>()
+const props = defineProps<{ collection: TelegramCollection }>()
 const emit = defineEmits<{ close: [] }>()
 
 const suffix = ref(props.collection.notes || '')

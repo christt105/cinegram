@@ -42,18 +42,19 @@
 <script setup lang="ts">
 import { DownloadCloud, Trash2, Edit3, Search, FileSearch, HardDrive } from 'lucide-vue-next'
 import { useCollectionActions } from '../../composables/useCollectionActions'
+import type { CatalogEpisode, TelegramCollection } from '../../api/cinegram'
 
 defineProps<{
-  episode: any
+  episode: CatalogEpisode
   editableTitle: boolean
 }>()
 
 const emit = defineEmits<{
   rename: [title: string]
-  download: [collection: any]
-  probe: [collection: any]
-  reidentify: [collection: any]
-  edit: [collection: any]
+  download: [collection: TelegramCollection]
+  probe: [collection: TelegramCollection]
+  reidentify: [collection: TelegramCollection]
+  edit: [collection: TelegramCollection]
   changed: []
 }>()
 
