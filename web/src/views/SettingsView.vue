@@ -131,48 +131,7 @@
         Identifying: <strong style="color: #ffb4ab;">{{ activeOrphanName }}</strong>
       </div>
 
-      <!-- Search Bar -->
-      <div style="display: flex; gap: 0.5rem; width: 100%;">
-        <input v-model="searchQuery" @keyup.enter="searchTMDB" type="text" placeholder="Type the series or movie name..." style="flex-grow: 1; padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 0.95rem;" />
-        <button @click="searchTMDB" class="glass-button primary" style="padding: 0 1.25rem;">Search</button>
-      </div>
-
-      <!-- Results List -->
-      <div style="flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 0.75rem; padding-right: 0.25rem;">
-        <div v-if="isSearching" style="text-align: center; padding: 2rem; color: #a1a1aa;">
-          <div style="margin-bottom: 0.5rem;">Searching...</div>
-        </div>
-        <div v-else-if="searchResults.length === 0 && searchQuery" style="text-align: center; padding: 2rem; color: #a1a1aa;">
-          No results found.
-        </div>
-        
-        <div v-for="result in searchResults" :key="result.id" class="result-card" style="display: flex; gap: 1rem; padding: 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 10px; transition: background 0.2s;">
-          <img v-if="result.poster_path" :src="'https://image.tmdb.org/t/p/w92' + result.poster_path" style="width: 50px; height: 75px; object-fit: cover; border-radius: 6px; flex-shrink: 0;" />
-          <div v-else style="width: 50px; height: 75px; background: rgba(255,255,255,0.05); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #555; text-align: center; flex-shrink: 0;">No Poster</div>
-          
-          <div style="display: flex; flex-direction: column; gap: 0.25rem; flex-grow: 1; min-width: 0;">
-            <div style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem;">
-              <strong style="color: #fff; font-size: 0.95rem;">{{ result.title }}</strong>
-              <span style="color: #6b7280; font-size: 0.8rem;">({{ result.year }})</span>
-            </div>
-            <span class="badge" :style="{
-              background: result.media_type === 'movie' ? 'rgba(214, 186, 255, 0.14)' : 'rgba(34, 197, 94, 0.14)',
-              color: result.media_type === 'movie' ? '#d6baff' : '#7ee2a8',
-              fontSize: '0.7rem',
-              padding: '2px 6px',
-              borderRadius: '4px',
-              width: 'fit-content',
-              textTransform: 'uppercase',
-              fontWeight: '600'
-            }">{{ result.media_type === 'movie' ? 'Movie' : 'Series' }}</span>
-            <p style="margin: 0.25rem 0 0 0; font-size: 0.75rem; color: #a1a1aa; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;">{{ result.overview || 'No description available.' }}</p>
-          </div>
-          
-          <button @click="selectTMDBResult(result)" class="glass-button" style="align-self: center; background: rgba(214, 186, 255, 0.14); border-color: rgba(214, 186, 255, 0.30); color: #d6baff; padding: 6px 12px; font-size: 0.8rem; border-radius: 6px; flex-shrink: 0;">
-            Select
-          </button>
-        </div>
-      </div>
+      <TmdbSearchPanel media-type="multi" :initial-query="searchQuery" search-on-mount :select-disabled="identifying" @select="selectTMDBResult" />
 
       <template #footer>
         <button @click="searchModalOpen = false" class="glass-button">Close</button>
@@ -185,6 +144,8 @@
 import { ref, onMounted, computed } from 'vue';
 import { Github } from 'lucide-vue-next';
 import BaseModal from '../components/BaseModal.vue';
+import TmdbSearchPanel from '../components/tmdb/TmdbSearchPanel.vue';
+import type { TmdbSearchResult } from '../composables/useTmdbSearch';
 
 const props = defineProps<{
   jellyfinItems: any[];
@@ -238,26 +199,9 @@ const fetchOrphans = async () => {
 
 const searchModalOpen = ref(false);
 const searchQuery = ref("");
-const searchResults = ref<any[]>([]);
-const isSearching = ref(false);
+const identifying = ref(false);
 const activeOrphanId = ref<number | null>(null);
 const activeOrphanName = ref("");
-
-const searchTMDB = async () => {
-  if (!searchQuery.value.trim()) return;
-  isSearching.value = true;
-  searchResults.value = [];
-  try {
-    const res = await fetch(`${apiUrl}/tmdb/search?query=${encodeURIComponent(searchQuery.value.trim())}`);
-    if (res.ok) {
-      searchResults.value = await res.json();
-    }
-  } catch (err) {
-    console.error(err);
-  } finally {
-    isSearching.value = false;
-  }
-};
 
 const openIdentifyModal = (orphan: any) => {
   activeOrphanId.value = orphan.id;
@@ -273,11 +217,11 @@ const openIdentifyModal = (orphan: any) => {
     
   searchQuery.value = cleanQuery;
   searchModalOpen.value = true;
-  searchTMDB(); // trigger auto search
 };
 
-const selectTMDBResult = async (result: any) => {
+const selectTMDBResult = async (result: TmdbSearchResult) => {
   if (!activeOrphanId.value) return;
+  identifying.value = true;
   try {
     const res = await fetch(`${apiUrl}/collections/${activeOrphanId.value}/identify`, {
       method: "POST",
@@ -295,6 +239,8 @@ const selectTMDBResult = async (result: any) => {
   } catch (err) {
     console.error(err);
     alert("Connection error.");
+  } finally {
+    identifying.value = false;
   }
 };
 
