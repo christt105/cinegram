@@ -25,7 +25,9 @@ public class BotDispatcher
     public BotDispatcher(
         WTelegram.Bot bot, Catalog catalog, CatalogIdentifier identifier, ITmdbLookup tmdb,
         DatabaseBackup backup, WatchedFiles watchedFiles, TransferTasks transfers, TaskQueue queue,
-        UserClientService? userClient = null, IJellyfinClient? jellyfinClient = null)
+        UserClientService userClient, UploadEchoRegistry uploadEchoes, WatchedFileMessageRegistry watchedFileMessages,
+        JellyfinSeriesIdentifier jellyfinSeries, WatchNotificationService watchNotifications,
+        WatchedFolderService watchedFolder, PendingActionHandler pendingActionHandler)
     {
         Bot = bot;
         Catalog = catalog;
@@ -36,15 +38,13 @@ public class BotDispatcher
         Transfers = transfers;
         Queue = queue;
         UserClient = userClient;
+        UploadEchoes = uploadEchoes;
+        WatchedFileMessages = watchedFileMessages;
+        JellyfinSeries = jellyfinSeries;
+        WatchNotifications = watchNotifications;
+        WatchedFolder = watchedFolder;
 
-        JellyfinSeries = new JellyfinSeriesIdentifier(
-            jellyfinClient,
-            async text => await Bot.SendMessage(AuthConfig.OwnerUserId, text, ParseMode.Html));
-
-        WatchNotifications = new WatchNotificationService(bot, watchedFiles, WatchedFileMessages, JellyfinSeries);
-        WatchedFolder = new WatchedFolderService(watchedFiles, WatchNotifications);
-
-        _pendingActionHandler = new PendingActionHandler(Bot);
+        _pendingActionHandler = pendingActionHandler;
         _commandHandler = new CommandHandler(this);
         _fileHandler = new FileHandler(this);
         _messageHandler = new MessageHandler(Bot);
@@ -67,14 +67,14 @@ public class BotDispatcher
 
     public TaskQueue Queue { get; }
 
-    public UserClientService? UserClient { get; }
+    public UserClientService UserClient { get; }
 
     /// <summary>Where <see cref="UploadService"/> collects the bot's own id for its uploads.</summary>
-    public UploadEchoRegistry UploadEchoes { get; } = new();
+    public UploadEchoRegistry UploadEchoes { get; }
 
     /// <summary>Shared with <see cref="WatchNotificationService"/> so the Confirm/Correct
     /// callbacks and the removed-file and web-confirmed edits track the same live messages.</summary>
-    public WatchedFileMessageRegistry WatchedFileMessages { get; } = new();
+    public WatchedFileMessageRegistry WatchedFileMessages { get; }
 
     /// <summary>Shared with <see cref="WatchNotificationService"/> so a series confirmed from
     /// Telegram and one confirmed from the web both get their TMDB id pushed to Jellyfin.</summary>
@@ -83,7 +83,7 @@ public class BotDispatcher
     /// <summary>Shared with the HTTP confirm/correct endpoints, which hand it the rows to move.</summary>
     public WatchNotificationService WatchNotifications { get; }
 
-    /// <summary>Shared with <see cref="Worker"/>, which runs it, and with the HTTP rescan
+    /// <summary>Run in the background from startup, and shared with the HTTP rescan
     /// endpoint, so /rescan and the web button trigger the very sweep the background loop uses.</summary>
     public WatchedFolderService WatchedFolder { get; }
 

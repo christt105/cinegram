@@ -39,7 +39,7 @@ public class WatchedFilesTests : IAsyncLifetime
         builder.Services.AddDbContextFactory<CinegramDb>(o => o.UseSqlite(CinegramDb.ConnectionString(path)));
         builder.Services.AddSingleton<ITmdbLookup>(_tmdb);
         builder.Services.AddSingleton<WatchedFiles>();
-        builder.Services.AddSingleton<BotHolder>();
+        builder.Services.AddSingleton<TelegramStatus>();
         _app = builder.Build();
         WatchEndpoints.Map(_app);
         await _app.StartAsync();
