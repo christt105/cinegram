@@ -23,13 +23,14 @@
           <p class="result-overview">{{ result.overview }}</p>
         </div>
 
-        <button class="glass-button select-button" :disabled="selectDisabled" @click="emit('select', result)">Select</button>
+        <button class="glass-button select-button" :disabled="selectDisabled" @click="emit('select', result)">{{ selectLabel ?? 'Select' }}</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { useTmdbSearch, type TmdbSearchResult } from '../../composables/useTmdbSearch'
 
 /** Search box and result list over TMDB; emits the picked result. */
@@ -37,6 +38,8 @@ const props = defineProps<{
   mediaType: 'movie' | 'tv' | 'multi'
   initialQuery: string
   selectDisabled?: boolean
+  selectLabel?: string
+  searchOnMount?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -44,6 +47,10 @@ const emit = defineEmits<{
 }>()
 
 const { query, results, searching, searched, search } = useTmdbSearch(props.mediaType, props.initialQuery)
+
+onMounted(() => {
+  if (props.searchOnMount) search()
+})
 </script>
 
 <style scoped>
@@ -58,11 +65,11 @@ const { query, results, searching, searched, search } = useTmdbSearch(props.medi
 .search-row {
   display: flex;
   gap: 0.5rem;
-  flex-wrap: wrap;
 }
 
 .search-input {
   flex-grow: 1;
+  min-width: 0;
   padding: 10px 14px;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.05);
@@ -73,6 +80,7 @@ const { query, results, searching, searched, search } = useTmdbSearch(props.medi
 
 .search-button {
   padding: 0 1.25rem;
+  flex-shrink: 0;
 }
 
 .search-results {
