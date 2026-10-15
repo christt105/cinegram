@@ -1,50 +1,41 @@
 <template>
-  <div class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px); padding: 1rem;">
-    <div class="glass-panel" style="width: 100%; max-width: 680px; padding: 1.5rem; border-radius: 16px; background: rgba(17,24,39,0.95); border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 1rem;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
-        <div>
-          <h3 style="margin: 0; font-size: 1.2rem; color: #fff;">Technical data from a local file</h3>
-          <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: #d6baff;">{{ collectionLabel(collection) }}</p>
-        </div>
-        <button @click="emit('close')" class="glass-button icon-only" style="padding: 0; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">✕</button>
-      </div>
-      <div style="display: flex; gap: 0.5rem;">
-        <input v-model="query" @keyup.enter="searchLocalFiles" type="text" placeholder="Filter by name…" style="flex: 1; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
-        <button @click="searchLocalFiles" :disabled="loading" class="glass-button">
-          <Search :size="16" />
-        </button>
-      </div>
-      <label v-if="tmdbId || tvdbId" class="probe-scope">
-        <input type="checkbox" v-model="onlyThisTitle" @change="searchLocalFiles" />
-        Only the copies of this title
-      </label>
-      <div class="probe-results">
-        <div v-if="loading" style="color: #a1a1aa; text-align: center; padding: 1.5rem;">Scanning the library…</div>
-        <template v-else>
-          <button v-for="file in files" :key="file.path"
-            @click="probeLocalFile(file.path)"
-            :disabled="submitting"
-            class="glass-button probe-file"
-            :class="{ 'probe-file-current': file.path === currentPath }">
-            <span class="probe-file-name">{{ file.filename }}</span>
-            <span class="probe-file-badges">
-              <span v-if="file.quality" class="probe-badge quality">{{ file.quality }}</span>
-              <span v-if="file.version_tag" class="probe-badge version">{{ file.version_tag }}</span>
-              <span class="probe-badge">{{ formatSize(file.filesize) }}</span>
-              <span class="probe-badge">{{ formatDate(file.modified_at) }}</span>
-              <span v-if="file.path === currentPath" class="probe-badge current">In use</span>
-            </span>
-            <span class="probe-file-path">{{ folderOf(file.path) }}</span>
-          </button>
-          <div v-if="files.length === 0" style="color: #a1a1aa; text-align: center; padding: 1.5rem;">
-            {{ onlyThisTitle
-              ? 'No copies of this title on disk. Untick the filter to browse the whole library.'
-              : 'No video files found in the library.' }}
-          </div>
-        </template>
-      </div>
+  <BaseModal title="Technical data from a local file" :subtitle="collectionLabel(collection)" max-width="680px" @close="emit('close')">
+    <div style="display: flex; gap: 0.5rem;">
+      <input v-model="query" @keyup.enter="searchLocalFiles" type="text" placeholder="Filter by name…" style="flex: 1; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff;" />
+      <button @click="searchLocalFiles" :disabled="loading" class="glass-button">
+        <Search :size="16" />
+      </button>
     </div>
-  </div>
+    <label v-if="tmdbId || tvdbId" class="probe-scope">
+      <input type="checkbox" v-model="onlyThisTitle" @change="searchLocalFiles" />
+      Only the copies of this title
+    </label>
+    <div class="probe-results">
+      <div v-if="loading" style="color: #a1a1aa; text-align: center; padding: 1.5rem;">Scanning the library…</div>
+      <template v-else>
+        <button v-for="file in files" :key="file.path"
+          @click="probeLocalFile(file.path)"
+          :disabled="submitting"
+          class="glass-button probe-file"
+          :class="{ 'probe-file-current': file.path === currentPath }">
+          <span class="probe-file-name">{{ file.filename }}</span>
+          <span class="probe-file-badges">
+            <span v-if="file.quality" class="probe-badge quality">{{ file.quality }}</span>
+            <span v-if="file.version_tag" class="probe-badge version">{{ file.version_tag }}</span>
+            <span class="probe-badge">{{ formatSize(file.filesize) }}</span>
+            <span class="probe-badge">{{ formatDate(file.modified_at) }}</span>
+            <span v-if="file.path === currentPath" class="probe-badge current">In use</span>
+          </span>
+          <span class="probe-file-path">{{ folderOf(file.path) }}</span>
+        </button>
+        <div v-if="files.length === 0" style="color: #a1a1aa; text-align: center; padding: 1.5rem;">
+          {{ onlyThisTitle
+            ? 'No copies of this title on disk. Untick the filter to browse the whole library.'
+            : 'No video files found in the library.' }}
+        </div>
+      </template>
+    </div>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
@@ -53,6 +44,7 @@ import { Search } from 'lucide-vue-next'
 import { apiUrl } from '../../config'
 import { collectionLabel, folderOf, formatDate, formatSize } from '../../utils/format'
 import type { TelegramCollection } from '../../api/cinegram'
+import BaseModal from '../BaseModal.vue'
 
 type LocalFile = {
   path: string

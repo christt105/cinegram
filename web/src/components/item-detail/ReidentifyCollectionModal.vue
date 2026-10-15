@@ -1,53 +1,42 @@
 <template>
-  <div class="modal-overlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; backdrop-filter: blur(8px); padding: 1rem;">
-    <div class="glass-panel" style="width: 100%; max-width: 600px; max-height: 85vh; display: flex; flex-direction: column; gap: 1rem; padding: 1.5rem; background: rgba(15, 23, 42, 0.95); border: 1px solid rgba(214, 186, 255, 0.20); border-radius: 16px; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.5);">
+  <BaseModal title="🔍 Re-identify Collection" :subtitle="collection.name" @close="emit('close')">
+    <TmdbSearchPanel
+      v-show="step === 'search'"
+      media-type="multi"
+      :initial-query="collection.name ?? ''"
+      :select-disabled="loading"
+      @select="selectResult"
+    />
 
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 0.75rem;">
-        <div>
-          <h3 style="margin: 0 0 0.25rem 0; font-size: 1.2rem; color: #fff;">🔍 Re-identify Collection</h3>
-          <p style="margin: 0; font-size: 0.85rem; color: #d6baff;">{{ collection.name }}</p>
-        </div>
-        <button @click="emit('close')" class="glass-button icon-only" style="padding: 0; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0;">✕</button>
-      </div>
-
-      <TmdbSearchPanel
-        v-show="step === 'search'"
-        media-type="multi"
-        :initial-query="collection.name ?? ''"
-        :select-disabled="loading"
-        @select="selectResult"
-      />
-
-      <template v-if="step === 'episode-select'">
-        <div style="display: flex; flex-direction: column; gap: 1rem; flex-grow: 1;">
-          <p style="margin: 0; font-size: 0.9rem; color: #d1d5db;">
-            Linking to series: <strong style="color: #4ade80;">{{ pendingTitle }}</strong>
-          </p>
-          <p style="margin: 0; font-size: 0.8rem; color: #a1a1aa;">Use season 0 for specials and OVAs.</p>
-          <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-            <div style="display: flex; flex-direction: column; gap: 0.4rem; flex: 1; min-width: 120px;">
-              <label style="font-size: 0.8rem; color: #a1a1aa; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Season</label>
-              <input type="number" v-model.number="seasonNumber" min="0" style="padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 1rem; width: 100%; box-sizing: border-box;" />
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 0.4rem; flex: 1; min-width: 120px;">
-              <label style="font-size: 0.8rem; color: #a1a1aa; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Episode <span style="font-weight: 400; text-transform: none;">(empty = season pack)</span></label>
-              <input type="number" v-model.number="episodeNumber" min="1" placeholder="—" style="padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 1rem; width: 100%; box-sizing: border-box;" />
-            </div>
+    <template v-if="step === 'episode-select'">
+      <div style="display: flex; flex-direction: column; gap: 1rem; flex-grow: 1;">
+        <p style="margin: 0; font-size: 0.9rem; color: #d1d5db;">
+          Linking to series: <strong style="color: #4ade80;">{{ pendingTitle }}</strong>
+        </p>
+        <p style="margin: 0; font-size: 0.8rem; color: #a1a1aa;">Use season 0 for specials and OVAs.</p>
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+          <div style="display: flex; flex-direction: column; gap: 0.4rem; flex: 1; min-width: 120px;">
+            <label style="font-size: 0.8rem; color: #a1a1aa; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Season</label>
+            <input type="number" v-model.number="seasonNumber" min="0" style="padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 1rem; width: 100%; box-sizing: border-box;" />
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 0.4rem; flex: 1; min-width: 120px;">
+            <label style="font-size: 0.8rem; color: #a1a1aa; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Episode <span style="font-weight: 400; text-transform: none;">(empty = season pack)</span></label>
+            <input type="number" v-model.number="episodeNumber" min="1" placeholder="—" style="padding: 10px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); color: #fff; font-size: 1rem; width: 100%; box-sizing: border-box;" />
           </div>
         </div>
-        <div style="display: flex; gap: 0.5rem; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem;">
-          <button @click="step = 'search'" class="glass-button" style="padding: 6px 16px;">← Back</button>
-          <button @click="confirmEpisode" :disabled="loading" class="glass-button" style="background: rgba(74, 222, 128, 0.14); border-color: rgba(74, 222, 128, 0.30); color: #4ade80; padding: 6px 16px;">
-            {{ loading ? 'Saving…' : 'Confirm' }}
-          </button>
-        </div>
-      </template>
-
-      <div v-if="step === 'search'" style="display: flex; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.75rem;">
-        <button @click="emit('close')" class="glass-button" style="padding: 6px 16px;">Close</button>
       </div>
-    </div>
-  </div>
+    </template>
+
+    <template #footer>
+      <template v-if="step === 'episode-select'">
+        <button @click="step = 'search'" class="glass-button">← Back</button>
+        <button @click="confirmEpisode" :disabled="loading" class="glass-button" style="background: rgba(74, 222, 128, 0.14); border-color: rgba(74, 222, 128, 0.30); color: #4ade80;">
+          {{ loading ? 'Saving…' : 'Confirm' }}
+        </button>
+      </template>
+      <button v-else @click="emit('close')" class="glass-button">Close</button>
+    </template>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
@@ -55,6 +44,7 @@ import { ref } from 'vue'
 import { apiUrl } from '../../config'
 import type { TelegramCollection } from '../../api/cinegram'
 import type { TmdbSearchResult } from '../../composables/useTmdbSearch'
+import BaseModal from '../BaseModal.vue'
 import TmdbSearchPanel from '../tmdb/TmdbSearchPanel.vue'
 
 const props = defineProps<{ collection: TelegramCollection }>()

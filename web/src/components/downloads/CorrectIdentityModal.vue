@@ -1,59 +1,50 @@
 <template>
-  <div class="modal-overlay">
-    <div class="glass-panel modal-panel">
-      <div class="modal-header">
-        <div>
-          <h3>Correct identity</h3>
-          <p class="modal-subtitle">
-            {{ targetRow ? targetRow.filename : `Applying to ${selectedCount} selected file(s)` }}
-          </p>
-        </div>
-        <button class="glass-button icon-only" @click="emit('close')">✕</button>
-      </div>
+  <BaseModal
+    title="Correct identity"
+    :subtitle="targetRow ? targetRow.filename : `Applying to ${selectedCount} selected file(s)`"
+    @close="emit('close')"
+  >
+    <TmdbSearchPanel
+      v-show="step === 'search'"
+      media-type="multi"
+      :initial-query="targetRow ? targetRow.guess_title || targetRow.filename : ''"
+      @select="selectResult"
+    />
 
-      <TmdbSearchPanel
-        v-show="step === 'search'"
-        media-type="multi"
-        :initial-query="targetRow ? targetRow.guess_title || targetRow.filename : ''"
-        @select="selectResult"
-      />
-
-      <template v-if="step === 'episode-select'">
-        <div class="episode-select">
-          <p class="modal-subtitle">
-            Linking to series: <strong>{{ pendingTitle }}</strong>
-          </p>
-          <p class="episode-hint">Use season 0 for specials and OVAs.</p>
-          <div class="episode-fields">
-            <div class="field">
-              <label>Season</label>
-              <input type="number" v-model.number="season" min="0" />
-            </div>
-            <div class="field">
-              <label>Episode <span class="field-hint">(empty = season pack)</span></label>
-              <input type="number" v-model.number="episode" min="1" placeholder="—" />
-            </div>
-          </div>
+    <div v-if="step === 'episode-select'" class="episode-select">
+      <p class="linking">
+        Linking to series: <strong>{{ pendingTitle }}</strong>
+      </p>
+      <p class="episode-hint">Use season 0 for specials and OVAs.</p>
+      <div class="episode-fields">
+        <div class="field">
+          <label>Season</label>
+          <input type="number" v-model.number="season" min="0" />
         </div>
-        <div class="modal-footer">
-          <button class="glass-button" @click="step = 'search'">&larr; Back</button>
-          <button class="glass-button success" :disabled="saving" @click="applyCorrection">
-            {{ saving ? 'Saving…' : 'Confirm' }}
-          </button>
+        <div class="field">
+          <label>Episode <span class="field-hint">(empty = season pack)</span></label>
+          <input type="number" v-model.number="episode" min="1" placeholder="—" />
         </div>
-      </template>
-
-      <div v-if="step === 'search'" class="modal-footer">
-        <button class="glass-button" @click="emit('close')">Close</button>
       </div>
     </div>
-  </div>
+
+    <template #footer>
+      <template v-if="step === 'episode-select'">
+        <button class="glass-button" @click="step = 'search'">&larr; Back</button>
+        <button class="glass-button success" :disabled="saving" @click="applyCorrection">
+          {{ saving ? 'Saving…' : 'Confirm' }}
+        </button>
+      </template>
+      <button v-else class="glass-button" @click="emit('close')">Close</button>
+    </template>
+  </BaseModal>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
 import { correctWatchedFile, type WatchedFile } from '../../api/cinegram'
 import type { TmdbSearchResult } from '../../composables/useTmdbSearch'
+import BaseModal from '../BaseModal.vue'
 import TmdbSearchPanel from '../tmdb/TmdbSearchPanel.vue'
 
 /** With a target row it corrects that file; without one it hands the picked title back for the selection. */
@@ -108,67 +99,11 @@ const applyCorrection = async () => {
 
 <style scoped src="./buttons.css"></style>
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(8px);
-  padding: 1rem;
-}
-
-.modal-panel {
-  width: 100%;
-  max-width: 600px;
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1.5rem;
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(214, 186, 255, 0.2);
-  overflow: hidden;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding-bottom: 0.75rem;
-}
-
-.modal-header h3 {
-  margin: 0 0 0.25rem 0;
-  font-size: 1.2rem;
-  color: #fff;
-}
-
-.modal-subtitle {
+.linking {
   margin: 0;
   font-size: 0.85rem;
   color: var(--secondary);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 .episode-select {
   display: flex;
@@ -221,11 +156,4 @@ const applyCorrection = async () => {
   box-sizing: border-box;
 }
 
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 0.75rem;
-}
 </style>
