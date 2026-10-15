@@ -48,13 +48,13 @@ public class ConfirmWatchedFileCallback : ICallbackQuery
         CallbackDataPacker.Pack(Id,
             [watchedFileId.ToString(), tmdbId.ToString(), season?.ToString() ?? "", episode?.ToString() ?? ""]);
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, WatchedFiles watchedFiles, WatchedFileMessageRegistry watchedFileMessages, JellyfinSeriesIdentifier jellyfinSeries)
     {
         var season = string.IsNullOrEmpty(fields[2]) ? (int?)null : int.Parse(fields[2]);
         var episode = string.IsNullOrEmpty(fields[3]) ? (int?)null : int.Parse(fields[3]);
 
         return new ConfirmWatchedFileCallback(
             int.Parse(fields[0]), int.Parse(fields[1]), season, episode,
-            dispatcher.Bot, dispatcher.WatchedFiles, dispatcher.WatchedFileMessages, dispatcher.JellyfinSeries);
+            bot, watchedFiles, watchedFileMessages, jellyfinSeries);
     }
 }

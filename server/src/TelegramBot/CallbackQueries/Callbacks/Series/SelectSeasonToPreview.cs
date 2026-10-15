@@ -64,9 +64,9 @@ public class SelectSeasonToPreview : ICallbackQuery
             replyMarkup: new InlineKeyboardMarkup(buttons));
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog)
     {
-        return new SelectSeasonToPreview(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
+        return new SelectSeasonToPreview(int.Parse(fields[0]), bot, catalog);
     }
 
     public static string Pack(int seriesId)

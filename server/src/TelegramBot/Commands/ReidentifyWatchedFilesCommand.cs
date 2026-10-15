@@ -14,39 +14,47 @@ namespace Cinegram.TelegramBot.Commands;
 /// </summary>
 public class ReidentifyWatchedFilesCommand : ICommand
 {
-    private readonly BotDispatcher _dispatcher;
+    private readonly WTelegram.Bot _bot;
+    private readonly WatchedFiles _watchedFiles;
+    private readonly WatchedFileMessageRegistry _watchedFileMessages;
 
-    public ReidentifyWatchedFilesCommand(BotDispatcher dispatcher) => _dispatcher = dispatcher;
+    public ReidentifyWatchedFilesCommand(WTelegram.Bot bot, WatchedFiles watchedFiles,
+        WatchedFileMessageRegistry watchedFileMessages)
+    {
+        _bot = bot;
+        _watchedFiles = watchedFiles;
+        _watchedFileMessages = watchedFileMessages;
+    }
 
     public async Task Execute(string[] args, Message msg)
     {
         List<WatchedFile> updated;
         try
         {
-            updated = await _dispatcher.WatchedFiles.ReidentifyAsync();
+            updated = await _watchedFiles.ReidentifyAsync();
         }
         catch (Exception ex)
         {
             Log.Error("[Reidentify] Failed to re-identify watched files", ex);
-            await _dispatcher.Bot.SendMessage(msg.Chat.Id, "❌ Failed to re-identify watched files.");
+            await _bot.SendMessage(msg.Chat.Id, "❌ Failed to re-identify watched files.");
             return;
         }
 
-        var live = _dispatcher.WatchedFileMessages.Snapshot();
+        var live = _watchedFileMessages.Snapshot();
         var refreshed = 0;
 
         foreach (var row in updated)
         {
             if (!live.TryGetValue(row.Id, out var reference)) continue;
 
-            await _dispatcher.Bot.EditMessageText(
+            await _bot.EditMessageText(
                 reference.ChatId, reference.MessageId,
                 WatchNotificationService.BuildNotifyMessageText(row), ParseMode.Html,
                 replyMarkup: WatchNotificationService.BuildNotifyButtons(row));
             refreshed++;
         }
 
-        await _dispatcher.Bot.SendMessage(msg.Chat.Id,
+        await _bot.SendMessage(msg.Chat.Id,
             $"🔄 Re-identified {updated.Count} file(s), refreshed {refreshed} live message(s).");
     }
 

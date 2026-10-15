@@ -83,10 +83,10 @@ public class FileChangeCollectionCallback : ICallbackQuery
                 .ExecuteAsync(message);
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog, PendingActionHandler pendingActions)
     {
-        return new FileChangeCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog,
-            dispatcher.PendingActionHandler);
+        return new FileChangeCollectionCallback(int.Parse(fields[0]), bot, catalog,
+            pendingActions);
     }
 
     public static string Parse(int fileId)

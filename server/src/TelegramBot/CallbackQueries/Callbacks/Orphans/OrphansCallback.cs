@@ -5,6 +5,7 @@ using Cinegram.Infrastructure;
 using Cinegram.Library;
 using Cinegram.TelegramBot.Commands;
 using Cinegram.TelegramBot.Handlers;
+using Cinegram.Tmdb;
 
 namespace Cinegram.TelegramBot.CallbackQueries.Callbacks.Orphans;
 
@@ -13,14 +14,23 @@ public class OrphansCallback : ICallbackQuery
 {
     public const string Id = "orphans";
 
-    private readonly BotDispatcher _dispatcher;
+    private readonly WTelegram.Bot _bot;
+    private readonly Catalog _catalog;
+    private readonly CatalogIdentifier _identifier;
+    private readonly ITmdbLookup _tmdb;
+    private readonly PendingActionHandler _pendingActions;
     private readonly string _action;
     private readonly int _page;
     private readonly string? _targetIdStr;
 
-    private OrphansCallback(BotDispatcher dispatcher, string action, int page, string? targetIdStr)
+    private OrphansCallback(WTelegram.Bot bot, Catalog catalog, CatalogIdentifier identifier, ITmdbLookup tmdb,
+        PendingActionHandler pendingActions, string action, int page, string? targetIdStr)
     {
-        _dispatcher = dispatcher;
+        _bot = bot;
+        _catalog = catalog;
+        _identifier = identifier;
+        _tmdb = tmdb;
+        _pendingActions = pendingActions;
         _action = action;
         _page = page;
         _targetIdStr = targetIdStr;
@@ -30,8 +40,8 @@ public class OrphansCallback : ICallbackQuery
     {
         if (message == null) return;
 
-        var bot = _dispatcher.Bot;
-        var catalog = _dispatcher.Catalog;
+        var bot = _bot;
+        var catalog = _catalog;
 
         if (_action == "page" || _action == "refresh")
         {
@@ -74,7 +84,7 @@ public class OrphansCallback : ICallbackQuery
                     InlineKeyboardButton.WithCallbackData("✕ Cancel", Pack("refresh", _page))
                 }));
 
-            await _dispatcher.PendingActionHandler.SetPendingAction(new PendingActionHandler.PendingAction(
+            await _pendingActions.SetPendingAction(new PendingActionHandler.PendingAction(
                 "ident-orphan",
                 message.Chat.Id,
                 message.MessageId,
@@ -93,7 +103,7 @@ public class OrphansCallback : ICallbackQuery
             if (parts.Length is 2 or 3 && int.TryParse(parts[0], out var colId) && int.TryParse(parts[1], out var tmdbId))
             {
                 var mediaType = parts.Length == 3 ? parts[2] : null;
-                var ok = await _dispatcher.Identifier.IdentifyAsync(colId, new CatalogIdentifier.Request(tmdbId, mediaType));
+                var ok = await _identifier.IdentifyAsync(colId, new CatalogIdentifier.Request(tmdbId, mediaType));
                 if (ok)
                 {
                     await bot.SendMessage(message.Chat.Id, "✅ Collection linked successfully.");
@@ -110,11 +120,11 @@ public class OrphansCallback : ICallbackQuery
 
     private async Task ProcessManualInput(Message originalMessage, int collectionId, string text, int returnPage)
     {
-        var bot = _dispatcher.Bot;
+        var bot = _bot;
 
         if (int.TryParse(text.Trim(), out var tmdbId))
         {
-            var ok = await _dispatcher.Identifier.IdentifyAsync(collectionId, new CatalogIdentifier.Request(tmdbId));
+            var ok = await _identifier.IdentifyAsync(collectionId, new CatalogIdentifier.Request(tmdbId));
             if (ok)
             {
                 await bot.SendMessage(originalMessage.Chat.Id, "✅ Collection linked successfully.");
@@ -130,7 +140,7 @@ public class OrphansCallback : ICallbackQuery
         await bot.SendMessage(originalMessage.Chat.Id, $"🔍 Searching for \"{text}\" on TMDB...");
         try
         {
-            var results = await _dispatcher.Tmdb.SearchAsync(text, "multi");
+            var results = await _tmdb.SearchAsync(text, "multi");
             if (results.Count == 0)
             {
                 await bot.SendMessage(originalMessage.Chat.Id, "❌ No results found on TMDB.");
@@ -168,8 +178,8 @@ public class OrphansCallback : ICallbackQuery
     {
         try
         {
-            var (text, markup) = await OrphansMessageBuilder.BuildOrphansMessage(_dispatcher.Catalog, page);
-            await _dispatcher.Bot.EditMessageText(message.Chat.Id, message.MessageId, text,
+            var (text, markup) = await OrphansMessageBuilder.BuildOrphansMessage(_catalog, page);
+            await _bot.EditMessageText(message.Chat.Id, message.MessageId, text,
                 parseMode: Telegram.Bot.Types.Enums.ParseMode.Html,
                 replyMarkup: markup);
         }
@@ -179,12 +189,13 @@ public class OrphansCallback : ICallbackQuery
         }
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog,
+        CatalogIdentifier identifier, ITmdbLookup tmdb, PendingActionHandler pendingActions)
     {
         var action = fields.Length > 0 ? fields[0] : "refresh";
         var page = fields.Length > 1 && int.TryParse(fields[1], out var p) ? p : 0;
         var targetIdStr = fields.Length > 2 ? fields[2] : null;
-        return new OrphansCallback(dispatcher, action, page, targetIdStr);
+        return new OrphansCallback(bot, catalog, identifier, tmdb, pendingActions, action, page, targetIdStr);
     }
 
     public static string Pack(string action, int page, string? targetIdStr = null)

@@ -7,6 +7,7 @@ using Cinegram.Infrastructure;
 using Cinegram.Jellyfin;
 using Cinegram.Library;
 using Cinegram.TelegramBot;
+using Cinegram.TelegramBot.Commands;
 using Cinegram.TelegramBot.Handlers;
 using Cinegram.Tmdb;
 using Cinegram.Transfers;
@@ -86,6 +87,11 @@ public static class CinegramServices
         services.AddSingleton<DownloadService>();
         services.AddSingleton<UploadService>();
         services.AddSingleton<PreviewService>();
+        AddCommands(services);
+        services.AddSingleton<CommandHandler>();
+        services.AddSingleton<CallbackQueryHandler>();
+        services.AddSingleton<FileHandler>();
+        services.AddSingleton<MessageHandler>();
         services.AddSingleton<BotDispatcher>();
 
         services.AddSingleton<TelegramStartup>();
@@ -111,6 +117,26 @@ public static class CinegramServices
         }
 
         return services;
+    }
+
+    /// <summary>The bot's commands, in the order the "/" menu and /help list them.</summary>
+    private static void AddCommands(IServiceCollection services)
+    {
+        services.AddSingleton<ICommand, StartCommand>();
+        services.AddSingleton<ICommand, VersionCommand>();
+        services.AddSingleton<ICommand, MoviesCommand>();
+        services.AddSingleton<ICommand, SeriesCommand>();
+        services.AddSingleton<ICommand, SerieCommand>();
+        services.AddSingleton<ICommand, MovieCommand>();
+        services.AddSingleton<ICommand, SearchCommand>();
+        services.AddSingleton<ICommand, QueueCommand>();
+        services.AddSingleton<ICommand, OrphansCommand>();
+        services.AddSingleton<ICommand, BackupCommand>();
+        services.AddSingleton<ICommand, AddCommand>();
+        services.AddSingleton<ICommand, ImportCommand>();
+        services.AddSingleton<ICommand, ReidentifyWatchedFilesCommand>();
+        services.AddSingleton<ICommand, RescanDownloadsCommand>();
+        services.AddSingleton<ICommand, AuthCommand>();
     }
 
     /// <summary>

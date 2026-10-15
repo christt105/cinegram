@@ -1,5 +1,6 @@
 using Message = WTelegram.Types.Message;
 using Cinegram.Infrastructure;
+using Cinegram.Watch;
 
 namespace Cinegram.TelegramBot.Commands;
 
@@ -9,24 +10,29 @@ namespace Cinegram.TelegramBot.Commands;
 /// </summary>
 public class RescanDownloadsCommand : ICommand
 {
-    private readonly BotDispatcher _dispatcher;
+    private readonly WTelegram.Bot _bot;
+    private readonly WatchedFolderService _watchedFolder;
 
-    public RescanDownloadsCommand(BotDispatcher dispatcher) => _dispatcher = dispatcher;
+    public RescanDownloadsCommand(WTelegram.Bot bot, WatchedFolderService watchedFolder)
+    {
+        _bot = bot;
+        _watchedFolder = watchedFolder;
+    }
 
     public async Task Execute(string[] args, Message msg)
     {
-        await _dispatcher.Bot.SendMessage(msg.Chat.Id, "🔍 Scanning the downloads folder…");
+        await _bot.SendMessage(msg.Chat.Id, "🔍 Scanning the downloads folder…");
 
         try
         {
-            var diff = await _dispatcher.WatchedFolder.RescanAsync(CancellationToken.None);
-            await _dispatcher.Bot.SendMessage(msg.Chat.Id,
+            var diff = await _watchedFolder.RescanAsync(CancellationToken.None);
+            await _bot.SendMessage(msg.Chat.Id,
                 $"✅ Scan done: {diff.New.Count} new file(s) found, {diff.Missing.Count} no longer on disk.");
         }
         catch (Exception ex)
         {
             Log.Error("Rescan command failed", ex);
-            await _dispatcher.Bot.SendMessage(msg.Chat.Id, "❌ Failed to scan the downloads folder.");
+            await _bot.SendMessage(msg.Chat.Id, "❌ Failed to scan the downloads folder.");
         }
     }
 

@@ -56,10 +56,10 @@ public class CreateCollectionCallback : ICallbackQuery
         await new SeeMovieCollectionsCallback(_movieId, _bot, _catalog).ExecuteAsync(message);
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog, PendingActionHandler pendingActions)
     {
-        return new CreateCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog,
-            dispatcher.PendingActionHandler);
+        return new CreateCollectionCallback(int.Parse(fields[0]), bot, catalog,
+            pendingActions);
     }
 
     public static string Pack(int movieId)

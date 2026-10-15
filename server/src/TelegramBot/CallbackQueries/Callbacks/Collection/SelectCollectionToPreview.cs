@@ -72,9 +72,9 @@ public class SelectCollectionToPreview : ICallbackQuery
         await _bot.EditMessageText(message.Chat.Id, message.MessageId, text, Telegram.Bot.Types.Enums.ParseMode.Html, replyMarkup: buttons.ToArray());
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog)
     {
-        return new SelectCollectionToPreview(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
+        return new SelectCollectionToPreview(int.Parse(fields[0]), bot, catalog);
     }
 
     public static string Pack(int movieId)

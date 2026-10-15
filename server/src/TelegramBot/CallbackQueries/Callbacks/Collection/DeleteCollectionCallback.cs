@@ -38,8 +38,8 @@ public class DeleteCollectionCallback : ICallbackQuery
         return CallbackDataPacker.Pack("delete-collection", [collectionId.ToString()]);
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot)
     {
-        return new DeleteCollectionCallback(int.Parse(fields[0]), dispatcher.Bot);
+        return new DeleteCollectionCallback(int.Parse(fields[0]), bot);
     }
 }

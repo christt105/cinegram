@@ -46,7 +46,7 @@ public class EditSeriesCallback : ICallbackQuery
         await _bot.EditMessageText(message!.Chat.Id, message.MessageId, text, Telegram.Bot.Types.Enums.ParseMode.Html, replyMarkup: new InlineKeyboardMarkup(buttons));
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog, CatalogIdentifier identifier, PendingActionHandler pendingActions)
     {
         if (fields.Length > 1)
         {
@@ -54,18 +54,18 @@ public class EditSeriesCallback : ICallbackQuery
             var action = fields[1];
             if (action == "reidentify")
             {
-                return new ReidentifyAction(seriesId, dispatcher.Bot, dispatcher.Catalog, dispatcher.Identifier, dispatcher.PendingActionHandler);
+                return new ReidentifyAction(seriesId, bot, catalog, identifier, pendingActions);
             }
             if (action == "delete")
             {
-                return new DeleteAction(seriesId, dispatcher.Bot, dispatcher.Catalog);
+                return new DeleteAction(seriesId, bot, catalog);
             }
             if (action == "confirm_delete")
             {
-                return new ConfirmDeleteAction(seriesId, dispatcher.Bot, dispatcher.Catalog);
+                return new ConfirmDeleteAction(seriesId, bot, catalog);
             }
         }
-        return new EditSeriesCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog, dispatcher.PendingActionHandler);
+        return new EditSeriesCallback(int.Parse(fields[0]), bot, catalog, pendingActions);
     }
 
     public static string Pack(int seriesId)

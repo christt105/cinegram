@@ -36,9 +36,9 @@ public class ConfirmDeleteFileCallback : ICallbackQuery
         } : null);
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog)
     {
-        return new ConfirmDeleteFileCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
+        return new ConfirmDeleteFileCallback(int.Parse(fields[0]), bot, catalog);
     }
 
     public static string Pack(int fileId)

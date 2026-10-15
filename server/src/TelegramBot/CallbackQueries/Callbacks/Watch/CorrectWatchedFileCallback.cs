@@ -79,10 +79,10 @@ public class CorrectWatchedFileCallback : ICallbackQuery
     public static string Pack(int watchedFileId) =>
         CallbackDataPacker.Pack(Id, [watchedFileId.ToString()]);
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, WatchedFiles watchedFiles, WatchedFileMessageRegistry watchedFileMessages, PendingActionHandler pendingActions, JellyfinSeriesIdentifier jellyfinSeries)
     {
         return new CorrectWatchedFileCallback(
-            int.Parse(fields[0]), dispatcher.Bot, dispatcher.WatchedFiles,
-            dispatcher.WatchedFileMessages, dispatcher.PendingActionHandler, dispatcher.JellyfinSeries);
+            int.Parse(fields[0]), bot, watchedFiles,
+            watchedFileMessages, pendingActions, jellyfinSeries);
     }
 }

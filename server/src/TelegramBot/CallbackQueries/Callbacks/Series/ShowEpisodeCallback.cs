@@ -90,9 +90,9 @@ public class ShowEpisodeCallback : ICallbackQuery
             replyMarkup: new InlineKeyboardMarkup(buttons));
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog)
     {
-        return new ShowEpisodeCallback(int.Parse(fields[0]), int.Parse(fields[1]), int.Parse(fields[2]), dispatcher.Bot, dispatcher.Catalog);
+        return new ShowEpisodeCallback(int.Parse(fields[0]), int.Parse(fields[1]), int.Parse(fields[2]), bot, catalog);
     }
 
     public static string Pack(int seriesId, int seasonId, int episodeId)

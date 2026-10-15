@@ -40,6 +40,6 @@ public class CancelConfirmWatchedFileCallback : ICallbackQuery
 
     public static string Pack(int watchedFileId) => CallbackDataPacker.Pack(Id, [watchedFileId.ToString()]);
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher) =>
-        new CancelConfirmWatchedFileCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.WatchedFiles);
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, WatchedFiles watchedFiles) =>
+        new CancelConfirmWatchedFileCallback(int.Parse(fields[0]), bot, watchedFiles);
 }

@@ -70,8 +70,8 @@ public class CreateAndChangeFileCollectionCallback : ICallbackQuery
         return CallbackDataPacker.Pack(Id, [fileId.ToString()]);
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog)
     {
-        return new CreateAndChangeFileCollectionCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
+        return new CreateAndChangeFileCollectionCallback(int.Parse(fields[0]), bot, catalog);
     }
 }

@@ -14,15 +14,16 @@ public class FileHandler
     private readonly Catalog _catalog;
     private readonly CatalogIdentifier _identifier;
     private readonly TaskQueue _queue;
-    private readonly Cinegram.TelegramBot.Handlers.PendingActionHandler _pendingActionHandler;
+    private readonly PendingActionHandler _pendingActionHandler;
 
-    public FileHandler(BotDispatcher bot)
+    public FileHandler(WTelegram.Bot bot, Catalog catalog, CatalogIdentifier identifier, TaskQueue queue,
+        PendingActionHandler pendingActionHandler)
     {
-        _bot = bot.Bot;
-        _queue = bot.Queue;
-        _catalog = bot.Catalog;
-        _identifier = bot.Identifier;
-        _pendingActionHandler = bot.PendingActionHandler;
+        _bot = bot;
+        _catalog = catalog;
+        _identifier = identifier;
+        _queue = queue;
+        _pendingActionHandler = pendingActionHandler;
     }
 
     public async Task Handle(Message msg, UpdateType type)

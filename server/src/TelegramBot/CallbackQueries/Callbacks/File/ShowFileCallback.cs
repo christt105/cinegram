@@ -80,8 +80,8 @@ public class ShowFileCallback : ICallbackQuery
         return CallbackDataPacker.Pack(Id, [fileId.ToString()]);
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog)
     {
-        return new ShowFileCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
+        return new ShowFileCallback(int.Parse(fields[0]), bot, catalog);
     }
 }
