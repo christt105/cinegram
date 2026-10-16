@@ -36,6 +36,7 @@ public class TransferTasksTests : IAsyncLifetime
         builder.Logging.ClearProviders();
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Services.AddDbContextFactory<CinegramDb>(o => o.UseSqlite(CinegramDb.ConnectionString(path)));
+        builder.Services.AddSingleton<TransferCancellation>();
         builder.Services.AddSingleton<TransferTasks>();
         _app = builder.Build();
         TransferEndpoints.Map(_app);
@@ -356,7 +357,7 @@ public class TransferTasksTests : IAsyncLifetime
         var job = Assert.Single(await _tasks.ClaimPendingDownloadsAsync());
 
         const string path = "/data/import/movies/Mugen Train (2020)/Mugen Train (2020) - [1080p v2].mkv";
-        Assert.True(await _tasks.UpdateDownloadAsync(job.TaskId, "completed", 100, localPath: path));
+        await _tasks.CompleteDownloadAsync(job.TaskId, collection.Id, path);
 
         await using var db = await _db.CreateDbContextAsync();
         Assert.Equal(path, (await db.Collections.SingleAsync()).LocalPath);
@@ -364,6 +365,52 @@ public class TransferTasksTests : IAsyncLifetime
         Assert.Equal("completed", task.Status);
         Assert.Equal(100, task.Progress);
         Assert.NotNull(task.CompletedAt);
+    }
+
+    [Fact]
+    public async Task A_download_cancelled_after_reaching_the_library_still_records_the_local_path()
+    {
+        var collection = await MovieCollection();
+        await _tasks.EnqueueCollectionAsync(collection.Id);
+        var job = Assert.Single(await _tasks.ClaimPendingDownloadsAsync());
+        Assert.True(await _tasks.DeleteDownloadAsync(job.TaskId));
+
+        await _tasks.CompleteDownloadAsync(job.TaskId, collection.Id, "/data/import/movies/x.mkv");
+
+        await using var db = await _db.CreateDbContextAsync();
+        Assert.Equal("/data/import/movies/x.mkv", (await db.Collections.SingleAsync()).LocalPath);
+        Assert.Empty(await db.DownloadTasks.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Deleting_a_task_cancels_its_transfer_in_progress_and_tells_a_waiting_one_to_skip()
+    {
+        var collection = await MovieCollection();
+        await _tasks.EnqueueCollectionAsync(collection.Id);
+        var job = Assert.Single(await _tasks.ClaimPendingDownloadsAsync());
+        var cancellation = _app.Services.GetRequiredService<TransferCancellation>();
+        using var running = cancellation.Start(TransferKind.Download, job.TaskId);
+        Assert.True(await _tasks.DownloadExistsAsync(job.TaskId));
+
+        var response = await _http.DeleteAsync($"/downloads/{job.TaskId}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(running.Token.IsCancellationRequested);
+        Assert.False(await _tasks.DownloadExistsAsync(job.TaskId));
+    }
+
+    [Fact]
+    public async Task Deleting_an_upload_cancels_its_transfer_in_progress()
+    {
+        await EnqueueUpload();
+        var task = Assert.Single(await _tasks.ClaimPendingUploadsAsync());
+        var cancellation = _app.Services.GetRequiredService<TransferCancellation>();
+        using var running = cancellation.Start(TransferKind.Upload, task.Id);
+
+        Assert.True(await _tasks.DeleteUploadAsync(task.Id));
+
+        Assert.True(running.Token.IsCancellationRequested);
+        Assert.False(await _tasks.UploadExistsAsync(task.Id));
     }
 
     [Fact]

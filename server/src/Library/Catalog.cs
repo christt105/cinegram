@@ -428,6 +428,21 @@ public class Catalog(IDbContextFactory<CinegramDb> dbFactory, CatalogIdentifier 
         return true;
     }
 
+    /// <summary>
+    /// Whether a file with this name (and size, when given) is already stored for the TMDB movie
+    /// or series, so uploading the same item again skips what a cancelled or failed upload kept.
+    /// </summary>
+    public async Task<bool> HasUploadedFileAsync(string mediaType, int tmdbId, string filename, long? filesize,
+        CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        var files = db.Files.Where(f => f.Filename == filename && (filesize == null || f.Filesize == filesize));
+        return mediaType == "movie"
+            ? await files.AnyAsync(f => f.Collection!.Movie!.TmdbId == tmdbId, ct)
+            : await files.AnyAsync(f => f.Collection!.Season!.Series!.TmdbId == tmdbId
+                                        || f.Collection!.Episode!.Season!.Series!.TmdbId == tmdbId, ct);
+    }
+
     public async Task<bool> DeleteFileAsync(int id, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
