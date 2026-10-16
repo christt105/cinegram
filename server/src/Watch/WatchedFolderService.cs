@@ -46,8 +46,7 @@ public class WatchedFolderService
         }
         catch (Exception ex)
         {
-            Log.Error($"[WatchedFolder] Cannot access downloads directory {_root}", ex);
-            return;
+            throw new IOException($"Cannot access the downloads directory {_root}: {ex.Message}", ex);
         }
 
         await RescanAsync(stoppingToken);
