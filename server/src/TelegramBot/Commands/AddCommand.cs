@@ -5,21 +5,26 @@ using Cinegram.Data;
 using Cinegram.Infrastructure;
 using Cinegram.TelegramBot.CallbackQueries.Callbacks.Add;
 using Cinegram.TelegramBot.Handlers;
+using Cinegram.Tmdb;
 
 namespace Cinegram.TelegramBot.Commands;
 
 public class AddCommand : ICommand
 {
-    private readonly BotDispatcher _dispatcher;
+    private readonly WTelegram.Bot _bot;
+    private readonly ITmdbLookup _tmdb;
+    private readonly PendingActionHandler _pendingActions;
 
-    public AddCommand(BotDispatcher dispatcher)
+    public AddCommand(WTelegram.Bot bot, ITmdbLookup tmdb, PendingActionHandler pendingActions)
     {
-        _dispatcher = dispatcher;
+        _bot = bot;
+        _tmdb = tmdb;
+        _pendingActions = pendingActions;
     }
 
     public async Task Execute(string[] args, Message msg)
     {
-        var bot = _dispatcher.Bot;
+        var bot = _bot;
 
         if (args.Length > 0)
         {
@@ -32,7 +37,7 @@ public class AddCommand : ICommand
             "➕ <b>Add Movie or Series Manually</b>\n\nType the name of what you want to search on TMDB (or type /cancel to abort):",
             parseMode: Telegram.Bot.Types.Enums.ParseMode.Html);
 
-        await _dispatcher.PendingActionHandler.SetPendingAction(new PendingActionHandler.PendingAction(
+        await _pendingActions.SetPendingAction(new PendingActionHandler.PendingAction(
             "add-media-search",
             msg.Chat.Id,
             msg.MessageId,
@@ -44,13 +49,13 @@ public class AddCommand : ICommand
 
     private async Task PerformSearchAndShowResults(Message originalMessage, string query)
     {
-        var bot = _dispatcher.Bot;
+        var bot = _bot;
 
         await bot.SendMessage(originalMessage.Chat.Id, $"🔍 Searching for \"{query}\" on TMDB...");
 
         try
         {
-            var results = await _dispatcher.Tmdb.SearchAsync(query, "multi");
+            var results = await _tmdb.SearchAsync(query, "multi");
             if (results.Count == 0)
             {
                 await bot.SendMessage(originalMessage.Chat.Id, "❌ No results found on TMDB.");

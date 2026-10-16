@@ -19,9 +19,9 @@ public class CancelPendingActionCallback : ICallbackQuery
         await _pendingActionHandler.CancelPendingAction();
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, PendingActionHandler pendingActions)
     {
-        return new CancelPendingActionCallback(dispatcher.PendingActionHandler);
+        return new CancelPendingActionCallback(pendingActions);
     }
 
     public static string Pack()

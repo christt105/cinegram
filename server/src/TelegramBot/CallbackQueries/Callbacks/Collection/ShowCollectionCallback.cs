@@ -57,9 +57,9 @@ public class ShowCollectionCallback : ICallbackQuery
             Telegram.Bot.Types.Enums.ParseMode.Html, replyMarkup: buttons.ToArray());
     }
 
-    public static ICallbackQuery Create(string[] packedFields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] packedFields, WTelegram.Bot bot, Catalog catalog)
     {
-        return new ShowCollectionCallback(int.Parse(packedFields[0]), dispatcher.Bot, dispatcher.Catalog);
+        return new ShowCollectionCallback(int.Parse(packedFields[0]), bot, catalog);
     }
 
     public static string Pack(int collectionId)

@@ -53,9 +53,9 @@ public class SeeSeriesSeasonsCallback : ICallbackQuery
             replyMarkup: new Telegram.Bot.Types.ReplyMarkups.InlineKeyboardMarkup(buttons));
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog)
     {
-        return new SeeSeriesSeasonsCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
+        return new SeeSeriesSeasonsCallback(int.Parse(fields[0]), bot, catalog);
     }
 
     public static string Pack(int seriesId)

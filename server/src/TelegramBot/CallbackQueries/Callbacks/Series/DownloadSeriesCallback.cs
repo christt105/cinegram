@@ -24,9 +24,9 @@ public class DownloadSeriesCallback : ICallbackQuery
         await _bot.SendMessage(message!.Chat.Id, "Coming soon: Download full series or by season.");
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog)
     {
-        return new DownloadSeriesCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
+        return new DownloadSeriesCallback(int.Parse(fields[0]), bot, catalog);
     }
 
     public static string Pack(int seriesId)

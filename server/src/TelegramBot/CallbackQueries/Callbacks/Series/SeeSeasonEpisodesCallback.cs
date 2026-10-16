@@ -63,9 +63,9 @@ public class SeeSeasonEpisodesCallback : ICallbackQuery
             replyMarkup: new InlineKeyboardMarkup(buttons));
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog)
     {
-        return new SeeSeasonEpisodesCallback(int.Parse(fields[0]), int.Parse(fields[1]), dispatcher.Bot, dispatcher.Catalog);
+        return new SeeSeasonEpisodesCallback(int.Parse(fields[0]), int.Parse(fields[1]), bot, catalog);
     }
 
     public static string Pack(int seriesId, int seasonId)

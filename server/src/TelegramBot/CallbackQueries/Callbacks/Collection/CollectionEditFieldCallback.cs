@@ -251,13 +251,13 @@ public class CollectionEditFieldCallback : ICallbackQuery
             setValue != null ? [collectionId.ToString(), field, setValue] : [collectionId.ToString(), field]);
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog, PendingActionHandler pendingActions)
     {
         if (fields.Length == 2)
-            return new CollectionEditFieldCallback(int.Parse(fields[0]), fields[1], dispatcher.Bot,
-                dispatcher.Catalog,
-                dispatcher.PendingActionHandler);
-        return new CollectionEditFieldCallback(int.Parse(fields[0]), fields[1], dispatcher.Bot, dispatcher.Catalog,
-            dispatcher.PendingActionHandler, fields[2]);
+            return new CollectionEditFieldCallback(int.Parse(fields[0]), fields[1], bot,
+                catalog,
+                pendingActions);
+        return new CollectionEditFieldCallback(int.Parse(fields[0]), fields[1], bot, catalog,
+            pendingActions, fields[2]);
     }
 }

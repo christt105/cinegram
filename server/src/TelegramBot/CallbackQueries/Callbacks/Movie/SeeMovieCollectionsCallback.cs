@@ -50,9 +50,9 @@ public class SeeMovieCollectionsCallback : ICallbackQuery
         await _bot.EditMessageText(message!.Chat.Id, message.MessageId, text, replyMarkup: buttons.ToArray());
     }
 
-    public static ICallbackQuery Create(string[] packedFields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] packedFields, WTelegram.Bot bot, Catalog catalog)
     {
-        return new SeeMovieCollectionsCallback(int.Parse(packedFields[0]), dispatcher.Bot, dispatcher.Catalog);
+        return new SeeMovieCollectionsCallback(int.Parse(packedFields[0]), bot, catalog);
     }
 
     public static string Pack(int movieId)

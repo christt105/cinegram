@@ -47,9 +47,9 @@ public class ShowSeriesCallback : ICallbackQuery
         }
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog)
     {
-        return new ShowSeriesCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog);
+        return new ShowSeriesCallback(int.Parse(fields[0]), bot, catalog);
     }
 
     public static string Pack(int seriesId)

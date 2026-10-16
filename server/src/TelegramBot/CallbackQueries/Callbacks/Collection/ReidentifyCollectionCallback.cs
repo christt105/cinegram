@@ -148,16 +148,16 @@ public class ReidentifyCollectionCallback : ICallbackQuery
             : CallbackDataPacker.Pack(Id, [collectionId.ToString()]);
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog, CatalogIdentifier identifier, PendingActionHandler pendingActions)
     {
         var collectionId = int.Parse(fields[0]);
         var subAction = fields.Length > 1 ? fields[1] : null;
         return new ReidentifyCollectionCallback(
             collectionId,
-            dispatcher.Bot,
-            dispatcher.Catalog,
-            dispatcher.Identifier,
-            dispatcher.PendingActionHandler,
+            bot,
+            catalog,
+            identifier,
+            pendingActions,
             subAction);
     }
 }

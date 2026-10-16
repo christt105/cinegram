@@ -59,11 +59,11 @@ public class QueueCallback : ICallbackQuery
         }
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, TransferTasks transfers)
     {
         var action = fields.Length > 0 ? fields[0] : "refresh";
         var taskIdStr = fields.Length > 1 ? fields[1] : null;
-        return new QueueCallback(dispatcher.Bot, dispatcher.Transfers, action, taskIdStr);
+        return new QueueCallback(bot, transfers, action, taskIdStr);
     }
 
     public static string Pack(string action, string? taskIdStr = null)

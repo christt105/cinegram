@@ -9,36 +9,17 @@ namespace Cinegram.TelegramBot.Handlers;
 
 public class CommandHandler
 {
-    private readonly BotDispatcher _bot;
+    private readonly WTelegram.Bot _bot;
 
     private readonly Dictionary<string, ICommand> _commands;
 
-    public CommandHandler(BotDispatcher bot)
+    /// <summary><paramref name="registered"/> in menu order; /help is added last, listing them all.</summary>
+    public CommandHandler(WTelegram.Bot bot, IEnumerable<ICommand> registered)
     {
         _bot = bot;
 
-        var commands = new List<ICommand>
-        {
-            new StartCommand(bot.Bot),
-            new VersionCommand(bot.Bot),
-            new MoviesCommand(bot.Bot, bot.Catalog),
-            new SeriesCommand(bot.Bot, bot.Catalog),
-            new SerieCommand(bot.Bot, bot.Catalog),
-            new MovieCommand(bot.Bot, bot.Catalog),
-            new SearchCommand(bot.Bot, bot.Catalog),
-            new QueueCommand(bot.Bot, bot.Transfers),
-            new OrphansCommand(bot.Bot, bot.Catalog),
-            new BackupCommand(bot.Bot, bot.Backup),
-            new AddCommand(bot),
-            new ImportCommand(bot),
-            new ReidentifyWatchedFilesCommand(bot),
-            new RescanDownloadsCommand(bot)
-        };
-
-        if (bot.UserClient != null)
-            commands.Add(new AuthCommand(bot.Bot, bot.UserClient));
-
-        commands.Add(new HelpCommand(bot.Bot, commands.ToArray()));
+        var commands = registered.ToList();
+        commands.Add(new HelpCommand(bot, commands.ToArray()));
 
         _commands = commands.ToDictionary(c => c.Key, c => c);
 
@@ -68,7 +49,7 @@ public class CommandHandler
 
         if (!_commands.TryGetValue(command, out var commandHandler))
         {
-            await _bot.Bot.SendMessage(msg.Chat.Id,
+            await _bot.SendMessage(msg.Chat.Id,
                 $"Command {command} is not recognized. Use /help to get the available commands.");
             return;
         }

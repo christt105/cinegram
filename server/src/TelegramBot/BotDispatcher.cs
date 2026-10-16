@@ -2,17 +2,16 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types.Enums;
 using Message = WTelegram.Types.Message;
 using Update = WTelegram.Types.Update;
-using Cinegram.Backups;
 using Cinegram.Infrastructure;
-using Cinegram.Jellyfin;
-using Cinegram.Library;
 using Cinegram.TelegramBot.Handlers;
-using Cinegram.Tmdb;
 using Cinegram.Transfers;
-using Cinegram.Watch;
 
 namespace Cinegram.TelegramBot;
 
+/// <summary>
+/// Takes the bot's updates and hands each one to the handler for its kind: commands, callback
+/// buttons, files, a reply to a pending action or plain text. Only the authorized users get through.
+/// </summary>
 public class BotDispatcher
 {
     private readonly CallbackQueryHandler _callbackQueryHandler;
@@ -21,73 +20,22 @@ public class BotDispatcher
     private readonly FileHandler _fileHandler;
     private readonly MessageHandler _messageHandler;
     private readonly PendingActionHandler _pendingActionHandler;
+    private readonly UploadEchoRegistry _uploadEchoes;
 
-    public BotDispatcher(
-        WTelegram.Bot bot, Catalog catalog, CatalogIdentifier identifier, ITmdbLookup tmdb,
-        DatabaseBackup backup, WatchedFiles watchedFiles, TransferTasks transfers, TaskQueue queue,
-        UserClientService userClient, UploadEchoRegistry uploadEchoes, WatchedFileMessageRegistry watchedFileMessages,
-        JellyfinSeriesIdentifier jellyfinSeries, WatchNotificationService watchNotifications,
-        WatchedFolderService watchedFolder, PendingActionHandler pendingActionHandler)
+    public BotDispatcher(WTelegram.Bot bot, CommandHandler commandHandler, CallbackQueryHandler callbackQueryHandler,
+        FileHandler fileHandler, MessageHandler messageHandler, PendingActionHandler pendingActionHandler,
+        UploadEchoRegistry uploadEchoes)
     {
         Bot = bot;
-        Catalog = catalog;
-        Identifier = identifier;
-        Tmdb = tmdb;
-        Backup = backup;
-        WatchedFiles = watchedFiles;
-        Transfers = transfers;
-        Queue = queue;
-        UserClient = userClient;
-        UploadEchoes = uploadEchoes;
-        WatchedFileMessages = watchedFileMessages;
-        JellyfinSeries = jellyfinSeries;
-        WatchNotifications = watchNotifications;
-        WatchedFolder = watchedFolder;
-
+        _commandHandler = commandHandler;
+        _callbackQueryHandler = callbackQueryHandler;
+        _fileHandler = fileHandler;
+        _messageHandler = messageHandler;
         _pendingActionHandler = pendingActionHandler;
-        _commandHandler = new CommandHandler(this);
-        _fileHandler = new FileHandler(this);
-        _messageHandler = new MessageHandler(Bot);
-        _callbackQueryHandler = new CallbackQueryHandler(this);
+        _uploadEchoes = uploadEchoes;
     }
 
-    public WTelegram.Bot Bot { get; }
-
-    public Catalog Catalog { get; }
-
-    public CatalogIdentifier Identifier { get; }
-
-    public ITmdbLookup Tmdb { get; }
-
-    public DatabaseBackup Backup { get; }
-
-    public WatchedFiles WatchedFiles { get; }
-
-    public TransferTasks Transfers { get; }
-
-    public TaskQueue Queue { get; }
-
-    public UserClientService UserClient { get; }
-
-    /// <summary>Where <see cref="UploadService"/> collects the bot's own id for its uploads.</summary>
-    public UploadEchoRegistry UploadEchoes { get; }
-
-    /// <summary>Shared with <see cref="WatchNotificationService"/> so the Confirm/Correct
-    /// callbacks and the removed-file and web-confirmed edits track the same live messages.</summary>
-    public WatchedFileMessageRegistry WatchedFileMessages { get; }
-
-    /// <summary>Shared with <see cref="WatchNotificationService"/> so a series confirmed from
-    /// Telegram and one confirmed from the web both get their TMDB id pushed to Jellyfin.</summary>
-    public JellyfinSeriesIdentifier JellyfinSeries { get; }
-
-    /// <summary>Shared with the HTTP confirm/correct endpoints, which hand it the rows to move.</summary>
-    public WatchNotificationService WatchNotifications { get; }
-
-    /// <summary>Run in the background from startup, and shared with the HTTP rescan
-    /// endpoint, so /rescan and the web button trigger the very sweep the background loop uses.</summary>
-    public WatchedFolderService WatchedFolder { get; }
-
-    public PendingActionHandler PendingActionHandler => _pendingActionHandler;
+    private WTelegram.Bot Bot { get; }
 
     public async Task InitBot()
     {
@@ -124,7 +72,7 @@ public class BotDispatcher
             var incomingName = msg.Document?.FileName ?? msg.Video?.FileName;
             var incomingSize = msg.Document?.FileSize ?? msg.Video?.FileSize ?? 0;
 
-            if (UploadEchoes.TryClaim(incomingName, incomingSize, msg.MessageId))
+            if (_uploadEchoes.TryClaim(incomingName, incomingSize, msg.MessageId))
                 Log.Info($"Message {msg.MessageId} is the bot's copy of {incomingName}, uploaded by the account.");
             else
                 await _fileHandler.Handle(msg, type);

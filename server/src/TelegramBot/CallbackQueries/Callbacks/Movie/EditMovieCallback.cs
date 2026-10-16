@@ -46,7 +46,7 @@ public class EditMovieCallback : ICallbackQuery
         await _bot.EditMessageText(message!.Chat.Id, message.MessageId, text, Telegram.Bot.Types.Enums.ParseMode.Html, replyMarkup: new InlineKeyboardMarkup(buttons));
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, Catalog catalog, CatalogIdentifier identifier, PendingActionHandler pendingActions)
     {
         if (fields.Length > 1)
         {
@@ -54,18 +54,18 @@ public class EditMovieCallback : ICallbackQuery
             var action = fields[1];
             if (action == "reidentify")
             {
-                return new ReidentifyAction(movieId, dispatcher.Bot, dispatcher.Catalog, dispatcher.Identifier, dispatcher.PendingActionHandler);
+                return new ReidentifyAction(movieId, bot, catalog, identifier, pendingActions);
             }
             if (action == "delete")
             {
-                return new DeleteAction(movieId, dispatcher.Bot, dispatcher.Catalog);
+                return new DeleteAction(movieId, bot, catalog);
             }
             if (action == "confirm_delete")
             {
-                return new ConfirmDeleteAction(movieId, dispatcher.Bot, dispatcher.Catalog);
+                return new ConfirmDeleteAction(movieId, bot, catalog);
             }
         }
-        return new EditMovieCallback(int.Parse(fields[0]), dispatcher.Bot, dispatcher.Catalog, dispatcher.PendingActionHandler);
+        return new EditMovieCallback(int.Parse(fields[0]), bot, catalog, pendingActions);
     }
 
     public static string Pack(int movieId)

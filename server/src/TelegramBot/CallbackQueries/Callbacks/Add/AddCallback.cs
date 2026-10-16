@@ -10,14 +10,16 @@ public class AddCallback : ICallbackQuery
 {
     public const string Id = "add";
 
-    private readonly BotDispatcher _dispatcher;
+    private readonly WTelegram.Bot _bot;
+    private readonly CatalogIdentifier _identifier;
     private readonly string _action;
     private readonly string _tmdbIdStr;
     private readonly string _mediaType;
 
-    private AddCallback(BotDispatcher dispatcher, string action, string tmdbIdStr, string mediaType)
+    private AddCallback(WTelegram.Bot bot, CatalogIdentifier identifier, string action, string tmdbIdStr, string mediaType)
     {
-        _dispatcher = dispatcher;
+        _bot = bot;
+        _identifier = identifier;
         _action = action;
         _tmdbIdStr = tmdbIdStr;
         _mediaType = mediaType;
@@ -27,7 +29,7 @@ public class AddCallback : ICallbackQuery
     {
         if (message == null) return;
 
-        var bot = _dispatcher.Bot;
+        var bot = _bot;
 
         if (_action == "create" && int.TryParse(_tmdbIdStr, out var tmdbId))
         {
@@ -41,7 +43,7 @@ public class AddCallback : ICallbackQuery
             
             try
             {
-                var ok = (await _dispatcher.Identifier.CreateManualAsync(tmdbId, _mediaType)).Error
+                var ok = (await _identifier.CreateManualAsync(tmdbId, _mediaType)).Error
                          == CatalogIdentifier.CreateError.None;
                 
                 try
@@ -73,12 +75,12 @@ public class AddCallback : ICallbackQuery
         }
     }
 
-    public static ICallbackQuery Create(string[] fields, BotDispatcher dispatcher)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, CatalogIdentifier identifier)
     {
         var action = fields.Length > 0 ? fields[0] : "create";
         var tmdbIdStr = fields.Length > 1 ? fields[1] : "";
         var mediaType = fields.Length > 2 ? fields[2] : "movie";
-        return new AddCallback(dispatcher, action, tmdbIdStr, mediaType);
+        return new AddCallback(bot, identifier, action, tmdbIdStr, mediaType);
     }
 
     public static string Pack(string action, string tmdbIdStr, string mediaType)
