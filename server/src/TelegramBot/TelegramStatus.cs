@@ -19,6 +19,9 @@ public sealed class TelegramStatus
 
     public State Current { get; private set; } = State.Starting;
 
+    /// <summary>When the bot entered <see cref="Current"/>.</summary>
+    public DateTimeOffset Since { get; private set; } = DateTimeOffset.UtcNow;
+
     /// <summary>Why the bot is <see cref="State.Failed"/> or <see cref="State.Disabled"/>.</summary>
     public string? Problem { get; private set; }
 
@@ -35,8 +38,9 @@ public sealed class TelegramStatus
 
     private void Settle(State state, string? problem)
     {
-        Current = state;
         Problem = problem;
+        Since = DateTimeOffset.UtcNow;
+        Current = state;
         _settled.TrySetResult(state == State.Ready);
     }
 }

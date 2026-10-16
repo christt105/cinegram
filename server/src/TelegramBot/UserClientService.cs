@@ -25,6 +25,12 @@ public class UserClientService : IDisposable
     public bool IsAuthenticated { get; private set; }
     public bool IsPremium { get; private set; }
 
+    /// <summary>What the last attempt to resume the saved session found.</summary>
+    public AccountSession Session { get; private set; } = AccountSession.NotChecked;
+
+    /// <summary>Why <see cref="Session"/> is <see cref="AccountSession.Failed"/>.</summary>
+    public string? SessionProblem { get; private set; }
+
     public const string ReauthInstructions = "docker compose run --rm -it cinegram auth";
 
     private readonly TransferTuning _tuning;
@@ -72,7 +78,10 @@ public class UserClientService : IDisposable
     public async Task<bool> TryResumeSessionAsync(int apiId, string apiHash, string botUsername)
     {
         if (!File.Exists(_sessionPath))
+        {
+            Session = AccountSession.Missing;
             return false;
+        }
 
         _apiId = apiId;
         _apiHash = apiHash;
@@ -97,6 +106,8 @@ public class UserClientService : IDisposable
 
             IsAuthenticated = true;
             IsPremium = (user.flags & User.Flags.premium) != 0;
+            Session = AccountSession.Restored;
+            SessionProblem = null;
             Log.Info($"[UserClient] Session restored. Premium={IsPremium}, chat with @{botUsername} resolved.");
             return true;
         }
@@ -104,6 +115,8 @@ public class UserClientService : IDisposable
         {
             Log.Info($"[UserClient] Session resume failed: {ex.Message}");
             DisposeClient();
+            Session = AccountSession.Failed;
+            SessionProblem = ex.Message;
             return false;
         }
     }
@@ -279,4 +292,14 @@ public class UserClientService : IDisposable
     }
 
     public void Dispose() => DisposeClient();
+}
+
+public enum AccountSession
+{
+    /// <summary>The bot has not tried to resume it yet.</summary>
+    NotChecked,
+    Restored,
+    /// <summary>No session saved; transfers go through the bot alone.</summary>
+    Missing,
+    Failed,
 }

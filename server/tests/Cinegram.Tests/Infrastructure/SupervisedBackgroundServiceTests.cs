@@ -13,14 +13,18 @@ public class SupervisedBackgroundServiceTests
     private sealed class Probe : SupervisedBackgroundService
     {
         private readonly Func<CancellationToken, Task> _run;
+        private readonly bool _runsUntilShutdown;
 
-        public Probe(string name, Func<CancellationToken, Task> run)
+        public Probe(string name, Func<CancellationToken, Task> run, bool runsUntilShutdown = true)
         {
             Name = name;
             _run = run;
+            _runsUntilShutdown = runsUntilShutdown;
         }
 
         public override string Name { get; }
+
+        protected override bool RunsUntilShutdown => _runsUntilShutdown;
 
         public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -79,5 +83,46 @@ public class SupervisedBackgroundServiceTests
 
         Assert.False(lifetime.ApplicationStopping.IsCancellationRequested);
         await host.StopAsync();
+    }
+
+    [Fact]
+    public async Task A_loop_reports_waiting_then_running()
+    {
+        var loop = new Probe("Loop", ct => Task.Delay(Timeout.Infinite, ct));
+        Assert.Equal(LoopState.Waiting, loop.Status.State);
+
+        await loop.StartAsync(CancellationToken.None);
+        await loop.Started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(LoopState.Running, loop.Status.State);
+        Assert.Null(loop.Status.Problem);
+        await loop.StopAsync(CancellationToken.None);
+        Assert.Equal(LoopState.Running, loop.Status.State);
+    }
+
+    [Fact]
+    public async Task A_loop_that_throws_reports_the_error()
+    {
+        var loop = new Probe("Failing", _ => throw new InvalidOperationException("boom"));
+
+        await loop.StartAsync(CancellationToken.None);
+        await loop.ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(LoopState.Crashed, loop.Status.State);
+        Assert.Equal("boom", loop.Status.Problem);
+    }
+
+    [Theory]
+    [InlineData(true, LoopState.Stopped)]
+    [InlineData(false, LoopState.Done)]
+    public async Task A_loop_that_returns_is_stopped_only_if_it_was_meant_to_run_until_shutdown(
+        bool runsUntilShutdown, LoopState expected)
+    {
+        var loop = new Probe("Returning", _ => Task.CompletedTask, runsUntilShutdown);
+
+        await loop.StartAsync(CancellationToken.None);
+        await loop.ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(5));
+
+        Assert.Equal(expected, loop.Status.State);
     }
 }

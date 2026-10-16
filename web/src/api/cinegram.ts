@@ -231,3 +231,25 @@ export function useCatalog() {
     fetchTelegramSeries
   };
 }
+
+export type HealthVerdict = 'ok' | 'starting' | 'disabled' | 'unhealthy';
+export type BotState = 'starting' | 'ready' | 'failed' | 'disabled';
+export type AccountSession = 'not_checked' | 'restored' | 'missing' | 'failed';
+export type LoopState = 'waiting' | 'running' | 'done' | 'skipped' | 'stopped' | 'crashed';
+
+export interface HealthReport {
+  status: HealthVerdict;
+  healthy: boolean;
+  problems: string[];
+  warnings: string[];
+  bot: { state: BotState; problem: string | null; since: string; connected: boolean | null };
+  account: { session: AccountSession; premium: boolean; problem: string | null } | null;
+  loops: { name: string; state: LoopState; problem: string | null; since: string }[];
+}
+
+/** Answers 503 with the same report when something is wrong, so only a missing body is an error. */
+export async function fetchHealth(): Promise<HealthReport> {
+  const res = await fetch(`${apiUrl}/health`);
+  if (!res.ok && res.status !== 503) throw new Error(`Health check failed (${res.status})`);
+  return res.json();
+}
