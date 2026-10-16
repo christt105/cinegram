@@ -78,13 +78,10 @@ public sealed class AfterTelegramStarts : SupervisedBackgroundService
 
     public override string Name { get; }
 
-    protected override bool RunsUntilShutdown => _runsUntilShutdown && _status.IsReady;
+    protected override bool RunsUntilShutdown => _runsUntilShutdown;
 
-    protected override async Task RunAsync(CancellationToken stoppingToken)
-    {
-        if (!await _status.WaitUntilSettledAsync(stoppingToken))
-            return;
+    protected override Task<bool> WaitToStartAsync(CancellationToken stoppingToken) =>
+        _status.WaitUntilSettledAsync(stoppingToken);
 
-        await _run(stoppingToken);
-    }
+    protected override Task RunAsync(CancellationToken stoppingToken) => _run(stoppingToken);
 }

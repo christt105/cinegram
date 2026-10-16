@@ -1,4 +1,5 @@
 using Xunit;
+using Cinegram.Infrastructure;
 using Cinegram.TelegramBot;
 
 namespace Cinegram.Tests.TelegramBot;
@@ -67,8 +68,11 @@ public class TelegramStartupTests
         await Task.Delay(200);
         Assert.False(started.Task.IsCompleted);
 
+        Assert.Equal(LoopState.Waiting, loop.Status.State);
+
         status.MarkReady();
         await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal(LoopState.Running, loop.Status.State);
         await loop.StopAsync(CancellationToken.None);
     }
 
@@ -92,5 +96,6 @@ public class TelegramStartupTests
 
         Assert.False(ran);
         Assert.False(status.IsReady);
+        Assert.Equal(LoopState.Skipped, loop.Status.State);
     }
 }

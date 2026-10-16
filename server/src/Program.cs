@@ -1,5 +1,6 @@
 using Cinegram;
 using Cinegram.Data;
+using Cinegram.Health;
 using Cinegram.Infrastructure;
 using Cinegram.Jellyfin;
 using Cinegram.Library;
@@ -33,7 +34,8 @@ app.UseStaticFiles(new StaticFileOptions { OnPrepareResponse = WebCache.Apply })
 
 var api = app.MapGroup("/api");
 
-api.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+// The bot, the account and the background loops; 503 when the bot cannot do its job
+HealthEndpoints.Map(api);
 
 api.MapGet("/version", (AppVersion version) => Results.Ok(new { version = version.Current }));
 

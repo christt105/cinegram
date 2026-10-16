@@ -9,9 +9,11 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Xunit;
+using Cinegram.Health;
 using Cinegram.Infrastructure;
 using Cinegram.TelegramBot;
 using Cinegram.TelegramBot.CallbackQueries;
@@ -70,7 +72,7 @@ public class CinegramServicesTests : IDisposable
             .ToList();
 
         Assert.Equal(
-            ["Startup", "Telegram", "Downloader", "Uploader", "WatchedFolder", "WatchResume", "Queue", "JellyfinBackup"],
+            ["Startup", "Telegram", "Downloader", "Uploader", "WatchedFolder", "WatchResume", "Queue", "Heartbeat", "JellyfinBackup"],
             names);
         Assert.NotNull(app.Services.GetRequiredService<PreviewService>());
         Assert.NotNull(app.Services.GetRequiredService<BotDispatcher>());
@@ -124,7 +126,7 @@ public class CinegramServicesTests : IDisposable
         var builder = Builder(null);
         await using var app = builder.Build();
         var api = app.MapGroup("/api");
-        api.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+        HealthEndpoints.Map(api);
         WatchEndpoints.Map(api);
         PreviewEndpoints.Map(api);
         await app.StartAsync();
@@ -132,7 +134,15 @@ public class CinegramServicesTests : IDisposable
         var address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();
         using var http = new HttpClient { BaseAddress = new Uri(address) };
 
-        Assert.Equal(HttpStatusCode.OK, (await http.GetAsync("/api/health")).StatusCode);
+        var health = await http.GetAsync("/api/health");
+        Assert.Equal(HttpStatusCode.OK, health.StatusCode);
+        using (var body = JsonDocument.Parse(await health.Content.ReadAsStringAsync()))
+        {
+            Assert.Equal("disabled", body.RootElement.GetProperty("status").GetString());
+            Assert.Equal("disabled", body.RootElement.GetProperty("bot").GetProperty("state").GetString());
+            Assert.Equal(JsonValueKind.Null, body.RootElement.GetProperty("account").ValueKind);
+            Assert.Equal(0, body.RootElement.GetProperty("loops").GetArrayLength());
+        }
 
         var rescan = await http.PostAsync("/api/watch/rescan", null);
         Assert.Equal(HttpStatusCode.ServiceUnavailable, rescan.StatusCode);
@@ -146,6 +156,51 @@ public class CinegramServicesTests : IDisposable
         Assert.Equal(TelegramStatus.State.Disabled, status.Current);
         Assert.Equal(["Startup"], app.Services.GetServices<IHostedService>()
             .OfType<SupervisedBackgroundService>().Select(s => s.Name));
+
+        await app.StopAsync();
+    }
+
+    [Fact]
+    public void Before_the_bot_starts_the_report_lists_every_bot_loop_waiting()
+    {
+        var environment = Telegram();
+        environment["JELLYFIN_BACKUP_DIR"] = _dir;
+        using var app = Builder(environment).Build();
+
+        var report = HealthEndpoints.Read(
+            app.Services.GetRequiredService<TelegramStatus>(),
+            app.Services.GetServices<IHostedService>(),
+            app.Services.GetRequiredService<UserClientService>(),
+            app.Services.GetRequiredService<BotHeartbeat>(),
+            DateTimeOffset.UtcNow);
+
+        Assert.Equal(HealthVerdict.Starting, report.Status);
+        Assert.Equal(AccountSession.NotChecked, report.Account!.Session);
+        Assert.Equal(["Downloader", "Uploader", "WatchedFolder", "WatchResume", "Queue", "Heartbeat", "JellyfinBackup"],
+            report.Loops.Select(l => l.Name));
+        Assert.All(report.Loops, l => Assert.Equal(LoopState.Waiting, l.State));
+    }
+
+    [Fact]
+    public async Task A_bot_that_failed_to_start_turns_the_health_endpoint_into_a_503()
+    {
+        var failed = new TelegramStatus();
+        failed.MarkFailed("401 Unauthorized");
+        var builder = Builder(null);
+        builder.Services.Replace(ServiceDescriptor.Singleton(failed));
+        await using var app = builder.Build();
+        HealthEndpoints.Map(app.MapGroup("/api"));
+        await app.StartAsync();
+
+        var address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.First();
+        using var http = new HttpClient { BaseAddress = new Uri(address) };
+        var health = await http.GetAsync("/api/health");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, health.StatusCode);
+        using var body = JsonDocument.Parse(await health.Content.ReadAsStringAsync());
+        Assert.Equal("unhealthy", body.RootElement.GetProperty("status").GetString());
+        Assert.Equal("The bot failed to start: 401 Unauthorized",
+            body.RootElement.GetProperty("problems")[0].GetString());
 
         await app.StopAsync();
     }

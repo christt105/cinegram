@@ -21,6 +21,8 @@
         </div>
       </div>
       
+      <SystemHealthCard />
+
       <!-- Library Statistics Card -->
       <div class="glass-panel settings-card" style="padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
         <h3>Library Statistics</h3>
@@ -144,6 +146,7 @@
 import { ref, onMounted, computed } from 'vue';
 import { Github } from 'lucide-vue-next';
 import BaseModal from '../components/BaseModal.vue';
+import SystemHealthCard from '../components/settings/SystemHealthCard.vue';
 import TmdbSearchPanel from '../components/tmdb/TmdbSearchPanel.vue';
 import type { TmdbSearchResult } from '../composables/useTmdbSearch';
 

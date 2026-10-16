@@ -186,6 +186,10 @@ The container listens on `8080`, published on the host as `${WEB_PORT:-5173}`. I
 
 For local development of the web, `npm run dev` in `web/` starts Vite with hot reload and proxies `/api` to `http://localhost:8080`, or to `CINEGRAM_URL` when set.
 
+## Health
+
+`GET /api/health` reports the Telegram bot, the account session and every background loop (downloads, uploads, the downloads folder watcher, watch resume, the task queue, the Telegram heartbeat and the Jellyfin backup). The heartbeat pings Telegram through the bot every minute. It answers `503` when the bot failed to start, is still starting after 5 minutes, Telegram has not answered the heartbeat for 3 minutes, or a loop crashed or stopped, and the container's `HEALTHCHECK` turns `unhealthy` with it. A bot left off on purpose (no `TELEGRAM_*` variables) or an account without a saved session are only warnings, so the web stays healthy. The same report is shown under **Settings → Bot Status**.
+
 ## Security
 
 Cinegram has **no built-in authentication** on the web panel or its API: anyone who can reach `WEB_PORT` can browse and modify the library, and read your Jellyfin library through the `/api/jellyfin` proxy (read-only, limited to items, users and shows). Only the Telegram bot is access-controlled (via `TELEGRAM_AUTH_USER_ID`). Do **not** expose `WEB_PORT` directly to the internet. Keep them on your LAN and reach them through a VPN, or put them behind a reverse proxy that adds authentication and TLS.
