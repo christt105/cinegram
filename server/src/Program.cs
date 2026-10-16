@@ -1,12 +1,9 @@
-using Microsoft.EntityFrameworkCore;
 using Cinegram;
-using Cinegram.Backups;
 using Cinegram.Data;
 using Cinegram.Infrastructure;
 using Cinegram.Jellyfin;
 using Cinegram.Library;
 using Cinegram.TelegramBot;
-using Cinegram.Tmdb;
 using Cinegram.Transfers;
 using Cinegram.Watch;
 
@@ -15,16 +12,10 @@ if (args.Length > 0 && args[0] == "auth")
 
 var builder = WebApplication.CreateBuilder(args);
 var databasePath = Environment.GetEnvironmentVariable("DATABASE_PATH") ?? CinegramDb.DefaultPath;
-builder.Services.AddDbContextFactory<CinegramDb>(options => options.UseSqlite(CinegramDb.ConnectionString(databasePath)));
-builder.Services.AddSingleton<ITmdbLookup>(_ => TmdbIdentifier.FromEnvironment());
-builder.Services.AddSingleton<WatchedFiles>();
-builder.Services.AddSingleton<TransferTasks>();
-builder.Services.AddSingleton<CatalogIdentifier>();
-builder.Services.AddSingleton<Catalog>();
-builder.Services.AddSingleton<DatabaseBackup>();
-builder.Services.AddSingleton<BotHolder>();
-builder.Services.AddSingleton(_ => JellyfinProxy.FromEnvironment());
-builder.Services.AddHostedService<Worker>();
+var (telegram, telegramProblem) = TelegramOptions.Read(Environment.GetEnvironmentVariable);
+builder.Services
+    .AddCinegramCore(databasePath)
+    .AddTelegramBot(telegram, telegramProblem, Environment.GetEnvironmentVariable);
 
 // Keep Kestrel on a fixed internal port
 builder.WebHost.UseUrls("http://0.0.0.0:8080");

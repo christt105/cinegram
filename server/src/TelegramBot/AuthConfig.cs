@@ -29,18 +29,31 @@ public static class AuthConfig
 
     private static IReadOnlyList<long> Parse()
     {
-        var raw = Environment.GetEnvironmentVariable("TELEGRAM_AUTH_USER_ID") ?? string.Empty;
-        var ids = raw
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(long.Parse)
-            .ToList();
-
-        if (ids.Count == 0)
+        if (!TryParse(Environment.GetEnvironmentVariable("TELEGRAM_AUTH_USER_ID"), out var ids))
         {
             throw new InvalidOperationException(
                 "TELEGRAM_AUTH_USER_ID must contain at least one Telegram user ID.");
         }
 
         return ids;
+    }
+
+    /// <summary>Parses a single ID or a comma-separated list; false when empty or malformed.</summary>
+    public static bool TryParse(string? raw, out IReadOnlyList<long> ids)
+    {
+        var parsed = new List<long>();
+        foreach (var part in (raw ?? string.Empty).Split(',',
+                     StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!long.TryParse(part, out var id))
+            {
+                ids = [];
+                return false;
+            }
+            parsed.Add(id);
+        }
+
+        ids = parsed;
+        return parsed.Count > 0;
     }
 }

@@ -11,12 +11,18 @@ namespace Cinegram.TelegramBot;
 /// </summary>
 public class PreviewService
 {
-    private readonly BotHolder _holder;
+    public const string NotReady = "Bot not yet initialised.";
+
+    private readonly WTelegram.Bot _bot;
+    private readonly TelegramStatus _status;
+    private readonly long _ownerChatId;
     private readonly Catalog _catalog;
 
-    public PreviewService(BotHolder holder, Catalog catalog)
+    public PreviewService(WTelegram.Bot bot, TelegramStatus status, TelegramOptions options, Catalog catalog)
     {
-        _holder = holder;
+        _bot = bot;
+        _status = status;
+        _ownerChatId = options.OwnerUserId;
         _catalog = catalog;
     }
 
@@ -25,11 +31,11 @@ public class PreviewService
     /// </summary>
     public async Task<(bool ok, string error)> SendCollectionPreviewAsync(int collectionId)
     {
-        if (!_holder.IsReady)
-            return (false, "Bot not yet initialised.");
+        if (!_status.IsReady)
+            return (false, NotReady);
 
-        var bot = _holder.Bot;
-        var chatId = _holder.ChatId;
+        var bot = _bot;
+        var chatId = _ownerChatId;
 
         var collection = await _catalog.GetCollectionAsync(collectionId);
         if (collection is null)
@@ -70,11 +76,11 @@ public class PreviewService
     /// </summary>
     public async Task<(bool ok, string error)> SendSeasonPreviewAsync(int seriesId, int seasonNumber)
     {
-        if (!_holder.IsReady)
-            return (false, "Bot not yet initialised.");
+        if (!_status.IsReady)
+            return (false, NotReady);
 
-        var bot = _holder.Bot;
-        var chatId = _holder.ChatId;
+        var bot = _bot;
+        var chatId = _ownerChatId;
 
         var series = await _catalog.GetSeriesAsync(seriesId);
         if (series == null || series.Seasons == null)

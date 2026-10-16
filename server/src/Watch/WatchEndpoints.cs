@@ -29,18 +29,23 @@ public static class WatchEndpoints
             Results.Json(await watchedFiles.ReidentifyAsync(ct), Json));
 
         app.MapPost("/watch/{id:int}/confirm", (int id, [FromBody] ResolveRequest? request, WatchedFiles watchedFiles,
-                BotHolder holder, IHostApplicationLifetime lifetime) =>
-            ResolveAsync(id, request, "confirmed", watchedFiles, holder, lifetime));
+                TelegramStatus telegram, [FromServices] WatchNotificationService? notifications,
+                IHostApplicationLifetime lifetime) =>
+            ResolveAsync(id, request, "confirmed", watchedFiles, telegram, notifications, lifetime));
 
         app.MapPost("/watch/{id:int}/correct", (int id, [FromBody] ResolveRequest? request, WatchedFiles watchedFiles,
-                BotHolder holder, IHostApplicationLifetime lifetime) =>
-            ResolveAsync(id, request, "corrected", watchedFiles, holder, lifetime));
+                TelegramStatus telegram, [FromServices] WatchNotificationService? notifications,
+                IHostApplicationLifetime lifetime) =>
+            ResolveAsync(id, request, "corrected", watchedFiles, telegram, notifications, lifetime));
 
-        app.MapPost("/watch/rescan", async (BotHolder holder) =>
+        app.MapPost("/watch/rescan", async (TelegramStatus telegram, [FromServices] WatchedFolderService? watchedFolder) =>
         {
+            if (!telegram.IsReady || watchedFolder is null)
+                return Results.Problem("WatchedFolderService not yet initialised.", statusCode: 503);
+
             try
             {
-                var diff = await holder.WatchedFolder.RescanAsync(CancellationToken.None);
+                var diff = await watchedFolder.RescanAsync(CancellationToken.None);
                 return Results.Ok(new { @new = diff.New.Count, missing = diff.Missing.Count });
             }
             catch (InvalidOperationException ex)
@@ -56,8 +61,8 @@ public static class WatchEndpoints
     /// corrected, and <see cref="WatchNotificationService.ResumeResolvedAsync"/> moves it on startup.
     /// </summary>
     private static async Task<IResult> ResolveAsync(
-        int id, ResolveRequest? request, string status, WatchedFiles watchedFiles, BotHolder holder,
-        IHostApplicationLifetime lifetime)
+        int id, ResolveRequest? request, string status, WatchedFiles watchedFiles, TelegramStatus telegram,
+        WatchNotificationService? notifications, IHostApplicationLifetime lifetime)
     {
         if (request?.TmdbId is not { } tmdbId) return Error(422, "tmdb_id is required");
 
@@ -72,7 +77,7 @@ public static class WatchEndpoints
         }
 
         var resolution = outcome.Resolution!;
-        if (holder.WatchNotifications is { } notifications)
+        if (telegram.IsReady && notifications is not null)
             _ = Task.Run(() => notifications.MoveResolvedAsync(resolution, lifetime.ApplicationStopping));
 
         return Results.Json(resolution, Json);
