@@ -8,6 +8,10 @@ namespace Cinegram.Infrastructure;
 /// </summary>
 public sealed class StartupChecks : SupervisedBackgroundService
 {
+    private readonly JellyfinSettings _jellyfin;
+
+    public StartupChecks(JellyfinSettings jellyfin) => _jellyfin = jellyfin;
+
     public override string Name => "Startup";
 
     protected override bool RunsUntilShutdown => false;
@@ -19,6 +23,6 @@ public sealed class StartupChecks : SupervisedBackgroundService
             Log.Warning($"[Startup] Required system dependencies are missing: {string.Join(", ", missing)}. Make sure they are installed and available in the PATH.");
         }
 
-        await JellyfinPathAudit.RunAsync(stoppingToken);
+        await JellyfinPathAudit.RunAsync(_jellyfin, stoppingToken);
     }
 }

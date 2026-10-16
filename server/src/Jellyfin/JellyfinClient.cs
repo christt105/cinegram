@@ -29,17 +29,6 @@ public class JellyfinClient : IJellyfinClient, IDisposable
         };
     }
 
-    public const string NotConfiguredWarning =
-        "[Jellyfin] JELLYFIN_URL or JELLYFIN_TOKEN is not set: confirmed series will not be identified " +
-        "through the API, only through the id tag in the folder name.";
-
-    /// <summary>
-    /// False when JELLYFIN_URL or JELLYFIN_TOKEN is unset, so a deployment without them keeps
-    /// working with the folder id tag alone instead of failing on every move.
-    /// </summary>
-    public static bool IsConfigured(Func<string, string?> read) =>
-        !string.IsNullOrWhiteSpace(read("JELLYFIN_URL")) && !string.IsNullOrWhiteSpace(read("JELLYFIN_TOKEN"));
-
     public void Dispose() => _http.Dispose();
 
     public async Task<IReadOnlyList<JellyfinItem>> GetSeriesAsync(CancellationToken cancellationToken = default)

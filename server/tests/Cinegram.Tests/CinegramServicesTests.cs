@@ -30,11 +30,17 @@ public class CinegramServicesTests : IDisposable
         Directory.Delete(_dir, recursive: true);
     }
 
-    private TelegramOptions Telegram() =>
-        new(12345, "0123456789abcdef0123456789abcdef", "123:token", 111, Path.Combine(_dir, "bot.sqlite"));
-
-    private WebApplicationBuilder Builder(TelegramOptions? telegram, Dictionary<string, string?>? environment = null)
+    private static Dictionary<string, string?> Telegram() => new()
     {
+        ["TELEGRAM_API_ID"] = "12345",
+        ["TELEGRAM_API_HASH"] = "0123456789abcdef0123456789abcdef",
+        ["TELEGRAM_BOT_TOKEN"] = "123:token",
+        ["TELEGRAM_AUTH_USER_ID"] = "111",
+    };
+
+    private WebApplicationBuilder Builder(Dictionary<string, string?>? environment)
+    {
+        var settings = CinegramSettings.Read(name => environment?.GetValueOrDefault(name), _dir);
         var builder = WebApplication.CreateBuilder();
         builder.Logging.ClearProviders();
         builder.WebHost.UseUrls("http://127.0.0.1:0");
@@ -44,21 +50,19 @@ public class CinegramServicesTests : IDisposable
             o.ValidateScopes = true;
         });
         builder.Services
-            .AddCinegramCore(Path.Combine(_dir, "database.db"))
-            .AddTelegramBot(telegram, telegram is null ? "TELEGRAM_API_ID missing or invalid" : null,
-                name => environment?.GetValueOrDefault(name));
+            .AddCinegramCore(settings)
+            .AddTelegramBot(settings);
         return builder;
     }
 
     [Fact]
     public void With_the_bot_configured_every_service_and_loop_resolves()
     {
-        using var app = Builder(Telegram(), new()
-        {
-            ["JELLYFIN_BACKUP_DIR"] = _dir,
-            ["JELLYFIN_URL"] = "http://jellyfin.invalid",
-            ["JELLYFIN_TOKEN"] = "token",
-        }).Build();
+        var environment = Telegram();
+        environment["JELLYFIN_BACKUP_DIR"] = _dir;
+        environment["JELLYFIN_URL"] = "http://jellyfin.invalid";
+        environment["JELLYFIN_TOKEN"] = "token";
+        using var app = Builder(environment).Build();
 
         var names = app.Services.GetServices<IHostedService>()
             .OfType<SupervisedBackgroundService>()

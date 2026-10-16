@@ -35,7 +35,7 @@ public class SupervisedBackgroundServiceTests
     {
         var builder = Host.CreateApplicationBuilder();
         builder.Logging.ClearProviders();
-        builder.Services.AddCinegramCore(Path.Combine(Path.GetTempPath(), "unused.db"));
+        builder.Services.AddCinegramCore(CinegramSettings.Read(_ => null, Path.GetTempPath()));
         builder.Services.RemoveAll<IHostedService>();
         foreach (var service in services)
             builder.Services.AddSingleton<IHostedService>(service);

@@ -25,31 +25,18 @@ public class UserClientService : IDisposable
     public bool IsAuthenticated { get; private set; }
     public bool IsPremium { get; private set; }
 
-    public const string SessionPath = "/data/user_client.session";
-
     public const string ReauthInstructions = "docker compose run --rm -it cinegram auth";
 
-    public long SplitLimitBytes
+    private readonly TransferTuning _tuning;
+    private readonly string _sessionPath;
+
+    public UserClientService(TransferTuning tuning, DataPaths paths)
     {
-        get
-        {
-            var envMb = Environment.GetEnvironmentVariable("UPLOAD_SPLIT_LIMIT_MB");
-            if (envMb != null && long.TryParse(envMb, out var mb))
-                return mb * 1_000_000L;
-            return IsAuthenticated && IsPremium ? 3_900_000_000L : 1_950_000_000L;
-        }
+        _tuning = tuning;
+        _sessionPath = paths.UserSession;
     }
 
-    public static long FallbackSplitLimitBytes
-    {
-        get
-        {
-            var envMb = Environment.GetEnvironmentVariable("UPLOAD_SPLIT_LIMIT_MB");
-            if (envMb != null && long.TryParse(envMb, out var mb))
-                return mb * 1_000_000L;
-            return 1_950_000_000L;
-        }
-    }
+    public long SplitLimitBytes => _tuning.SplitLimitBytes(premiumAccount: IsAuthenticated && IsPremium);
 
     /// <summary>
     /// Only ever resumes: "-1" tells WTelegram to accept whichever account the saved session
@@ -84,7 +71,7 @@ public class UserClientService : IDisposable
     /// </summary>
     public async Task<bool> TryResumeSessionAsync(int apiId, string apiHash, string botUsername)
     {
-        if (!File.Exists(SessionPath))
+        if (!File.Exists(_sessionPath))
             return false;
 
         _apiId = apiId;
@@ -92,11 +79,11 @@ public class UserClientService : IDisposable
 
         // Read before the client takes the file for itself: extra download connections are built
         // from these bytes, and the client holds the file without sharing it.
-        _sessionSnapshot = await File.ReadAllBytesAsync(SessionPath);
+        _sessionSnapshot = await File.ReadAllBytesAsync(_sessionPath);
 
-        _sessionStream = File.Open(SessionPath, FileMode.Open, FileAccess.ReadWrite);
+        _sessionStream = File.Open(_sessionPath, FileMode.Open, FileAccess.ReadWrite);
         _client = new WTelegram.Client(ConfigFunc, _sessionStream);
-        TransferTuning.Apply(_client, "UserClient", DefaultParallelTransfers);
+        _tuning.Apply(_client, "UserClient", DefaultParallelTransfers);
 
         try
         {
@@ -200,7 +187,7 @@ public class UserClientService : IDisposable
     {
         EnsureReady();
 
-        var connections = PremiumDownloadTuning.Connections;
+        var connections = _tuning.PremiumConnections;
         if (!PremiumDownloadTuning.UseMultipleConnections(IsAuthenticated, connections))
         {
             await DownloadOverOneConnectionAsync(doc, destinationPath, onProgress);
@@ -222,8 +209,8 @@ public class UserClientService : IDisposable
                 readers.Add(await TelegramPartReader.CreateAsync(extra, doc));
 
             var downloader = new RangedFileDownloader(
-                TransferTuning.FilePartSizeBytes,
-                TransferTuning.ParallelTransfers(DefaultParallelTransfers));
+                _tuning.FilePartSizeBytes,
+                _tuning.ParallelTransfers(DefaultParallelTransfers));
 
             Log.Info($"[UserClient] Downloading {doc.size} bytes over {readers.Count} connections.");
             await downloader.DownloadAsync(readers, doc.size, destinationPath, onProgress);
@@ -270,7 +257,7 @@ public class UserClientService : IDisposable
             {
                 client = new WTelegram.Client(ConfigFunc, (byte[])_sessionSnapshot.Clone(), _ => { });
                 client.DisableUpdates(true);
-                TransferTuning.Apply(client, $"UserClient+{i + 1}", DefaultParallelTransfers);
+                _tuning.Apply(client, $"UserClient+{i + 1}", DefaultParallelTransfers);
                 await client.LoginUserIfNeeded();
                 clients.Add(client);
             }

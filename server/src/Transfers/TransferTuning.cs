@@ -17,23 +17,32 @@ namespace Cinegram.Transfers;
 /// reverting the part size alone back to 512 KB with everything else unchanged, which fixed it.
 /// Concurrency was never the cause: the same failure reproduced at both 8 and 2 parallel transfers.
 /// </remarks>
-public static class TransferTuning
+public sealed record TransferTuning(
+    int? ParallelTransfersOverride,
+    int FilePartSizeBytes,
+    int PremiumConnections,
+    long? UploadSplitLimitBytes)
 {
     private const int MaxFilePartSizeBytes = 512 * 1024;
 
-    public static int ParallelTransfers(int defaultValue) =>
-        int.TryParse(Environment.GetEnvironmentVariable("TELEGRAM_PARALLEL_TRANSFERS"), out var n) && n > 0
-            ? n
-            : defaultValue;
+    /// <summary>Telegram's split size for a non-Premium account, used when the account is not in play.</summary>
+    public const long StandardSplitLimitBytes = 1_950_000_000L;
 
-    public static int FilePartSizeBytes =>
-        Math.Min(
-            (int.TryParse(Environment.GetEnvironmentVariable("TELEGRAM_FILE_PART_SIZE_KB"), out var kb) && kb > 0
-                ? kb
-                : 512) * 1024,
-            MaxFilePartSizeBytes);
+    public const long PremiumSplitLimitBytes = 3_900_000_000L;
 
-    public static void Apply(WTelegram.Client client, string who, int defaultParallelTransfers)
+    public static TransferTuning Read(Func<string, string?> read) => new(
+        Settings.PositiveInt(read, "TELEGRAM_PARALLEL_TRANSFERS"),
+        Math.Min((Settings.PositiveInt(read, "TELEGRAM_FILE_PART_SIZE_KB") ?? 512) * 1024, MaxFilePartSizeBytes),
+        PremiumDownloadTuning.ParseConnections(read(PremiumDownloadTuning.ConnectionsVariable)),
+        Settings.Long(read, "UPLOAD_SPLIT_LIMIT_MB") is { } mb ? mb * 1_000_000L : null);
+
+    public int ParallelTransfers(int defaultValue) => ParallelTransfersOverride ?? defaultValue;
+
+    /// <summary><c>UPLOAD_SPLIT_LIMIT_MB</c> when set, else the limit of whoever sends the file.</summary>
+    public long SplitLimitBytes(bool premiumAccount) =>
+        UploadSplitLimitBytes ?? (premiumAccount ? PremiumSplitLimitBytes : StandardSplitLimitBytes);
+
+    public void Apply(WTelegram.Client client, string who, int defaultParallelTransfers)
     {
         var parallelTransfers = ParallelTransfers(defaultParallelTransfers);
         client.FilePartSize = FilePartSizeBytes;

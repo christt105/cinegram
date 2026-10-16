@@ -89,8 +89,6 @@ public interface ITmdbLookup
 
 public class TmdbIdentifier(ITmdbApi api) : ITmdbLookup
 {
-    public static TmdbIdentifier FromEnvironment() => new(TmdbApi.FromEnvironment());
-
     public async Task<TmdbTitle?> IdentifyByTmdbIdAsync(int tmdbId, string? mediaTypeHint, CancellationToken ct = default)
     {
         if (tmdbId <= 0) throw new ArgumentOutOfRangeException(nameof(tmdbId), "No TMDB id provided.");
@@ -169,10 +167,6 @@ public class TmdbApi : ITmdbApi, IDisposable
         _apiKey = apiKey;
         _language = language;
     }
-
-    public static TmdbApi FromEnvironment() => new(
-        Environment.GetEnvironmentVariable("TMDB_API_KEY") ?? "",
-        Environment.GetEnvironmentVariable("TMDB_CONTENT_LANGUAGE") is { Length: > 0 } language ? language : "en-US");
 
     public async Task<TmdbTitle?> GetAsync(string mediaType, int id, CancellationToken ct = default)
     {

@@ -21,29 +21,40 @@ namespace Cinegram;
 public static class CinegramServices
 {
     /// <summary>The database and everything the web serves, which never depends on Telegram.</summary>
-    public static IServiceCollection AddCinegramCore(this IServiceCollection services, string databasePath)
+    public static IServiceCollection AddCinegramCore(this IServiceCollection services, CinegramSettings settings)
     {
         services.Configure<HostOptions>(o => o.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore);
 
-        services.AddDbContextFactory<CinegramDb>(options => options.UseSqlite(CinegramDb.ConnectionString(databasePath)));
-        services.AddSingleton<ITmdbLookup>(_ => TmdbIdentifier.FromEnvironment());
+        services.AddSingleton(settings.Paths);
+        services.AddSingleton(settings.Version);
+        services.AddSingleton(settings.Transfers);
+        services.AddSingleton(settings.Tmdb);
+        services.AddSingleton(settings.Jellyfin);
+
+        services.AddDbContextFactory<CinegramDb>(options => options.UseSqlite(CinegramDb.ConnectionString(settings.Paths.Database)));
+        services.AddSingleton<ITmdbLookup>(sp =>
+        {
+            var tmdb = sp.GetRequiredService<TmdbSettings>();
+            return new TmdbIdentifier(new TmdbApi(tmdb.ApiKey, tmdb.Language));
+        });
         services.AddSingleton<WatchedFiles>();
         services.AddSingleton<TransferTasks>();
         services.AddSingleton<CatalogIdentifier>();
         services.AddSingleton<Catalog>();
         services.AddSingleton<DatabaseBackup>();
-        services.AddSingleton(_ => JellyfinProxy.FromEnvironment());
+        services.AddSingleton(sp => new JellyfinProxy(sp.GetRequiredService<JellyfinSettings>()));
         services.AddHostedService<StartupChecks>();
         return services;
     }
 
     /// <summary>
-    /// The bot, the account and every loop that works through them. Without <paramref name="options"/>
-    /// none of it is registered and <see cref="TelegramStatus"/> says why.
+    /// The bot, the account and every loop that works through them. Without Telegram settings none
+    /// of it is registered and <see cref="TelegramStatus"/> says why.
     /// </summary>
-    public static IServiceCollection AddTelegramBot(this IServiceCollection services, TelegramOptions? options,
-        string? problem, Func<string, string?> readEnvironment)
+    public static IServiceCollection AddTelegramBot(this IServiceCollection services, CinegramSettings settings)
     {
+        var options = settings.Telegram;
+        var problem = settings.TelegramProblem;
         if (options is null)
         {
             var disabled = new TelegramStatus();
@@ -55,12 +66,12 @@ public static class CinegramServices
 
         services.AddSingleton<TelegramStatus>();
         services.AddSingleton(options);
-        services.AddSingleton(_ => new BotSession(options.BotDatabasePath));
+        services.AddSingleton(_ => new BotSession(settings.Paths.BotDatabase));
         services.AddSingleton(sp =>
         {
             var bot = new WTelegram.Bot(options.BotToken, options.ApiId, options.ApiHash,
                 sp.GetRequiredService<BotSession>().Connection);
-            TransferTuning.Apply(bot.Client, "Bot", defaultParallelTransfers: 4);
+            settings.Transfers.Apply(bot.Client, "Bot", defaultParallelTransfers: 4);
             return bot;
         });
         services.AddSingleton<UserClientService>();
@@ -69,11 +80,8 @@ public static class CinegramServices
         services.AddSingleton<WatchedFileMessageRegistry>();
         services.AddSingleton<PendingActionHandler>();
 
-        if (JellyfinClient.IsConfigured(readEnvironment))
-            services.AddSingleton<IJellyfinClient>(_ =>
-                new JellyfinClient(readEnvironment("JELLYFIN_URL")!, readEnvironment("JELLYFIN_TOKEN")!));
-        else
-            Log.Warning(JellyfinClient.NotConfiguredWarning);
+        if (settings.Jellyfin is { Url: { } jellyfinUrl, Token: { } jellyfinToken })
+            services.AddSingleton<IJellyfinClient>(_ => new JellyfinClient(jellyfinUrl, jellyfinToken));
         services.AddSingleton(sp =>
         {
             var bot = sp.GetRequiredService<WTelegram.Bot>();
@@ -104,16 +112,11 @@ public static class CinegramServices
             runsUntilShutdown: false);
         AddLoop(services, "Queue", sp => sp.GetRequiredService<TaskQueue>().StartProcessing);
 
-        var backupOptions = JellyfinBackupOptions.FromEnvironment(readEnvironment, options.OwnerUserId);
-        if (backupOptions is not null)
+        if (settings.JellyfinBackup is { } backupOptions)
         {
             services.AddSingleton(backupOptions);
             services.AddSingleton<JellyfinBackupService>();
             AddLoop(services, "JellyfinBackup", sp => sp.GetRequiredService<JellyfinBackupService>().RunAsync);
-        }
-        else
-        {
-            Log.Info("[JellyfinBackup] Disabled: set JELLYFIN_BACKUP_DIR to enable periodic backups.");
         }
 
         return services;

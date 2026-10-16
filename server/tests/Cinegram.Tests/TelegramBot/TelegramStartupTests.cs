@@ -23,7 +23,6 @@ public class TelegramStartupTests
 
         Assert.Null(problem);
         Assert.Equal(new TelegramOptions(12345, "hash", "123:token", 111), options);
-        Assert.Equal("/data/bot.sqlite", options!.BotDatabasePath);
     }
 
     [Fact]

@@ -89,6 +89,8 @@ public class UploadService
     private readonly TaskQueue _queue;
     private readonly UserClientService? _userClient;
     private readonly UploadEchoRegistry? _echoes;
+    private readonly TransferTuning _tuning;
+    private readonly DataPaths _paths;
 
     /// <summary>
     /// How long to wait for the bot's copy of a file the account sent. It normally lands within
@@ -100,8 +102,10 @@ public class UploadService
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(30);
 
     public UploadService(WTelegram.Bot bot, Catalog catalog, TransferTasks tasks, TaskQueue queue,
-        UserClientService? userClient = null, UploadEchoRegistry? echoes = null)
+        TransferTuning tuning, DataPaths paths, UserClientService? userClient = null, UploadEchoRegistry? echoes = null)
     {
+        _tuning = tuning;
+        _paths = paths;
         _bot = bot;
         _catalog = catalog;
         _tasks = tasks;
@@ -141,7 +145,7 @@ public class UploadService
 
     private async Task ProcessUploadTask(UploadTask task)
     {
-        var tempDir = Path.Combine("/data/temp/uploads", task.Id.ToString());
+        var tempDir = Path.Combine(_paths.TempUploads, task.Id.ToString());
         try
         {
             Log.Info($"[Uploader] Starting task {task.Id} ({task.Title})");
@@ -223,7 +227,7 @@ public class UploadService
                 var useUserClient = _echoes != null && _userClient?.IsAuthenticated == true;
                 var splitLimit = useUserClient
                     ? _userClient!.SplitLimitBytes
-                    : UserClientService.FallbackSplitLimitBytes;
+                    : _tuning.SplitLimitBytes(premiumAccount: false);
 
                 if (fileSize > splitLimit)
                 {
@@ -327,7 +331,7 @@ public class UploadService
         var fileInfo = new FileInfo(filePath);
         if (!fileInfo.Exists) throw new FileNotFoundException("File to send not found.", filePath);
 
-        var splitLimit = UserClientService.FallbackSplitLimitBytes;
+        var splitLimit = _tuning.SplitLimitBytes(premiumAccount: false);
         if (fileInfo.Length <= splitLimit)
         {
             var stored = await SendSingleFileWithRetryAsync(filePath, fileInfo.Name, mimeType, chatId,

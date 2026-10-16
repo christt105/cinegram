@@ -10,23 +10,22 @@ namespace Cinegram.Backups;
 /// </summary>
 public class JellyfinBackupService
 {
-    private const string LastRunPath = "/data/jellyfin-backup-last-run";
-    private const string HistoryPath = "/data/jellyfin-backup-history.json";
-    private const string ScratchDir = "/data/temp/backups";
-
     private readonly WTelegram.Bot _bot;
     private readonly UploadService _uploadService;
     private readonly JellyfinBackupOptions _options;
     private readonly LastRunFile _lastRun;
     private readonly BackupHistoryFile _history;
+    private readonly string _scratchDir;
 
-    public JellyfinBackupService(WTelegram.Bot bot, UploadService uploadService, JellyfinBackupOptions options)
+    public JellyfinBackupService(WTelegram.Bot bot, UploadService uploadService, JellyfinBackupOptions options,
+        DataPaths paths)
     {
         _bot = bot;
         _uploadService = uploadService;
         _options = options;
-        _lastRun = new LastRunFile(LastRunPath);
-        _history = new BackupHistoryFile(HistoryPath);
+        _lastRun = new LastRunFile(paths.JellyfinBackupLastRun);
+        _history = new BackupHistoryFile(paths.JellyfinBackupHistory);
+        _scratchDir = paths.TempBackups;
     }
 
     public async Task RunAsync(CancellationToken stoppingToken)
@@ -52,7 +51,7 @@ public class JellyfinBackupService
 
     private async Task RunOnceAsync(CancellationToken stoppingToken)
     {
-        var archivePath = Path.Combine(ScratchDir, $"jellyfin-backup-{DateTime.UtcNow:yyyyMMdd-HHmmss}.tar.gz");
+        var archivePath = Path.Combine(_scratchDir, $"jellyfin-backup-{DateTime.UtcNow:yyyyMMdd-HHmmss}.tar.gz");
         try
         {
             var result = DirectoryArchiver.Create(_options.AppDataDir, _options.Sources(), archivePath);
