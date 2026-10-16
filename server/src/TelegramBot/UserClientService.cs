@@ -196,7 +196,8 @@ public class UserClientService : IDisposable
     /// capped per connection rather than by a rate limit, so this is the only axis that lifts it.
     /// One connection, or an unusable extra one, is the single-connection download as it was.
     /// </summary>
-    public async Task DownloadDocumentToFileAsync(Document doc, string destinationPath, Action<long, long>? onProgress = null)
+    public async Task DownloadDocumentToFileAsync(Document doc, string destinationPath, Action<long, long>? onProgress = null,
+        CancellationToken ct = default)
     {
         EnsureReady();
 
@@ -226,10 +227,10 @@ public class UserClientService : IDisposable
                 _tuning.ParallelTransfers(DefaultParallelTransfers));
 
             Log.Info($"[UserClient] Downloading {doc.size} bytes over {readers.Count} connections.");
-            await downloader.DownloadAsync(readers, doc.size, destinationPath, onProgress);
+            await downloader.DownloadAsync(readers, doc.size, destinationPath, onProgress, ct);
             return;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!ct.IsCancellationRequested)
         {
             Log.Error($"[UserClient] Multi-connection download failed, retrying over one connection: {ex.Message}");
         }

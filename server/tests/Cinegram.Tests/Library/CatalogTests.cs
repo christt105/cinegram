@@ -16,6 +16,7 @@ using Cinegram.Data;
 using Cinegram.Library;
 using Cinegram.Tests.Data;
 using Cinegram.Tmdb;
+using Cinegram.Transfers;
 
 namespace Cinegram.Tests.Library;
 
@@ -966,6 +967,82 @@ public class CatalogTests : IAsyncLifetime
         _tmdb.FailSearches = true;
 
         Assert.Equal("TMDB search failed", await Detail(await _http.GetAsync("/tmdb/search?query=x"), HttpStatusCode.BadGateway));
+    }
+
+    [Fact]
+    public async Task An_uploaded_file_is_found_by_name_and_size_under_its_own_title_only()
+    {
+        _tmdb.Add(Movie(129, "El viaje de Chihiro", "2001-07-20"));
+        _tmdb.Add(Show(37854, "One Piece", "1999-10-20"), searchAs: "One Piece");
+        await Upload("Chihiro.mkv", tmdbId: 129);
+        await Upload("One Piece 1x125.mkv", tmdbId: 37854);
+        await Upload("Chihiro 4K.zip.001", "application/zip", tmdbId: 129);
+
+        Assert.True(await _catalog.HasUploadedFileAsync("movie", 129, "Chihiro.mkv", 1048576));
+        Assert.False(await _catalog.HasUploadedFileAsync("movie", 129, "Chihiro.mkv", 999));
+        Assert.False(await _catalog.HasUploadedFileAsync("movie", 130, "Chihiro.mkv", 1048576));
+        Assert.False(await _catalog.HasUploadedFileAsync("series", 129, "Chihiro.mkv", 1048576));
+        Assert.True(await _catalog.HasUploadedFileAsync("series", 37854, "One Piece 1x125.mkv", 1048576));
+        Assert.True(await _catalog.HasUploadedFileAsync("movie", 129, "Chihiro 4K.zip.001", null));
+    }
+
+    [Fact]
+    public async Task Undoing_an_unfinished_upload_removes_its_parts_and_keeps_finished_files()
+    {
+        _tmdb.Add(Movie(129, "El viaje de Chihiro", "2001-07-20"));
+        var finished = await Upload("Chihiro.mkv", tmdbId: 129);
+        var partial = new PartialUpload();
+        foreach (var name in new[] { "Chihiro 4K.zip.001", "Chihiro 4K.zip.002" })
+        {
+            var messageId = _nextMessageId++;
+            partial.Sent(new StoredUpload(messageId, null));
+            partial.Registered((await Upload(name, "application/zip", messageId: messageId, tmdbId: 129)).FileId);
+        }
+        partial.Sent(new StoredUpload(_nextMessageId++, null));
+        var deleted = new List<int>();
+
+        await partial.UndoAsync(sent =>
+        {
+            deleted.AddRange(sent.Select(s => s.MessageId));
+            return Task.CompletedTask;
+        }, _catalog);
+
+        Assert.Equal(3, deleted.Count);
+        Assert.True(partial.IsEmpty);
+        await using var db = await _db.CreateDbContextAsync();
+        Assert.Equal(["Chihiro.mkv"], await db.Files.Select(f => f.Filename).ToListAsync());
+        Assert.Equal([finished.CollectionId], await db.Collections.Select(c => c.Id).ToListAsync());
+        Assert.Single(await db.Movies.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Undo_still_cleans_the_catalog_when_deleting_the_messages_fails()
+    {
+        _tmdb.Add(Movie(129, "El viaje de Chihiro", "2001-07-20"));
+        var partial = new PartialUpload();
+        var messageId = _nextMessageId++;
+        partial.Sent(new StoredUpload(messageId, null));
+        partial.Registered((await Upload("Chihiro 4K.zip.001", "application/zip", messageId: messageId, tmdbId: 129)).FileId);
+
+        await Assert.ThrowsAsync<AggregateException>(() =>
+            partial.UndoAsync(_ => throw new InvalidOperationException("MESSAGE_DELETE_FORBIDDEN"), _catalog));
+
+        await using var db = await _db.CreateDbContextAsync();
+        Assert.Empty(await db.Files.ToListAsync());
+    }
+
+    [Fact]
+    public async Task A_completed_file_is_never_undone()
+    {
+        var partial = new PartialUpload();
+        partial.Sent(new StoredUpload(1, null));
+        partial.Registered(1);
+        partial.Complete();
+        var called = false;
+
+        await partial.UndoAsync(_ => { called = true; return Task.CompletedTask; }, _catalog);
+
+        Assert.False(called);
     }
 
     private sealed class FakeTmdb : ITmdbApi

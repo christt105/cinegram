@@ -23,7 +23,7 @@ public sealed class TransferSignal
 /// goes pending → downloading → completed/failed, an upload pending → uploading → completed/failed.
 /// The table is the queue: enqueueing writes a pending row and wakes the matching service.
 /// </summary>
-public class TransferTasks(IDbContextFactory<CinegramDb> dbFactory)
+public class TransferTasks(IDbContextFactory<CinegramDb> dbFactory, TransferCancellation cancellation)
 {
     public const string InterruptedUploadMessage =
         "Interrupted by a restart. Retry to upload it again; parts already sent stay in Telegram.";
@@ -176,21 +176,17 @@ public class TransferTasks(IDbContextFactory<CinegramDb> dbFactory)
     }
 
     /// <summary>
-    /// A completed download also records where it landed on its collection. Progress reports only
-    /// touch a row that is still downloading, so a late one cannot undo its completion or failure.
+    /// Progress reports only touch a row that is still downloading, so a late one cannot undo its
+    /// completion or failure.
     /// </summary>
     public async Task<bool> UpdateDownloadAsync(
-        int taskId, string status, int progress, string? errorMessage = null, string? localPath = null,
-        CancellationToken ct = default)
+        int taskId, string status, int progress, string? errorMessage = null, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
         var task = await db.DownloadTasks.FindAsync([taskId], ct);
         if (task is null) return false;
 
         Apply(task, status, progress, errorMessage);
-        if (localPath is not null && await db.Collections.FindAsync([task.CollectionId], ct) is { } collection)
-            collection.LocalPath = localPath;
-
         await db.SaveChangesAsync(ct);
         return true;
     }
@@ -202,10 +198,34 @@ public class TransferTasks(IDbContextFactory<CinegramDb> dbFactory)
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.Progress, progress), ct);
     }
 
+    /// <summary>Deletes the task and stops its download if one is in progress.</summary>
     public async Task<bool> DeleteDownloadAsync(int taskId, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        return await db.DownloadTasks.Where(t => t.Id == taskId).ExecuteDeleteAsync(ct) > 0;
+        var deleted = await db.DownloadTasks.Where(t => t.Id == taskId).ExecuteDeleteAsync(ct) > 0;
+        cancellation.Cancel(TransferKind.Download, taskId);
+        return deleted;
+    }
+
+    /// <summary>False once the task was cancelled, so a claimed task still waiting its turn is skipped.</summary>
+    public async Task<bool> DownloadExistsAsync(int taskId, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.DownloadTasks.AnyAsync(t => t.Id == taskId, ct);
+    }
+
+    /// <summary>
+    /// Records where a download landed on its collection even if the task was cancelled after the
+    /// file reached the library, so Cinegram never loses track of a file it put there.
+    /// </summary>
+    public async Task CompleteDownloadAsync(int taskId, int collectionId, string localPath, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        if (await db.DownloadTasks.FindAsync([taskId], ct) is { } task)
+            Apply(task, "completed", 100, null);
+        if (await db.Collections.FindAsync([collectionId], ct) is { } collection)
+            collection.LocalPath = localPath;
+        await db.SaveChangesAsync(ct);
     }
 
     public async Task<bool> RetryDownloadAsync(int taskId, CancellationToken ct = default)
@@ -286,10 +306,20 @@ public class TransferTasks(IDbContextFactory<CinegramDb> dbFactory)
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.Progress, progress), ct);
     }
 
+    /// <summary>Deletes the task and stops its upload if one is in progress.</summary>
     public async Task<bool> DeleteUploadAsync(int taskId, CancellationToken ct = default)
     {
         await using var db = await dbFactory.CreateDbContextAsync(ct);
-        return await db.UploadTasks.Where(t => t.Id == taskId).ExecuteDeleteAsync(ct) > 0;
+        var deleted = await db.UploadTasks.Where(t => t.Id == taskId).ExecuteDeleteAsync(ct) > 0;
+        cancellation.Cancel(TransferKind.Upload, taskId);
+        return deleted;
+    }
+
+    /// <summary>False once the task was cancelled, so a claimed task still waiting its turn is skipped.</summary>
+    public async Task<bool> UploadExistsAsync(int taskId, CancellationToken ct = default)
+    {
+        await using var db = await dbFactory.CreateDbContextAsync(ct);
+        return await db.UploadTasks.AnyAsync(t => t.Id == taskId, ct);
     }
 
     public async Task<bool> RetryUploadAsync(int taskId, CancellationToken ct = default)

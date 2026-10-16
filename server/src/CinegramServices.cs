@@ -39,6 +39,7 @@ public static class CinegramServices
             return new TmdbIdentifier(new TmdbApi(tmdb.ApiKey, tmdb.Language));
         });
         services.AddSingleton<WatchedFiles>();
+        services.AddSingleton<TransferCancellation>();
         services.AddSingleton<TransferTasks>();
         services.AddSingleton<CatalogIdentifier>();
         services.AddSingleton<Catalog>();

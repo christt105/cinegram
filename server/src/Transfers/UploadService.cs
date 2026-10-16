@@ -93,6 +93,7 @@ public class UploadService
     private readonly DataPaths _paths;
     private readonly TelegramOptions _telegram;
     private readonly IReadOnlyList<PathMapping> _pathMappings;
+    private readonly TransferCancellation _cancellation;
 
     /// <summary>
     /// How long to wait for the bot's copy of a file the account sent. It normally lands within
@@ -105,8 +106,9 @@ public class UploadService
 
     public UploadService(WTelegram.Bot bot, Catalog catalog, TransferTasks tasks, TaskQueue queue,
         TransferTuning tuning, DataPaths paths, TelegramOptions telegram, JellyfinSettings jellyfin,
-        UserClientService? userClient = null, UploadEchoRegistry? echoes = null)
+        TransferCancellation cancellation, UserClientService? userClient = null, UploadEchoRegistry? echoes = null)
     {
+        _cancellation = cancellation;
         _telegram = telegram;
         _pathMappings = jellyfin.PathMappings;
         _tuning = tuning;
@@ -150,7 +152,16 @@ public class UploadService
 
     private async Task ProcessUploadTask(UploadTask task)
     {
+        using var running = _cancellation.Start(TransferKind.Upload, task.Id);
+        var ct = running.Token;
+        if (!await _tasks.UploadExistsAsync(task.Id))
+        {
+            Log.Info($"[Uploader] Task {task.Id} was cancelled before it started.");
+            return;
+        }
+
         var tempDir = Path.Combine(_paths.TempUploads, task.Id.ToString());
+        var partial = new PartialUpload();
         try
         {
             Log.Info($"[Uploader] Starting task {task.Id} ({task.Title})");
@@ -214,6 +225,14 @@ public class UploadService
                 var videoFile = filesToUpload[fileIndex];
                 var fileInfo = new FileInfo(videoFile);
                 var fileSize = fileInfo.Length;
+
+                ct.ThrowIfCancellationRequested();
+                if (await AlreadyUploadedAsync(task, fileInfo))
+                {
+                    Log.Info($"[Uploader] {fileInfo.Name} is already stored for this title, skipping it.");
+                    totalUploadedBytes += fileSize;
+                    continue;
+                }
                 
                 string? technicalMetadata = null;
                 try
@@ -244,7 +263,7 @@ public class UploadService
 
                     var archiveBaseName = Path.GetFileNameWithoutExtension(videoFile) + ".zip";
                     var archivePath = Path.Combine(partsDir, archiveBaseName);
-                    await SplitAndPackage(videoFile, archivePath, splitLimit);
+                    await SevenZip.SplitAsync(videoFile, archivePath, splitLimit, ct);
 
                     var parts = Directory.GetFiles(partsDir, "*.*")
                         .Where(f => !f.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
@@ -262,15 +281,17 @@ public class UploadService
                         long[] pp = [totalUploadedBytes, lastReportedTime];
                         var stored = await SendSingleFileWithRetryAsync(
                             partPath, partInfo.Name, "application/zip", _telegram.OwnerUserId,
-                            TaskProgressReporter(task.Id, pp, totalBytesToUpload), useUserClient);
+                            TaskProgressReporter(task.Id, pp, totalBytesToUpload, ct), useUserClient, ct: ct);
+                        partial.Sent(stored);
                         totalUploadedBytes = pp[0];
                         lastReportedTime = pp[1];
 
-                        await _catalog.AddFileAsync(new Catalog.FileUpload(
+                        var added = await _catalog.AddFileAsync(new Catalog.FileUpload(
                             stored.MessageId, partInfo.Name, partInfo.Length, "application/zip", DateTime.UtcNow,
                             UserMessageId: stored.UserMessageId,
                             TmdbId: task.TmdbId,
                             TechnicalMetadata: partIndex == 0 ? technicalMetadata : null));
+                        partial.Registered(added.FileId);
                     }
                 }
                 else
@@ -281,25 +302,35 @@ public class UploadService
                     long[] dp = [totalUploadedBytes, lastReportedTime];
                     var stored = await SendSingleFileWithRetryAsync(
                         videoFile, fileInfo.Name, mime, _telegram.OwnerUserId,
-                        TaskProgressReporter(task.Id, dp, totalBytesToUpload), useUserClient);
+                        TaskProgressReporter(task.Id, dp, totalBytesToUpload, ct), useUserClient, ct: ct);
+                    partial.Sent(stored);
                     totalUploadedBytes = dp[0];
                     lastReportedTime = dp[1];
 
-                    await _catalog.AddFileAsync(new Catalog.FileUpload(
+                    var added = await _catalog.AddFileAsync(new Catalog.FileUpload(
                         stored.MessageId, fileInfo.Name, fileInfo.Length, mime, DateTime.UtcNow,
                         UserMessageId: stored.UserMessageId,
                         TmdbId: task.TmdbId,
                         TechnicalMetadata: technicalMetadata));
+                    partial.Registered(added.FileId);
                 }
+
+                partial.Complete();
             }
 
             // 4. Update Status
             await _tasks.UpdateUploadAsync(task.Id, "completed", 100);
             Log.Info($"[Uploader] Upload task {task.Id} completed successfully.");
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            Log.Info($"[Uploader] Task {task.Id} cancelled; files it finished stay, the unfinished one is removed.");
+            await UndoUnfinishedFileAsync(task.Id, partial);
+        }
         catch (Exception ex)
         {
             Log.Error($"[Uploader] Failed to process upload task {task.Id}", ex);
+            await UndoUnfinishedFileAsync(task.Id, partial);
             await _tasks.UpdateUploadAsync(task.Id, "failed", 0, ex.Message);
         }
         finally
@@ -352,7 +383,7 @@ public class UploadService
             Directory.CreateDirectory(partsDir);
 
             Log.Info($"[Uploader] {fileInfo.Name} exceeds the split limit ({splitLimit / 1_000_000} MB). Splitting with 7z store-only...");
-            await SplitAndPackage(filePath, Path.Combine(partsDir, fileInfo.Name + ".zip"), splitLimit);
+            await SevenZip.SplitAsync(filePath, Path.Combine(partsDir, fileInfo.Name + ".zip"), splitLimit, CancellationToken.None);
 
             var parts = Directory.GetFiles(partsDir, "*.*")
                 .Where(f => !f.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
@@ -395,11 +426,13 @@ public class UploadService
     /// percentage that goes backwards.
     /// </summary>
     // progress[0] = totalUploadedBytes, progress[1] = lastReportedTime
-    private Action<long> TaskProgressReporter(int taskId, long[] progress, long totalBytesToUpload) =>
+    private Action<long> TaskProgressReporter(int taskId, long[] progress, long totalBytesToUpload,
+        CancellationToken ct) =>
         delta =>
         {
             progress[0] += delta;
             if (delta <= 0) return;
+            ct.ThrowIfCancellationRequested();
 
             var nowTicks = DateTime.UtcNow.Ticks;
             var elapsed = (nowTicks - progress[1]) / (double)TimeSpan.TicksPerSecond;
@@ -413,7 +446,7 @@ public class UploadService
 
     private async Task<StoredUpload> SendSingleFileWithRetryAsync(
         string filePath, string fileName, string mimeType, long chatId,
-        Action<long>? onProgressDelta, bool useUserClient, string? caption = null)
+        Action<long>? onProgressDelta, bool useUserClient, string? caption = null, CancellationToken ct = default)
     {
         const int maxRetries = 3;
         int attempt = 0;
@@ -475,37 +508,42 @@ public class UploadService
                 // two copies behind, so this one is not worth a retry.
                 throw;
             }
-            catch (Exception ex)
+            catch (Exception ex) when (!ct.IsCancellationRequested)
             {
                 Log.Error($"[Uploader] Attempt {attempt}/{maxRetries} failed for {fileName}: {ex.Message}");
                 onProgressDelta?.Invoke(-lastBytes);
 
                 if (attempt >= maxRetries) throw;
 
-                await Task.Delay((int)Math.Pow(2, attempt) * 1000);
+                await Task.Delay((int)Math.Pow(2, attempt) * 1000, ct);
             }
         }
     }
 
-    private static async Task SplitAndPackage(string filePath, string archivePath, long splitLimitBytes)
+    /// <summary>
+    /// A file that is over the split limit is stored as 7z volumes named after it, so the first
+    /// volume stands for the whole file; whole files are matched by name and size.
+    /// </summary>
+    private async Task<bool> AlreadyUploadedAsync(UploadTask task, FileInfo file)
     {
-        var partSizeMb = splitLimitBytes / 1_000_000;
-        var startInfo = new ProcessStartInfo
+        if (task.TmdbId is not { } tmdbId) return false;
+
+        var firstVolume = Path.GetFileNameWithoutExtension(file.Name) + ".zip.001";
+        return await _catalog.HasUploadedFileAsync(task.MediaType, tmdbId, file.Name, file.Length)
+               || await _catalog.HasUploadedFileAsync(task.MediaType, tmdbId, firstVolume, filesize: null);
+    }
+
+    private async Task UndoUnfinishedFileAsync(int taskId, PartialUpload partial)
+    {
+        try
         {
-            FileName = "7z",
-            Arguments = $"a -mx0 -v{partSizeMb}m \"{archivePath}\" \"{filePath}\"",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        using var process = Process.Start(startInfo);
-        if (process == null) throw new Exception("Failed to start 7z process.");
-        await process.WaitForExitAsync();
-        if (process.ExitCode != 0)
+            await partial.UndoAsync(
+                sent => _bot.DeleteMessages(_telegram.OwnerUserId, sent.Select(s => s.MessageId).ToArray()),
+                _catalog);
+        }
+        catch (Exception ex)
         {
-            var error = await process.StandardError.ReadToEndAsync();
-            throw new Exception($"7z splitting failed with exit code {process.ExitCode}: {error}");
+            Log.Error($"[Uploader] Could not remove the unfinished file of task {taskId}", ex);
         }
     }
 
