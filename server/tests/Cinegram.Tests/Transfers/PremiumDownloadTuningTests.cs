@@ -37,22 +37,4 @@ public class PremiumDownloadTuningTests
         Assert.False(PremiumDownloadTuning.UseMultipleConnections(sessionReady: true, connections: 0));
         Assert.False(PremiumDownloadTuning.UseMultipleConnections(sessionReady: false, connections: 3));
     }
-
-    [Fact]
-    public void Connections_ReadsTheEnvironmentVariable()
-    {
-        var previous = Environment.GetEnvironmentVariable(PremiumDownloadTuning.ConnectionsVariable);
-        try
-        {
-            Environment.SetEnvironmentVariable(PremiumDownloadTuning.ConnectionsVariable, "4");
-            Assert.Equal(4, PremiumDownloadTuning.Connections);
-
-            Environment.SetEnvironmentVariable(PremiumDownloadTuning.ConnectionsVariable, null);
-            Assert.Equal(PremiumDownloadTuning.DefaultConnections, PremiumDownloadTuning.Connections);
-        }
-        finally
-        {
-            Environment.SetEnvironmentVariable(PremiumDownloadTuning.ConnectionsVariable, previous);
-        }
-    }
 }

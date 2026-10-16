@@ -10,16 +10,15 @@ namespace Cinegram.TelegramBot;
 /// </summary>
 public static class ConsoleAuth
 {
-    public static async Task<int> RunAsync()
+    public static async Task<int> RunAsync(CinegramSettings settings)
     {
-        var apiIdRaw = Environment.GetEnvironmentVariable("TELEGRAM_API_ID");
-        var apiHash = Environment.GetEnvironmentVariable("TELEGRAM_API_HASH");
-
-        if (!int.TryParse(apiIdRaw, out var apiId) || string.IsNullOrWhiteSpace(apiHash))
+        if (settings.TelegramApi is not { } api)
         {
             Console.Error.WriteLine("TELEGRAM_API_ID and TELEGRAM_API_HASH must be set.");
             return 1;
         }
+
+        var (apiId, apiHash) = api;
 
         var phone = Prompt("Phone number (e.g. +34612345678)");
         if (phone.Length == 0)
@@ -28,7 +27,7 @@ public static class ConsoleAuth
             return 1;
         }
 
-        var sessionPath = UserClientService.SessionPath;
+        var sessionPath = settings.Paths.UserSession;
         var stagingPath = sessionPath + ".new";
         Directory.CreateDirectory(Path.GetDirectoryName(sessionPath)!);
 

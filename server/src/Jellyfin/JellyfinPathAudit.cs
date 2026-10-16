@@ -8,12 +8,9 @@ namespace Cinegram.Jellyfin;
 /// </summary>
 public static class JellyfinPathAudit
 {
-    public static async Task RunAsync(CancellationToken cancellationToken = default)
+    public static async Task RunAsync(JellyfinSettings settings, CancellationToken cancellationToken = default)
     {
-        var url = Environment.GetEnvironmentVariable("JELLYFIN_URL");
-        var token = Environment.GetEnvironmentVariable("JELLYFIN_TOKEN");
-
-        if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(token))
+        if (settings is not { Url: { } url, Token: { } token })
         {
             Log.Warning("[Startup] JELLYFIN_URL or JELLYFIN_TOKEN is unset, skipping the library path check. " +
                         "Uploads will fail later if JELLYFIN_PATH_MAP does not match what Jellyfin reports.");

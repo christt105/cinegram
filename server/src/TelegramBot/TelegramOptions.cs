@@ -5,10 +5,16 @@ namespace Cinegram.TelegramBot;
 /// bot is left out entirely and the web keeps serving, so <see cref="Read"/> reports why instead of
 /// throwing.
 /// </summary>
-public sealed record TelegramOptions(int ApiId, string ApiHash, string BotToken, long OwnerUserId,
-    string BotDatabasePath = TelegramOptions.DefaultBotDatabasePath)
+public sealed record TelegramOptions(int ApiId, string ApiHash, string BotToken, long OwnerUserId)
 {
-    public const string DefaultBotDatabasePath = "/data/bot.sqlite";
+    /// <summary>
+    /// Just the app credentials, which is all the console login of the user account needs.
+    /// Null when either is missing.
+    /// </summary>
+    public static (int ApiId, string ApiHash)? ReadApi(Func<string, string?> read) =>
+        int.TryParse(read("TELEGRAM_API_ID"), out var apiId) && !string.IsNullOrWhiteSpace(read("TELEGRAM_API_HASH"))
+            ? (apiId, read("TELEGRAM_API_HASH")!)
+            : null;
 
     /// <summary>Returns the options, or null with the reason the bot cannot start.</summary>
     public static (TelegramOptions? Options, string? Problem) Read(Func<string, string?> read)

@@ -13,8 +13,6 @@ namespace Cinegram.Data;
 /// </summary>
 public class CinegramDb(DbContextOptions<CinegramDb> options) : DbContext(options)
 {
-    public const string DefaultPath = "/data/db/database.db";
-
     private const string TimestampFormat = "yyyy-MM-dd HH:mm:ss.ffffff";
 
     public DbSet<Movie> Movies => Set<Movie>();

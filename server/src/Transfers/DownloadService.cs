@@ -14,13 +14,15 @@ public class DownloadService
     private readonly TransferTasks _tasks;
     private readonly TaskQueue _queue;
     private readonly UserClientService? _userClient;
+    private readonly DataPaths _paths;
 
     /// <summary>How long to wait before reading the queue again after the database failed.</summary>
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(30);
 
     public DownloadService(WTelegram.Bot bot, Catalog catalog, TransferTasks tasks, TaskQueue queue,
-        UserClientService? userClient = null)
+        DataPaths paths, UserClientService? userClient = null)
     {
+        _paths = paths;
         _bot = bot;
         _catalog = catalog;
         _tasks = tasks;
@@ -59,7 +61,7 @@ public class DownloadService
 
     private async Task ProcessDownloadTask(DownloadJob task)
     {
-        var tempDir = Path.Combine("/data/temp/downloads", task.TaskId.ToString());
+        var tempDir = Path.Combine(_paths.TempDownloads, task.TaskId.ToString());
         try
         {
             Log.Info($"[Downloader] Starting task {task.TaskId} ({task.Title})");

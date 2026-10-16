@@ -4,7 +4,7 @@ namespace Cinegram.Transfers;
 /// How many independent connections the user account opens to download one file.
 /// </summary>
 /// <remarks>
-/// This is a second, orthogonal axis to <see cref="TransferTuning.ParallelTransfers"/>: that one
+/// This is a second, orthogonal axis to <see cref="TransferTuning.ParallelTransfersOverride"/>: that one
 /// pipelines several parts inside one connection, this one spreads ranges of the same file over
 /// several connections. The account's ceiling is per connection (measured around 27 MB/s, with
 /// 41.5 MB/s as the best single-connection figure seen), so only the second axis lifts it: three
@@ -23,8 +23,6 @@ public static class PremiumDownloadTuning
     /// being taken literally.
     /// </summary>
     public const int MaxConnections = 8;
-
-    public static int Connections => ParseConnections(Environment.GetEnvironmentVariable(ConnectionsVariable));
 
     public static int ParseConnections(string? value) =>
         int.TryParse(value, out var n) && n > 0

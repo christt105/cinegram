@@ -7,22 +7,25 @@ using Cinegram.TelegramBot;
 using Cinegram.Transfers;
 using Cinegram.Watch;
 
+var settings = CinegramSettings.Read(Environment.GetEnvironmentVariable);
+
 if (args.Length > 0 && args[0] == "auth")
-    return await ConsoleAuth.RunAsync();
+    return await ConsoleAuth.RunAsync(settings);
+
+foreach (var line in settings.Describe())
+    Log.Info(line);
 
 var builder = WebApplication.CreateBuilder(args);
-var databasePath = Environment.GetEnvironmentVariable("DATABASE_PATH") ?? CinegramDb.DefaultPath;
-var (telegram, telegramProblem) = TelegramOptions.Read(Environment.GetEnvironmentVariable);
 builder.Services
-    .AddCinegramCore(databasePath)
-    .AddTelegramBot(telegram, telegramProblem, Environment.GetEnvironmentVariable);
+    .AddCinegramCore(settings)
+    .AddTelegramBot(settings);
 
 // Keep Kestrel on a fixed internal port
 builder.WebHost.UseUrls("http://0.0.0.0:8080");
 
 var app = builder.Build();
 
-if (!await DatabaseSchema.RunAsync(databasePath, CancellationToken.None))
+if (!await DatabaseSchema.RunAsync(settings.Paths.Database, CancellationToken.None))
     return 1;
 
 app.UseDefaultFiles();
@@ -32,7 +35,7 @@ var api = app.MapGroup("/api");
 
 api.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
-api.MapGet("/version", () => Results.Ok(new { version = AppVersion.Current }));
+api.MapGet("/version", (AppVersion version) => Results.Ok(new { version = version.Current }));
 
 // Telegram previews of a collection or a season
 PreviewEndpoints.Map(api);

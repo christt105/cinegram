@@ -23,9 +23,9 @@ public partial class JellyfinProxy : IDisposable
         IsConfigured = BaseUrl is not null && !string.IsNullOrWhiteSpace(token);
     }
 
-    public static JellyfinProxy FromEnvironment() => new(
-        Environment.GetEnvironmentVariable("JELLYFIN_URL"),
-        Environment.GetEnvironmentVariable("JELLYFIN_TOKEN"));
+    public JellyfinProxy(JellyfinSettings settings) : this(settings.Url, settings.Token)
+    {
+    }
 
     public string? BaseUrl { get; }
 
