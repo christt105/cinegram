@@ -188,7 +188,7 @@ For local development of the web, `npm run dev` in `web/` starts Vite with hot r
 
 ## Health
 
-`GET /api/health` reports the Telegram bot, the account session and every background loop (downloads, uploads, the downloads folder watcher, watch resume, the task queue and the Jellyfin backup). It answers `503` when the bot failed to start, is still starting after 5 minutes, lost its connection to Telegram, or a loop crashed or stopped, and the container's `HEALTHCHECK` turns `unhealthy` with it. A bot left off on purpose (no `TELEGRAM_*` variables) or an account without a saved session are only warnings, so the web stays healthy. The same report is shown under **Settings → Bot Status**.
+`GET /api/health` reports the Telegram bot, the account session and every background loop (downloads, uploads, the downloads folder watcher, watch resume, the task queue, the Telegram heartbeat and the Jellyfin backup). The heartbeat pings Telegram through the bot every minute. It answers `503` when the bot failed to start, is still starting after 5 minutes, Telegram has not answered the heartbeat for 3 minutes, or a loop crashed or stopped, and the container's `HEALTHCHECK` turns `unhealthy` with it. A bot left off on purpose (no `TELEGRAM_*` variables) or an account without a saved session are only warnings, so the web stays healthy. The same report is shown under **Settings → Bot Status**.
 
 ## Security
 

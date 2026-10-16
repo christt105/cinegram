@@ -242,7 +242,7 @@ export interface HealthReport {
   healthy: boolean;
   problems: string[];
   warnings: string[];
-  bot: { state: BotState; problem: string | null; since: string; connected: boolean | null };
+  bot: { state: BotState; problem: string | null; since: string; last_answer: string | null; answering: boolean | null };
   account: { session: AccountSession; premium: boolean; problem: string | null } | null;
   loops: { name: string; state: LoopState; problem: string | null; since: string }[];
 }

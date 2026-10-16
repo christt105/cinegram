@@ -9,9 +9,10 @@ public class HealthReportTests
 {
     private static readonly DateTimeOffset Now = new(2026, 10, 16, 12, 0, 0, TimeSpan.Zero);
 
-    private static BotReport Bot(TelegramStatus.State state, string? problem = null, bool? connected = null,
+    private static BotReport Bot(TelegramStatus.State state, string? problem = null, TimeSpan? silentFor = null,
         TimeSpan? age = null) =>
-        new(state, problem, Now - (age ?? TimeSpan.FromSeconds(10)), connected);
+        new(state, problem, Now - (age ?? TimeSpan.FromSeconds(10)),
+            state == TelegramStatus.State.Ready ? Now - (silentFor ?? TimeSpan.FromSeconds(30)) : null);
 
     private static LoopReport Loop(string name, LoopState state = LoopState.Running, string? problem = null) =>
         new(name, state, problem, Now);
@@ -24,7 +25,7 @@ public class HealthReportTests
     [Fact]
     public void A_ready_bot_with_every_loop_running_is_ok()
     {
-        var report = Build(Bot(TelegramStatus.State.Ready, connected: true), Restored,
+        var report = Build(Bot(TelegramStatus.State.Ready), Restored,
             Loop("Downloader"), Loop("WatchResume", LoopState.Done));
 
         Assert.Equal(HealthVerdict.Ok, report.Status);
@@ -66,17 +67,32 @@ public class HealthReportTests
     }
 
     [Fact]
-    public void A_ready_bot_that_lost_its_connection_is_a_problem()
+    public void A_ready_bot_is_answering_until_telegram_stays_silent_past_the_limit()
     {
-        var report = Build(Bot(TelegramStatus.State.Ready, connected: false), Restored);
+        var quiet = Build(Bot(TelegramStatus.State.Ready, silentFor: HealthReport.SilenceLimit), Restored);
+        var silent = Build(Bot(TelegramStatus.State.Ready, silentFor: HealthReport.SilenceLimit + TimeSpan.FromSeconds(1)), Restored);
 
-        Assert.Equal(["The bot lost its connection to Telegram"], report.Problems);
+        Assert.True(quiet.Bot.Answering);
+        Assert.True(quiet.Healthy);
+        Assert.False(silent.Bot.Answering);
+        Assert.Equal(["Telegram has not answered the bot since 2026-10-16 11:56:59 UTC"], silent.Problems);
+    }
+
+    [Fact]
+    public void Answering_is_unknown_until_the_bot_is_up()
+    {
+        var starting = Build(Bot(TelegramStatus.State.Starting));
+        var readyWithoutHeartbeat = Build(new BotReport(TelegramStatus.State.Ready, null, Now, null));
+
+        Assert.Null(starting.Bot.Answering);
+        Assert.Null(readyWithoutHeartbeat.Bot.Answering);
+        Assert.True(readyWithoutHeartbeat.Healthy);
     }
 
     [Fact]
     public void A_crashed_or_stopped_loop_is_a_problem()
     {
-        var report = Build(Bot(TelegramStatus.State.Ready, connected: true), Restored,
+        var report = Build(Bot(TelegramStatus.State.Ready), Restored,
             Loop("Downloader", LoopState.Crashed, "disk full"), Loop("Queue", LoopState.Stopped, "Stopped before shutdown"),
             Loop("Uploader"));
 
@@ -89,7 +105,7 @@ public class HealthReportTests
     [InlineData(AccountSession.Failed, "The account session could not be resumed: AUTH_KEY_UNREGISTERED")]
     public void An_account_without_a_session_is_only_a_warning(AccountSession session, string warning)
     {
-        var report = Build(Bot(TelegramStatus.State.Ready, connected: true),
+        var report = Build(Bot(TelegramStatus.State.Ready),
             new AccountReport(session, false, session == AccountSession.Failed ? "AUTH_KEY_UNREGISTERED" : null));
 
         Assert.Equal(HealthVerdict.Ok, report.Status);

@@ -19,6 +19,9 @@ public sealed record HealthReport(
     /// <summary>How long the bot may take to start before that counts as a problem.</summary>
     public static readonly TimeSpan StartupGrace = TimeSpan.FromMinutes(5);
 
+    /// <summary>How long Telegram may go without answering the bot's heartbeat.</summary>
+    public static readonly TimeSpan SilenceLimit = TimeSpan.FromMinutes(3);
+
     public bool Healthy => Problems.Count == 0;
 
     public static HealthReport Build(BotReport bot, AccountReport? account, IReadOnlyList<LoopReport> loops,
@@ -26,6 +29,12 @@ public sealed record HealthReport(
     {
         var problems = new List<string>();
         var warnings = new List<string>();
+        bot = bot with
+        {
+            Answering = bot.State == TelegramStatus.State.Ready && bot.LastAnswer is { } last
+                ? now - last <= SilenceLimit
+                : null,
+        };
 
         switch (bot.State)
         {
@@ -35,8 +44,8 @@ public sealed record HealthReport(
             case TelegramStatus.State.Starting when now - bot.Since > StartupGrace:
                 problems.Add($"The bot has been starting for more than {StartupGrace.TotalMinutes:0} minutes");
                 break;
-            case TelegramStatus.State.Ready when bot.Connected == false:
-                problems.Add("The bot lost its connection to Telegram");
+            case TelegramStatus.State.Ready when bot.Answering == false:
+                problems.Add($"Telegram has not answered the bot since {bot.LastAnswer:yyyy-MM-dd HH:mm:ss} UTC");
                 break;
             case TelegramStatus.State.Disabled:
                 warnings.Add($"The bot is disabled: {bot.Problem}");
@@ -74,8 +83,10 @@ public enum HealthVerdict
     Unhealthy,
 }
 
-/// <param name="Connected">Whether the bot's connection to Telegram is up; null until it starts.</param>
-public sealed record BotReport(TelegramStatus.State State, string? Problem, DateTimeOffset Since, bool? Connected);
+/// <param name="LastAnswer">When Telegram last answered the bot's heartbeat; null until it starts.</param>
+/// <param name="Answering">Whether that was recent enough; filled in by <see cref="HealthReport.Build"/>.</param>
+public sealed record BotReport(TelegramStatus.State State, string? Problem, DateTimeOffset Since,
+    DateTimeOffset? LastAnswer, bool? Answering = null);
 
 public sealed record AccountReport(AccountSession Session, bool Premium, string? Problem);
 

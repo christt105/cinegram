@@ -20,19 +20,18 @@ public static class HealthEndpoints
     public static void Map(IEndpointRouteBuilder app)
     {
         app.MapGet("/health", (TelegramStatus status, IEnumerable<IHostedService> hosted,
-            [FromServices] UserClientService? account, [FromServices] WTelegram.Bot? bot) =>
+            [FromServices] UserClientService? account, [FromServices] BotHeartbeat? heartbeat) =>
         {
-            var report = Read(status, hosted, account, bot, DateTimeOffset.UtcNow);
+            var report = Read(status, hosted, account, heartbeat, DateTimeOffset.UtcNow);
             return Results.Json(report, JsonOptions,
                 statusCode: report.Healthy ? StatusCodes.Status200OK : StatusCodes.Status503ServiceUnavailable);
         });
     }
 
     public static HealthReport Read(TelegramStatus status, IEnumerable<IHostedService> hosted,
-        UserClientService? account, WTelegram.Bot? bot, DateTimeOffset now)
+        UserClientService? account, BotHeartbeat? heartbeat, DateTimeOffset now)
     {
-        var botReport = new BotReport(status.Current, status.Problem, status.Since,
-            status.IsReady && bot is not null ? !bot.Client.Disconnected : null);
+        var botReport = new BotReport(status.Current, status.Problem, status.Since, heartbeat?.LastAnswer);
 
         var accountReport = account is null
             ? null

@@ -76,6 +76,7 @@ public static class CinegramServices
             return bot;
         });
         services.AddSingleton<UserClientService>();
+        services.AddSingleton<BotHeartbeat>();
         services.AddSingleton<TaskQueue>();
         services.AddSingleton<UploadEchoRegistry>();
         services.AddSingleton<WatchedFileMessageRegistry>();
@@ -113,6 +114,7 @@ public static class CinegramServices
         AddLoop(services, "WatchResume", sp => sp.GetRequiredService<WatchNotificationService>().ResumeResolvedAsync,
             runsUntilShutdown: false);
         AddLoop(services, "Queue", sp => sp.GetRequiredService<TaskQueue>().StartProcessing);
+        AddLoop(services, "Heartbeat", sp => sp.GetRequiredService<BotHeartbeat>().RunAsync);
 
         if (settings.JellyfinBackup is { } backupOptions)
         {

@@ -15,7 +15,7 @@
 
       <div class="status-row">
         <span class="label">Telegram bot</span>
-        <span class="value" :class="`tone-${botTone}`">{{ botLabel }}</span>
+        <span class="value" :class="`tone-${botTone}`" :title="lastAnswerTitle">{{ botLabel }}</span>
       </div>
       <div v-if="report.account" class="status-row">
         <span class="label">Account session</span>
@@ -66,6 +66,7 @@ const loopLabel: Record<string, string> = {
   WatchedFolder: 'Downloads folder watcher',
   WatchResume: 'Watch resume',
   Queue: 'Task queue',
+  Heartbeat: 'Telegram heartbeat',
   JellyfinBackup: 'Jellyfin backup',
 };
 const loopStateLabel: Record<LoopState, string> = {
@@ -90,14 +91,19 @@ const error = ref<string | null>(null);
 
 const botLabel = computed(() => {
   const bot = report.value!.bot;
-  if (bot.state === 'ready' && bot.connected === false) return 'Disconnected';
+  if (bot.state === 'ready' && bot.answering === false) return 'Not answering';
   return botStateLabel[bot.state];
 });
 
 const botTone = computed<Tone>(() => {
   const bot = report.value!.bot;
-  if (bot.state === 'ready') return bot.connected === false ? 'bad' : 'good';
+  if (bot.state === 'ready') return bot.answering === false ? 'bad' : 'good';
   return { starting: 'warn', failed: 'bad', disabled: 'muted' }[bot.state] as Tone;
+});
+
+const lastAnswerTitle = computed(() => {
+  const last = report.value!.bot.last_answer;
+  return last ? `Telegram last answered at ${new Date(last).toLocaleString()}` : undefined;
 });
 
 const accountLabel = computed(() => {

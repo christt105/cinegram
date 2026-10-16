@@ -72,7 +72,7 @@ public class CinegramServicesTests : IDisposable
             .ToList();
 
         Assert.Equal(
-            ["Startup", "Telegram", "Downloader", "Uploader", "WatchedFolder", "WatchResume", "Queue", "JellyfinBackup"],
+            ["Startup", "Telegram", "Downloader", "Uploader", "WatchedFolder", "WatchResume", "Queue", "Heartbeat", "JellyfinBackup"],
             names);
         Assert.NotNull(app.Services.GetRequiredService<PreviewService>());
         Assert.NotNull(app.Services.GetRequiredService<BotDispatcher>());
@@ -171,12 +171,12 @@ public class CinegramServicesTests : IDisposable
             app.Services.GetRequiredService<TelegramStatus>(),
             app.Services.GetServices<IHostedService>(),
             app.Services.GetRequiredService<UserClientService>(),
-            bot: null,
+            app.Services.GetRequiredService<BotHeartbeat>(),
             DateTimeOffset.UtcNow);
 
         Assert.Equal(HealthVerdict.Starting, report.Status);
         Assert.Equal(AccountSession.NotChecked, report.Account!.Session);
-        Assert.Equal(["Downloader", "Uploader", "WatchedFolder", "WatchResume", "Queue", "JellyfinBackup"],
+        Assert.Equal(["Downloader", "Uploader", "WatchedFolder", "WatchResume", "Queue", "Heartbeat", "JellyfinBackup"],
             report.Loops.Select(l => l.Name));
         Assert.All(report.Loops, l => Assert.Equal(LoopState.Waiting, l.State));
     }
