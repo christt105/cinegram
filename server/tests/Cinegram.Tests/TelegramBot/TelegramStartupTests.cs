@@ -22,7 +22,11 @@ public class TelegramStartupTests
         var (options, problem) = TelegramOptions.Read(Env(Complete));
 
         Assert.Null(problem);
-        Assert.Equal(new TelegramOptions(12345, "hash", "123:token", 111), options);
+        Assert.Equal((12345, "hash", "123:token"), (options!.ApiId, options.ApiHash, options.BotToken));
+        Assert.Equal([111L, 222L], options.AllowedUserIds);
+        Assert.Equal(111, options.OwnerUserId);
+        Assert.True(options.IsAllowed(222));
+        Assert.False(options.IsAllowed(333));
     }
 
     [Fact]

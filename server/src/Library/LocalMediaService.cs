@@ -13,10 +13,12 @@ public class LocalMediaService
     private const int DefaultLimit = 200;
 
     private readonly Catalog _catalog;
+    private readonly LibraryPaths _library;
 
-    public LocalMediaService(Catalog catalog)
+    public LocalMediaService(Catalog catalog, LibraryPaths library)
     {
         _catalog = catalog;
+        _library = library;
     }
 
     /// <summary>
@@ -28,7 +30,7 @@ public class LocalMediaService
     {
         var normalizedQuery = TextNormalizer.Normalize(query);
 
-        return MediaLibrary.Roots()
+        return _library.Roots()
             .SelectMany(MediaLibrary.EnumerateVideos)
             .Where(path => normalizedQuery.Length == 0
                            || TextNormalizer.Normalize(path).Contains(normalizedQuery))
@@ -65,7 +67,7 @@ public class LocalMediaService
     public async Task<(bool ok, string error)> ProbeIntoCollectionAsync(int collectionId, string path)
     {
 
-        if (!MediaLibrary.TryResolveInsideLibrary(path, out var fullPath))
+        if (!_library.TryResolveInsideLibrary(path, out var fullPath))
             return (false, "Path is outside the mounted media library.");
 
         if (!System.IO.File.Exists(fullPath))
@@ -88,7 +90,7 @@ public class LocalMediaService
         if (series is null)
             return (false, $"Series {seriesId} not found.", null);
 
-        var localFiles = MediaLibrary.Roots()
+        var localFiles = _library.Roots()
             .SelectMany(MediaLibrary.EnumerateVideos)
             .Where(path => MediaNameParser.MatchesIds(path, series.TmdbId, series.TvdbId))
             .Select(path => (path, seasonEpisode: MediaNameParser.ParseSeasonEpisode(path)))
@@ -149,7 +151,7 @@ public class LocalMediaService
         if (string.IsNullOrWhiteSpace(collection.LocalPath))
             return (false, "Collection has no local copy.");
 
-        if (!MediaLibrary.TryResolveInsideLibrary(collection.LocalPath, out var fullPath))
+        if (!_library.TryResolveInsideLibrary(collection.LocalPath, out var fullPath))
             return (false, "Local path is outside the mounted media library.");
 
         try

@@ -46,7 +46,7 @@ public class JellyfinSeriesIdentifier
     private readonly IJellyfinClient? _client;
     private readonly Func<string, Task>? _notify;
     private readonly Func<TimeSpan, CancellationToken, Task> _delay;
-    private readonly IReadOnlyList<PathMapping>? _pathMappings;
+    private readonly IReadOnlyList<PathMapping> _pathMappings;
 
     public JellyfinSeriesIdentifier(
         IJellyfinClient? client,
@@ -57,7 +57,7 @@ public class JellyfinSeriesIdentifier
         _client = client;
         _notify = notify;
         _delay = delay ?? Task.Delay;
-        _pathMappings = pathMappings?.ToList();
+        _pathMappings = pathMappings?.ToList() ?? [];
     }
 
     /// <summary>
@@ -254,9 +254,7 @@ public class JellyfinSeriesIdentifier
     }
 
     private string Translate(string reportedPath) =>
-        _pathMappings is null
-            ? PathTranslator.Translate(reportedPath)
-            : PathTranslator.Translate(reportedPath, _pathMappings);
+        PathTranslator.Translate(reportedPath, _pathMappings);
 
     private static string Normalize(string path) => path.TrimEnd('/');
 

@@ -11,17 +11,19 @@ public class ImportCommand : ICommand
 {
     private readonly WTelegram.Bot _bot;
     private readonly Catalog _catalog;
+    private readonly LibraryPaths _library;
 
-    public ImportCommand(WTelegram.Bot bot, Catalog catalog)
+    public ImportCommand(WTelegram.Bot bot, Catalog catalog, LibraryPaths library)
     {
         _bot = bot;
         _catalog = catalog;
+        _library = library;
     }
 
     public async Task Execute(string[] args, Message msg)
     {
-        var moviesDir = MediaLibrary.MoviesDir;
-        var showsDir = MediaLibrary.ShowsDir;
+        var moviesDir = _library.MoviesDir;
+        var showsDir = _library.ShowsDir;
 
         await _bot.SendMessage(msg.Chat.Id,
             $"🔍 Scanning for media files…\nMovies: {moviesDir}\nShows: {showsDir}");

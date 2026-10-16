@@ -20,10 +20,10 @@ public static class WatchedFileMoveFlow
     /// warn about a collision) before actually committing to the move.
     /// </summary>
     public static string BuildProspectiveDestination(
-        string mediaType, string title, int tmdbId, int? tvdbId, int? year, int? season, int? episode,
+        LibraryPaths library, string mediaType, string title, int tmdbId, int? tvdbId, int? year, int? season, int? episode,
         string filename) =>
         WatchedFileNaming.BuildDestinationPath(
-            MediaLibrary.MoviesDir, MediaLibrary.ShowsDir, mediaType, title, tmdbId, tvdbId, year, season, episode,
+            library.MoviesDir, library.ShowsDir, mediaType, title, tmdbId, tvdbId, year, season, episode,
             Path.GetExtension(filename));
 
     /// <summary>
@@ -32,7 +32,7 @@ public static class WatchedFileMoveFlow
     /// that caller reports the outcome, so this one has nothing to say about it.
     /// </summary>
     public static async Task<MoveOutcome?> MoveAndReportAsync(
-        WatchedFiles watchedFiles, int watchedFileId, WatchedFileResolution? resolution,
+        WatchedFiles watchedFiles, LibraryPaths library, int watchedFileId, WatchedFileResolution? resolution,
         JellyfinSeriesIdentifier? jellyfin = null, CancellationToken cancellationToken = default)
     {
         if (resolution is null)
@@ -45,7 +45,7 @@ public static class WatchedFileMoveFlow
 
         try
         {
-            var sourcePath = WatchedFileReconciliation.ToFullPath(MediaLibrary.DownloadsDir, resolution.Path);
+            var sourcePath = WatchedFileReconciliation.ToFullPath(library.DownloadsDir, resolution.Path);
 
             if (!System.IO.File.Exists(sourcePath))
             {
@@ -54,7 +54,7 @@ public static class WatchedFileMoveFlow
             }
 
             var destPath = BuildProspectiveDestination(
-                resolution.MediaType, resolution.Title, resolution.TmdbId, resolution.TvdbId, resolution.Year,
+                library, resolution.MediaType, resolution.Title, resolution.TmdbId, resolution.TvdbId, resolution.Year,
                 resolution.Season, resolution.Episode, resolution.Filename);
             destPath = MediaNaming.ResolveFreePath(destPath, null);
 
@@ -118,13 +118,13 @@ public static class WatchedFileMoveFlow
     }
 
     public static async Task ExecuteAsync(
-        WTelegram.Bot bot, WatchedFiles watchedFiles, WatchedFileMessageRegistry registry,
+        WTelegram.Bot bot, WatchedFiles watchedFiles, LibraryPaths library, WatchedFileMessageRegistry registry,
         Message message, int watchedFileId, WatchedFileResolution? resolution,
         JellyfinSeriesIdentifier? jellyfin = null, CancellationToken cancellationToken = default)
     {
         registry.TryUntrack(watchedFileId, out _);
 
-        var outcome = await MoveAndReportAsync(watchedFiles, watchedFileId, resolution, jellyfin, cancellationToken);
+        var outcome = await MoveAndReportAsync(watchedFiles, library, watchedFileId, resolution, jellyfin, cancellationToken);
         if (outcome is null) return;
 
         await bot.EditMessageText(message.Chat.Id, message.MessageId, outcome.Value.Text);

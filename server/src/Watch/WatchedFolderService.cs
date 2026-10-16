@@ -28,11 +28,12 @@ public class WatchedFolderService
     private readonly string _root;
     private CancellationToken _lifetimeToken;
 
-    public WatchedFolderService(WatchedFiles watchedFiles, WatchNotificationService? notifications = null)
+    public WatchedFolderService(WatchedFiles watchedFiles, LibraryPaths library,
+        WatchNotificationService? notifications = null)
     {
         _watchedFiles = watchedFiles;
         _notifications = notifications;
-        _root = MediaLibrary.DownloadsDir;
+        _root = library.DownloadsDir;
     }
 
     public async Task RunAsync(CancellationToken stoppingToken)

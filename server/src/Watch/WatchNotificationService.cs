@@ -6,6 +6,7 @@ using Cinegram.Infrastructure;
 using Cinegram.Jellyfin;
 using Cinegram.TelegramBot;
 using Cinegram.TelegramBot.CallbackQueries.Callbacks.Watch;
+using Cinegram.MediaFiles;
 
 namespace Cinegram.Watch;
 
@@ -21,12 +22,16 @@ public class WatchNotificationService
     private readonly WatchedFiles _watchedFiles;
     private readonly WatchedFileMessageRegistry _registry;
     private readonly JellyfinSeriesIdentifier? _jellyfin;
+    private readonly TelegramOptions _telegram;
+    private readonly LibraryPaths _library;
     private readonly ConcurrentDictionary<int, byte> _notifying = new();
 
     public WatchNotificationService(
         WTelegram.Bot bot, WatchedFiles watchedFiles, WatchedFileMessageRegistry registry,
-        JellyfinSeriesIdentifier? jellyfin = null)
+        TelegramOptions telegram, LibraryPaths library, JellyfinSeriesIdentifier? jellyfin = null)
     {
+        _telegram = telegram;
+        _library = library;
         _bot = bot;
         _watchedFiles = watchedFiles;
         _registry = registry;
@@ -44,7 +49,7 @@ public class WatchNotificationService
             var row = await _watchedFiles.GetAsync(watchedFileId);
             if (row is not { Status: "pending" }) return;
 
-            var sent = await _bot.SendMessage(AuthConfig.OwnerUserId, BuildNotifyMessageText(row), ParseMode.Html,
+            var sent = await _bot.SendMessage(_telegram.OwnerUserId, BuildNotifyMessageText(row), ParseMode.Html,
                 replyMarkup: BuildNotifyButtons(row));
             _registry.Track(row.Id, sent.Chat.Id, sent.MessageId);
 
@@ -98,7 +103,7 @@ public class WatchNotificationService
         {
             Log.Info($"[WatchNotification] Moving {resolution.Filename} (row {resolution.Id}, {resolution.Status} from the web).");
             var outcome = await WatchedFileMoveFlow.MoveAndReportAsync(
-                _watchedFiles, resolution.Id, resolution, _jellyfin, ct);
+                _watchedFiles, _library, resolution.Id, resolution, _jellyfin, ct);
             if (outcome is null)
             {
                 Log.Info($"[WatchNotification] {resolution.Filename} (row {resolution.Id}) is already being moved, leaving it.");

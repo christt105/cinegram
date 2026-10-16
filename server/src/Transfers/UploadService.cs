@@ -91,6 +91,8 @@ public class UploadService
     private readonly UploadEchoRegistry? _echoes;
     private readonly TransferTuning _tuning;
     private readonly DataPaths _paths;
+    private readonly TelegramOptions _telegram;
+    private readonly IReadOnlyList<PathMapping> _pathMappings;
 
     /// <summary>
     /// How long to wait for the bot's copy of a file the account sent. It normally lands within
@@ -102,8 +104,11 @@ public class UploadService
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(30);
 
     public UploadService(WTelegram.Bot bot, Catalog catalog, TransferTasks tasks, TaskQueue queue,
-        TransferTuning tuning, DataPaths paths, UserClientService? userClient = null, UploadEchoRegistry? echoes = null)
+        TransferTuning tuning, DataPaths paths, TelegramOptions telegram, JellyfinSettings jellyfin,
+        UserClientService? userClient = null, UploadEchoRegistry? echoes = null)
     {
+        _telegram = telegram;
+        _pathMappings = jellyfin.PathMappings;
         _tuning = tuning;
         _paths = paths;
         _bot = bot;
@@ -152,7 +157,7 @@ public class UploadService
             Directory.CreateDirectory(tempDir);
 
             // 1. Translate the path Jellyfin reported into a container path
-            var mapped = PathTranslator.TryTranslate(task.Path, out var localPath);
+            var mapped = PathTranslator.TryTranslate(task.Path, _pathMappings, out var localPath);
             Log.Info($"[Uploader] Translated path: {task.Path} -> {localPath}");
 
             if (!File.Exists(localPath) && !Directory.Exists(localPath))
@@ -256,7 +261,7 @@ public class UploadService
 
                         long[] pp = [totalUploadedBytes, lastReportedTime];
                         var stored = await SendSingleFileWithRetryAsync(
-                            partPath, partInfo.Name, "application/zip", AuthConfig.OwnerUserId,
+                            partPath, partInfo.Name, "application/zip", _telegram.OwnerUserId,
                             TaskProgressReporter(task.Id, pp, totalBytesToUpload), useUserClient);
                         totalUploadedBytes = pp[0];
                         lastReportedTime = pp[1];
@@ -275,7 +280,7 @@ public class UploadService
 
                     long[] dp = [totalUploadedBytes, lastReportedTime];
                     var stored = await SendSingleFileWithRetryAsync(
-                        videoFile, fileInfo.Name, mime, AuthConfig.OwnerUserId,
+                        videoFile, fileInfo.Name, mime, _telegram.OwnerUserId,
                         TaskProgressReporter(task.Id, dp, totalBytesToUpload), useUserClient);
                     totalUploadedBytes = dp[0];
                     lastReportedTime = dp[1];

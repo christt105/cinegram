@@ -1,4 +1,5 @@
 using Cinegram.Infrastructure;
+using Cinegram.MediaFiles;
 
 namespace Cinegram.Jellyfin;
 
@@ -8,7 +9,8 @@ namespace Cinegram.Jellyfin;
 /// </summary>
 public static class JellyfinPathAudit
 {
-    public static async Task RunAsync(JellyfinSettings settings, CancellationToken cancellationToken = default)
+    public static async Task RunAsync(JellyfinSettings settings, LibraryPaths library,
+        CancellationToken cancellationToken = default)
     {
         if (settings is not { Url: { } url, Token: { } token })
         {
@@ -29,8 +31,8 @@ public static class JellyfinPathAudit
                 return;
             }
 
-            var results = JellyfinPathCheck.Check(locations, PathTranslator.ConfiguredMappings());
-            foreach (var warning in JellyfinPathCheck.Warnings(results))
+            var results = JellyfinPathCheck.Check(locations, settings.PathMappings);
+            foreach (var warning in JellyfinPathCheck.Warnings(results, library))
                 Log.Warning($"[Startup] {warning}");
 
             var resolved = results.Count(result => result.Status == LibraryPathStatus.Resolved);
