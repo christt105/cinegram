@@ -1,3 +1,4 @@
+using Cinegram.MediaFiles;
 using Xunit;
 using Cinegram.Data;
 using Cinegram.Jellyfin;
@@ -94,7 +95,7 @@ public class PathTranslatorTests
     [Fact]
     public void ConfiguredMappings_TakesTheImplicitTargetsFromTheLibraryDirectories()
     {
-        using var _ = new EnvironmentScope(new()
+        var mappings = Configured(new()
         {
             ["JELLYFIN_PATH_MAP"] = null,
             ["MEDIA_ROOT"] = "/host/media",
@@ -109,13 +110,13 @@ public class PathTranslatorTests
                 new PathMapping("/host/media/movies", "/data/media/peliculas"),
                 new PathMapping("/host/media/shows", "/data/media/series")
             ],
-            PathTranslator.ConfiguredMappings().ToArray());
+            mappings.ToArray());
     }
 
     [Fact]
     public void ConfiguredMappings_HonoursTheSubdirectoryOverrides()
     {
-        using var _ = new EnvironmentScope(new()
+        var mappings = Configured(new()
         {
             ["JELLYFIN_PATH_MAP"] = null,
             ["MEDIA_ROOT"] = "/host/media/",
@@ -130,13 +131,13 @@ public class PathTranslatorTests
                 new PathMapping("/host/media/Peliculas", "/data/media/Peliculas"),
                 new PathMapping("/host/media/Series", "/data/media/Series")
             ],
-            PathTranslator.ConfiguredMappings().ToArray());
+            mappings.ToArray());
     }
 
     [Fact]
     public void ConfiguredMappings_PutsTheExplicitMapFirst()
     {
-        using var _ = new EnvironmentScope(new()
+        var mappings = Configured(new()
         {
             ["JELLYFIN_PATH_MAP"] = "/media/disco/Peliculas:/data/media/movies",
             ["MEDIA_ROOT"] = "/host/media",
@@ -148,18 +149,24 @@ public class PathTranslatorTests
 
         Assert.Equal(
             new PathMapping("/media/disco/Peliculas", "/data/media/movies"),
-            PathTranslator.ConfiguredMappings().First());
+            mappings.First());
     }
 
     [Fact]
     public void ConfiguredMappings_AreEmptyWithoutAMediaRoot()
     {
-        using var _ = new EnvironmentScope(new()
+        var mappings = Configured(new()
         {
             ["JELLYFIN_PATH_MAP"] = null,
             ["MEDIA_ROOT"] = null
         });
 
-        Assert.Empty(PathTranslator.ConfiguredMappings());
+        Assert.Empty(mappings);
+    }
+
+    private static IReadOnlyList<PathMapping> Configured(Dictionary<string, string?> values)
+    {
+        Func<string, string?> read = name => values.GetValueOrDefault(name);
+        return JellyfinSettings.Read(read, LibraryPaths.Read(read)).PathMappings;
     }
 }

@@ -15,14 +15,18 @@ public class DownloadService
     private readonly TaskQueue _queue;
     private readonly UserClientService? _userClient;
     private readonly DataPaths _paths;
+    private readonly LibraryPaths _library;
+    private readonly TelegramOptions _telegram;
 
     /// <summary>How long to wait before reading the queue again after the database failed.</summary>
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(30);
 
     public DownloadService(WTelegram.Bot bot, Catalog catalog, TransferTasks tasks, TaskQueue queue,
-        DataPaths paths, UserClientService? userClient = null)
+        DataPaths paths, LibraryPaths library, TelegramOptions telegram, UserClientService? userClient = null)
     {
         _paths = paths;
+        _library = library;
+        _telegram = telegram;
         _bot = bot;
         _catalog = catalog;
         _tasks = tasks;
@@ -222,8 +226,8 @@ public class DownloadService
             var extension = Path.GetExtension(mainVideo);
 
             // 5. Construct the same paths mnamer would have used
-            var moviesDir = MediaLibrary.MoviesDir;
-            var showsDir = MediaLibrary.ShowsDir;
+            var moviesDir = _library.MoviesDir;
+            var showsDir = _library.ShowsDir;
             string fullPath;
 
             var versionTag = MediaNaming.BuildVersionTag(task.Quality, task.NameSuffix);
@@ -325,7 +329,7 @@ public class DownloadService
     /// </summary>
     private async Task<TL.Document> ResolveThroughBotAsync(int messageId)
     {
-        var messages = await _bot.GetMessagesById(AuthConfig.OwnerUserId, new[] { messageId });
+        var messages = await _bot.GetMessagesById(_telegram.OwnerUserId, new[] { messageId });
         var msg = messages.FirstOrDefault();
         if (msg == null || (msg.Document == null && msg.Video == null))
             throw new Exception($"Message {messageId} not found or has no document/video.");

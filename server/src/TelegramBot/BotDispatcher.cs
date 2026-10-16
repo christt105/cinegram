@@ -21,11 +21,13 @@ public class BotDispatcher
     private readonly MessageHandler _messageHandler;
     private readonly PendingActionHandler _pendingActionHandler;
     private readonly UploadEchoRegistry _uploadEchoes;
+    private readonly TelegramOptions _telegram;
 
     public BotDispatcher(WTelegram.Bot bot, CommandHandler commandHandler, CallbackQueryHandler callbackQueryHandler,
         FileHandler fileHandler, MessageHandler messageHandler, PendingActionHandler pendingActionHandler,
-        UploadEchoRegistry uploadEchoes)
+        UploadEchoRegistry uploadEchoes, TelegramOptions telegram)
     {
+        _telegram = telegram;
         Bot = bot;
         _commandHandler = commandHandler;
         _callbackQueryHandler = callbackQueryHandler;
@@ -47,7 +49,7 @@ public class BotDispatcher
         // Register the command list so it shows up in Telegram's "/" autocomplete menu.
         await Bot.SetMyCommands(_commandHandler.GetMenuCommands());
 
-        await Bot.SendMessage(AuthConfig.OwnerUserId, "Bot started");
+        await Bot.SendMessage(_telegram.OwnerUserId, "Bot started");
 
         Bot.OnMessage += HandleMessage;
         Bot.OnUpdate += HandleUpdate;
@@ -58,7 +60,7 @@ public class BotDispatcher
 
     public async Task HandleMessage(Message msg, UpdateType type)
     {
-        if (msg.From == null || !AuthConfig.IsAllowed(msg.From.Id))
+        if (msg.From == null || !_telegram.IsAllowed(msg.From.Id))
         {
             Log.Info($"User {msg.From?.Username} with ID({msg.From?.Id}) is not allowed.");
             return;
@@ -103,7 +105,7 @@ public class BotDispatcher
 
                 var callback = update.CallbackQuery;
 
-                if (callback.From == null || !AuthConfig.IsAllowed(callback.From.Id))
+                if (callback.From == null || !_telegram.IsAllowed(callback.From.Id))
                 {
                     Log.Info($"User {callback.From?.Username} with ID({callback.From?.Id}) is not allowed.");
                     return;

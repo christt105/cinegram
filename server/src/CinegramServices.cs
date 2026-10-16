@@ -26,6 +26,7 @@ public static class CinegramServices
         services.Configure<HostOptions>(o => o.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore);
 
         services.AddSingleton(settings.Paths);
+        services.AddSingleton(settings.Library);
         services.AddSingleton(settings.Version);
         services.AddSingleton(settings.Transfers);
         services.AddSingleton(settings.Tmdb);
@@ -87,7 +88,8 @@ public static class CinegramServices
             var bot = sp.GetRequiredService<WTelegram.Bot>();
             return new JellyfinSeriesIdentifier(
                 sp.GetService<IJellyfinClient>(),
-                async text => await bot.SendMessage(options.OwnerUserId, text, ParseMode.Html));
+                async text => await bot.SendMessage(options.OwnerUserId, text, ParseMode.Html),
+                pathMappings: settings.Jellyfin.PathMappings);
         });
 
         services.AddSingleton<WatchNotificationService>();

@@ -1,4 +1,5 @@
 using Cinegram.Jellyfin;
+using Cinegram.MediaFiles;
 
 namespace Cinegram.Infrastructure;
 
@@ -9,8 +10,13 @@ namespace Cinegram.Infrastructure;
 public sealed class StartupChecks : SupervisedBackgroundService
 {
     private readonly JellyfinSettings _jellyfin;
+    private readonly LibraryPaths _library;
 
-    public StartupChecks(JellyfinSettings jellyfin) => _jellyfin = jellyfin;
+    public StartupChecks(JellyfinSettings jellyfin, LibraryPaths library)
+    {
+        _jellyfin = jellyfin;
+        _library = library;
+    }
 
     public override string Name => "Startup";
 
@@ -23,6 +29,6 @@ public sealed class StartupChecks : SupervisedBackgroundService
             Log.Warning($"[Startup] Required system dependencies are missing: {string.Join(", ", missing)}. Make sure they are installed and available in the PATH.");
         }
 
-        await JellyfinPathAudit.RunAsync(_jellyfin, stoppingToken);
+        await JellyfinPathAudit.RunAsync(_jellyfin, _library, stoppingToken);
     }
 }

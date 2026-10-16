@@ -12,17 +12,11 @@ public readonly record struct PathMapping(string Prefix, string Target);
 /// </summary>
 public static class PathTranslator
 {
-    public static string Translate(string reportedPath) =>
-        Translate(reportedPath, ConfiguredMappings());
-
     public static string Translate(string reportedPath, IEnumerable<PathMapping> mappings)
     {
         TryTranslate(reportedPath, mappings, out var localPath);
         return localPath;
     }
-
-    public static bool TryTranslate(string reportedPath, out string localPath) =>
-        TryTranslate(reportedPath, ConfiguredMappings(), out localPath);
 
     /// <summary>
     /// Translates a reported path and tells the caller whether a mapping actually matched it.
@@ -72,19 +66,17 @@ public static class PathTranslator
     /// The mappings in effect for this deployment: JELLYFIN_PATH_MAP first, then the implicit
     /// mapping from the host library paths under MEDIA_ROOT onto the mounted library directories.
     /// </summary>
-    public static IEnumerable<PathMapping> ConfiguredMappings()
+    public static IEnumerable<PathMapping> ConfiguredMappings(
+        string? map, string? mediaRoot, string? moviesSubdir, string? showsSubdir, LibraryPaths library)
     {
-        foreach (var mapping in ParseMap(Environment.GetEnvironmentVariable("JELLYFIN_PATH_MAP")))
+        foreach (var mapping in ParseMap(map))
             yield return mapping;
 
-        var mediaRoot = Environment.GetEnvironmentVariable("MEDIA_ROOT");
         if (string.IsNullOrWhiteSpace(mediaRoot)) yield break;
 
         mediaRoot = mediaRoot.TrimEnd('/');
-        var moviesSubdir = Environment.GetEnvironmentVariable("MOVIES_SUBDIR") ?? "movies";
-        var showsSubdir = Environment.GetEnvironmentVariable("SHOWS_SUBDIR") ?? "shows";
 
-        yield return new PathMapping($"{mediaRoot}/{moviesSubdir}", MediaLibrary.MoviesDir);
-        yield return new PathMapping($"{mediaRoot}/{showsSubdir}", MediaLibrary.ShowsDir);
+        yield return new PathMapping($"{mediaRoot}/{moviesSubdir ?? "movies"}", library.MoviesDir);
+        yield return new PathMapping($"{mediaRoot}/{showsSubdir ?? "shows"}", library.ShowsDir);
     }
 }

@@ -58,7 +58,7 @@ public static class JellyfinPathCheck
         return results;
     }
 
-    public static IEnumerable<string> Warnings(IEnumerable<LibraryPathResult> results)
+    public static IEnumerable<string> Warnings(IEnumerable<LibraryPathResult> results, LibraryPaths paths)
     {
         foreach (var result in results)
         {
@@ -75,8 +75,8 @@ public static class JellyfinPathCheck
 
                 case LibraryPathStatus.Unmapped:
                     var target = result.Location.Kind == LibraryKind.Shows
-                        ? MediaLibrary.ShowsDir
-                        : MediaLibrary.MoviesDir;
+                        ? paths.ShowsDir
+                        : paths.MoviesDir;
 
                     yield return $"Jellyfin library \"{library}\" reports {reported}, which no JELLYFIN_PATH_MAP entry " +
                                  "or MEDIA_ROOT prefix matches, and that path does not exist inside the container either. " +

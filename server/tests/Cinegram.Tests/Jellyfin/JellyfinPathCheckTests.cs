@@ -1,3 +1,4 @@
+using Cinegram.MediaFiles;
 using Xunit;
 using Cinegram.Data;
 using Cinegram.Jellyfin;
@@ -6,6 +7,8 @@ namespace Cinegram.Tests.Jellyfin;
 
 public class JellyfinPathCheckTests
 {
+    private static readonly LibraryPaths Library = new("/data/media/movies", "/data/media/shows", "/data/media/downloads");
+
     private static readonly PathMapping[] Mappings =
     [
         new("/media/disco/Peliculas", "/data/media/movies"),
@@ -71,7 +74,7 @@ public class JellyfinPathCheckTests
         var results = JellyfinPathCheck.Check(
             [Movies, Shows], Mappings, Existing("/data/media/movies", "/data/media/shows"));
 
-        Assert.Empty(JellyfinPathCheck.Warnings(results));
+        Assert.Empty(JellyfinPathCheck.Warnings(results, Library));
     }
 
     [Fact]
@@ -79,7 +82,7 @@ public class JellyfinPathCheckTests
     {
         var results = JellyfinPathCheck.Check([Movies], Mappings, Existing());
 
-        var warning = Assert.Single(JellyfinPathCheck.Warnings(results));
+        var warning = Assert.Single(JellyfinPathCheck.Warnings(results, Library));
         Assert.Contains("Peliculas", warning);
         Assert.Contains("/media/disco/Peliculas", warning);
         Assert.Contains("/data/media/movies", warning);
@@ -89,14 +92,8 @@ public class JellyfinPathCheckTests
     [Fact]
     public void Warnings_SuggestAnEntryForAnUnmappedLocation()
     {
-        using var _ = new EnvironmentScope(new()
-        {
-            ["JELLYFIN_MOVIES_DIR"] = "/data/media/movies",
-            ["JELLYFIN_SHOWS_DIR"] = "/data/media/shows"
-        });
-
         var results = JellyfinPathCheck.Check([Movies, Shows], [], Existing());
-        var warnings = JellyfinPathCheck.Warnings(results).ToArray();
+        var warnings = JellyfinPathCheck.Warnings(results, Library).ToArray();
 
         Assert.Equal(2, warnings.Length);
         Assert.Contains("/media/disco/Peliculas:/data/media/movies", warnings[0]);
@@ -108,7 +105,7 @@ public class JellyfinPathCheckTests
     {
         var results = JellyfinPathCheck.Check([Movies, Shows], Mappings, Existing("/data/media/shows"));
 
-        var warning = Assert.Single(JellyfinPathCheck.Warnings(results));
+        var warning = Assert.Single(JellyfinPathCheck.Warnings(results, Library));
         Assert.Contains("Peliculas", warning);
     }
 }

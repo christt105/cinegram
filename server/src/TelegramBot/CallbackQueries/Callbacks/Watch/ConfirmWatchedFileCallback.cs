@@ -1,6 +1,7 @@
 using Telegram.Bot.Types;
 using Cinegram.Jellyfin;
 using Cinegram.Watch;
+using Cinegram.MediaFiles;
 
 namespace Cinegram.TelegramBot.CallbackQueries.Callbacks.Watch;
 
@@ -15,6 +16,7 @@ public class ConfirmWatchedFileCallback : ICallbackQuery
 
     private readonly WTelegram.Bot _bot;
     private readonly WatchedFiles _watchedFiles;
+    private readonly LibraryPaths _library;
     private readonly WatchedFileMessageRegistry _registry;
     private readonly JellyfinSeriesIdentifier? _jellyfin;
     private readonly int _watchedFileId;
@@ -25,7 +27,7 @@ public class ConfirmWatchedFileCallback : ICallbackQuery
     private ConfirmWatchedFileCallback(
         int watchedFileId, int tmdbId, int? season, int? episode,
         WTelegram.Bot bot, WatchedFiles watchedFiles, WatchedFileMessageRegistry registry,
-        JellyfinSeriesIdentifier? jellyfin)
+        JellyfinSeriesIdentifier? jellyfin, LibraryPaths library)
     {
         _jellyfin = jellyfin;
         _watchedFileId = watchedFileId;
@@ -34,6 +36,7 @@ public class ConfirmWatchedFileCallback : ICallbackQuery
         _episode = episode;
         _bot = bot;
         _watchedFiles = watchedFiles;
+        _library = library;
         _registry = registry;
     }
 
@@ -41,20 +44,20 @@ public class ConfirmWatchedFileCallback : ICallbackQuery
     {
         var outcome = await _watchedFiles.ResolveAsync(_watchedFileId, _tmdbId, _season, _episode, "confirmed");
         await WatchedFileMoveFlow.ExecuteAsync(
-            _bot, _watchedFiles, _registry, message!, _watchedFileId, outcome.Resolution, _jellyfin);
+            _bot, _watchedFiles, _library, _registry, message!, _watchedFileId, outcome.Resolution, _jellyfin);
     }
 
     public static string Pack(int watchedFileId, int tmdbId, int? season, int? episode) =>
         CallbackDataPacker.Pack(Id,
             [watchedFileId.ToString(), tmdbId.ToString(), season?.ToString() ?? "", episode?.ToString() ?? ""]);
 
-    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, WatchedFiles watchedFiles, WatchedFileMessageRegistry watchedFileMessages, JellyfinSeriesIdentifier jellyfinSeries)
+    public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, WatchedFiles watchedFiles, WatchedFileMessageRegistry watchedFileMessages, JellyfinSeriesIdentifier jellyfinSeries, LibraryPaths library)
     {
         var season = string.IsNullOrEmpty(fields[2]) ? (int?)null : int.Parse(fields[2]);
         var episode = string.IsNullOrEmpty(fields[3]) ? (int?)null : int.Parse(fields[3]);
 
         return new ConfirmWatchedFileCallback(
             int.Parse(fields[0]), int.Parse(fields[1]), season, episode,
-            bot, watchedFiles, watchedFileMessages, jellyfinSeries);
+            bot, watchedFiles, watchedFileMessages, jellyfinSeries, library);
     }
 }

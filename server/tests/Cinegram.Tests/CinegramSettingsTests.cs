@@ -1,4 +1,6 @@
 using Xunit;
+using Cinegram.Jellyfin;
+using Cinegram.MediaFiles;
 using Cinegram.TelegramBot;
 
 namespace Cinegram.Tests;
@@ -22,6 +24,8 @@ public class CinegramSettingsTests
         Assert.Equal("/data/jellyfin-backup-last-run", settings.Paths.JellyfinBackupLastRun);
         Assert.Equal("/data/jellyfin-backup-history.json", settings.Paths.JellyfinBackupHistory);
         Assert.Equal("dev", settings.Version.Current);
+        Assert.Equal(new LibraryPaths("/data/jellyfin/movies", "/data/jellyfin/shows", "/data/media/downloads"), settings.Library);
+        Assert.Empty(settings.Jellyfin.PathMappings);
 
         Assert.Null(settings.Telegram);
         Assert.Null(settings.TelegramApi);
@@ -59,6 +63,13 @@ public class CinegramSettingsTests
             ["TMDB_CONTENT_LANGUAGE"] = "es-ES",
             ["JELLYFIN_URL"] = "http://jellyfin:8096",
             ["JELLYFIN_TOKEN"] = "jellyfin-token",
+            ["JELLYFIN_MOVIES_DIR"] = "/media/movies",
+            ["JELLYFIN_SHOWS_DIR"] = "/media/shows",
+            ["DOWNLOADS_DIR"] = "/media/downloads",
+            ["JELLYFIN_PATH_MAP"] = "/srv/films:/media/movies",
+            ["MEDIA_ROOT"] = "/host",
+            ["MOVIES_SUBDIR"] = "Peliculas",
+            ["SHOWS_SUBDIR"] = "Series",
             ["JELLYFIN_BACKUP_DIR"] = "/jellyfin",
             ["JELLYFIN_BACKUP_INTERVAL_HOURS"] = "24",
             ["JELLYFIN_BACKUP_RETAIN"] = "2",
@@ -66,7 +77,11 @@ public class CinegramSettingsTests
 
         Assert.Equal("/elsewhere/cinegram.db", settings.Paths.Database);
         Assert.Equal("v9.9.9", settings.Version.Current);
-        Assert.Equal(new TelegramOptions(12345, "hash", "123:token", 111), settings.Telegram);
+        Assert.Equal((12345, "hash", "123:token"), (settings.Telegram!.ApiId, settings.Telegram.ApiHash, settings.Telegram.BotToken));
+        Assert.Equal([111L, 222L], settings.Telegram.AllowedUserIds);
+        Assert.Equal(111, settings.Telegram.OwnerUserId);
+        Assert.True(settings.Telegram.IsAllowed(222));
+        Assert.False(settings.Telegram.IsAllowed(333));
         Assert.Equal((12345, "hash"), settings.TelegramApi);
         Assert.Equal(6, settings.Transfers.ParallelTransfers(4));
         Assert.Equal(256 * 1024, settings.Transfers.FilePartSizeBytes);
@@ -76,10 +91,33 @@ public class CinegramSettingsTests
         Assert.Equal("es-ES", settings.Tmdb.Language);
         Assert.Equal("http://jellyfin:8096", settings.Jellyfin.Url);
         Assert.Equal("jellyfin-token", settings.Jellyfin.Token);
+        Assert.Equal(new LibraryPaths("/media/movies", "/media/shows", "/media/downloads"), settings.Library);
+        Assert.Equal(
+            [
+                new PathMapping("/srv/films", "/media/movies"),
+                new PathMapping("/host/Peliculas", "/media/movies"),
+                new PathMapping("/host/Series", "/media/shows"),
+            ],
+            settings.Jellyfin.PathMappings);
         Assert.Equal("/jellyfin", settings.JellyfinBackup!.AppDataDir);
         Assert.Equal(TimeSpan.FromHours(24), settings.JellyfinBackup.Interval);
         Assert.Equal(111, settings.JellyfinBackup.ChatId);
         Assert.Equal(2, settings.JellyfinBackup.Retain);
+    }
+
+    [Fact]
+    public void Only_the_settings_read_the_environment()
+    {
+        var src = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../src"));
+        var readers = Directory.EnumerateFiles(src, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"))
+            .Where(f => File.ReadAllText(f).Contains("Environment.GetEnvironmentVariable"))
+            .Select(f => Path.GetRelativePath(src, f).Replace(Path.DirectorySeparatorChar, '/'))
+            .Order()
+            .ToList();
+
+        Assert.Equal(["Infrastructure/DependencyChecker.cs", "Program.cs"], readers);
     }
 
     [Fact]
