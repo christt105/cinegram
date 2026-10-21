@@ -19,7 +19,7 @@ public partial class JellyfinProxy : IDisposable
         _http = handler is null ? new HttpClient() : new HttpClient(handler);
         _http.Timeout = TimeSpan.FromSeconds(60);
         if (!string.IsNullOrWhiteSpace(token))
-            _http.DefaultRequestHeaders.Add("X-Emby-Token", token);
+            _http.DefaultRequestHeaders.Authorization = JellyfinAuthorization.Header(token);
         IsConfigured = BaseUrl is not null && !string.IsNullOrWhiteSpace(token);
     }
 

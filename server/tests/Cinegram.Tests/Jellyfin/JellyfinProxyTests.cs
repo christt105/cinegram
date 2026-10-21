@@ -66,8 +66,27 @@ public class JellyfinProxyTests : IAsyncDisposable
         Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
         var forwarded = Assert.Single(_jellyfin.Requests);
         Assert.Equal("http://jellyfin:8096/Shows/abc123/Episodes?seasonId=def&Fields=Path,Overview", forwarded.RequestUri!.ToString());
-        Assert.Equal(["server-token"], forwarded.Headers.GetValues("X-Emby-Token"));
-        Assert.Null(forwarded.Headers.Authorization);
+        Assert.Equal("MediaBrowser", forwarded.Headers.Authorization?.Scheme);
+        Assert.Equal("Token=\"server-token\"", forwarded.Headers.Authorization?.Parameter);
+    }
+
+    [Fact]
+    public async Task Get_DoesNotForwardLegacyAuthenticationFromTheBrowser()
+    {
+        using var http = await StartAsync();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/jellyfin/Users");
+        request.Headers.Add("X-Emby-Token", "browser-token");
+        request.Headers.Add("X-MediaBrowser-Token", "browser-token");
+        request.Headers.Add("X-Emby-Authorization", "MediaBrowser Token=\"browser-token\"");
+
+        using var response = await http.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var forwarded = Assert.Single(_jellyfin.Requests);
+        Assert.False(forwarded.Headers.Contains("X-Emby-Token"));
+        Assert.False(forwarded.Headers.Contains("X-MediaBrowser-Token"));
+        Assert.False(forwarded.Headers.Contains("X-Emby-Authorization"));
+        Assert.Equal("Token=\"server-token\"", forwarded.Headers.Authorization?.Parameter);
     }
 
     [Fact]

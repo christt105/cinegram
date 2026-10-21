@@ -63,6 +63,8 @@ public class JellyfinClientTests
         await client.GetLibraryLocationsAsync();
 
         Assert.Equal("http://jellyfin:8096/Library/VirtualFolders", handler.LastRequest!.RequestUri!.ToString());
-        Assert.Equal("s3cret", handler.LastRequest.Headers.GetValues("X-Emby-Token").Single());
+        Assert.Equal("MediaBrowser", handler.LastRequest.Headers.Authorization?.Scheme);
+        Assert.Equal("Token=\"s3cret\"", handler.LastRequest.Headers.Authorization?.Parameter);
+        Assert.False(handler.LastRequest.Headers.Contains("X-Emby-Token"));
     }
 }
