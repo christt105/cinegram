@@ -20,7 +20,7 @@ public class JellyfinClient : IJellyfinClient, IDisposable
     {
         _http = handler is null ? new HttpClient() : new HttpClient(handler);
         _http.BaseAddress = new Uri($"{baseUrl.TrimEnd('/')}/");
-        _http.DefaultRequestHeaders.Add("X-Emby-Token", token);
+        _http.DefaultRequestHeaders.Authorization = JellyfinAuthorization.Header(token);
         _http.Timeout = timeout ?? TimeSpan.FromSeconds(30);
 
         _jsonOptions = new JsonSerializerOptions
