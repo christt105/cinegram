@@ -32,27 +32,7 @@ public class ShowFileCallback : ICallbackQuery
         }
 
         var collection = await _catalog.GetCollectionAsync(file.CollectionId);
-
-        var sb = new System.Text.StringBuilder();
-        sb.AppendLine($"{Icons.FileIcon} <b>File #{_fileId}</b>");
-        sb.AppendLine();
-        sb.AppendLine($"<b>Filename:</b> <code>{file.Filename}</code>");
-        sb.AppendLine($"<b>Size:</b> {Beautify.FormatSize(file.Filesize)}");
-        sb.AppendLine($"<b>Type:</b> {file.MimeType ?? "-"}");
-        sb.AppendLine($"<b>Added:</b> {file.CreatedAt}");
-
-        if (collection != null)
-        {
-            sb.AppendLine();
-            sb.AppendLine($"<b>Collection:</b> {collection.Name} (ID {file.CollectionId})");
-            var quality = Beautify.FormatCollectionQuality(collection);
-            if (!string.IsNullOrWhiteSpace(quality))
-                sb.AppendLine(quality);
-            if (!string.IsNullOrWhiteSpace(collection.TechnicalMetadata))
-                sb.AppendLine($"\n<b>Technical:</b> <code>{collection.TechnicalMetadata}</code>");
-        }
-
-        var text = sb.ToString().TrimEnd();
+        var text = Beautify.FormatFile(file, collection);
 
         var buttons = new[]
         {
