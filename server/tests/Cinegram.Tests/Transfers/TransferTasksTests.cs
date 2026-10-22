@@ -460,6 +460,43 @@ public class TransferTasksTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task DownloadQueue_TellsTwoVersionsOfTheSameMovieApart()
+    {
+        var movie = await Add(new Movie { TmdbId = 1035259, Title = "Chainsaw Man", ReleaseYear = 2025 });
+        var hdr = await Add(new Collection { MovieId = movie.Id, Name = "Chainsaw Man (4K HDR)", Quality = "4K HDR", Files = [File()] });
+        var remux = await Add(new Collection { MovieId = movie.Id, Name = "Chainsaw Man", Quality = "1080p REMUX", Files = [File()] });
+        var plain = await Add(new Collection { MovieId = movie.Id, Name = "Chainsaw Man [tmdbid-1035259]", Files = [File()] });
+        var bare = await Add(new Collection { MovieId = movie.Id, Name = "Chainsaw Man", Files = [File()] });
+        foreach (var id in new[] { hdr.Id, remux.Id, plain.Id, bare.Id })
+            await _tasks.EnqueueCollectionAsync(id);
+
+        var queue = (await Json(await _http.GetAsync("/downloads/queue"))).EnumerateArray().ToList();
+
+        Assert.All(queue, t => Assert.Equal("Chainsaw Man", t.GetProperty("title").GetString()));
+        Assert.Equal(
+            ["Chainsaw Man (4K HDR)", "1080p REMUX", "Chainsaw Man [tmdbid-1035259]", null],
+            queue.Select(t => t.GetProperty("version").GetString()));
+    }
+
+    [Fact]
+    public async Task QueueMessage_ShowsTheVersionOfEachDownloadAndNamesItsButtons()
+    {
+        var movie = await Add(new Movie { TmdbId = 1035259, Title = "Chainsaw Man", ReleaseYear = 2025 });
+        var hdr = await Add(new Collection { MovieId = movie.Id, Name = "Chainsaw Man (4K HDR)", Quality = "4K HDR", Files = [File()] });
+        var hd = await Add(new Collection { MovieId = movie.Id, Name = "Chainsaw Man (1080p) & extras", Quality = "1080p", Files = [File()] });
+        await _tasks.EnqueueCollectionAsync(hdr.Id);
+        await _tasks.EnqueueCollectionAsync(hd.Id);
+
+        var (text, markup) = await Cinegram.TelegramBot.Commands.QueueMessageBuilder.BuildQueueMessage(_tasks);
+
+        Assert.Contains("  <i>Chainsaw Man (4K HDR)</i>", text);
+        Assert.Contains("  <i>Chainsaw Man (1080p) &amp; extras</i>", text);
+        var labels = markup.InlineKeyboard.SelectMany(row => row).Select(b => b.Text).ToList();
+        Assert.Contains("❌ Cancel Chainsaw Man (4K HDR)", labels);
+        Assert.Contains("❌ Cancel Chainsaw Man (1080p) & extras", labels);
+    }
+
+    [Fact]
     public async Task DownloadTasks_ListEveryRowWithTheBackendFields()
     {
         var collection = await MovieCollection();

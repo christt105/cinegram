@@ -164,14 +164,19 @@ public class TransferTasks(IDbContextFactory<CinegramDb> dbFactory, TransferCanc
             .AsSplitQuery()
             .ToListAsync(ct);
 
-        return tasks.Where(t => t.Collection is not null).Select(t => new QueueDownloadTask
+        return tasks.Where(t => t.Collection is not null).Select(t =>
         {
-            Id = t.Id,
-            CollectionId = t.CollectionId,
-            Title = QueueTitle(t.Collection!),
-            Status = t.Status,
-            Progress = t.Progress,
-            ErrorMessage = t.ErrorMessage,
+            var title = QueueTitle(t.Collection!);
+            return new QueueDownloadTask
+            {
+                Id = t.Id,
+                CollectionId = t.CollectionId,
+                Title = title,
+                Version = QueueVersion(t.Collection!, title),
+                Status = t.Status,
+                Progress = t.Progress,
+                ErrorMessage = t.ErrorMessage,
+            };
         }).ToList();
     }
 
@@ -498,5 +503,26 @@ public class TransferTasks(IDbContextFactory<CinegramDb> dbFactory, TransferCanc
             return $"{seasonSeries.ManualTitle ?? "Unknown Series"} - S{collection.Season.SeasonNumber}";
 
         return title;
+    }
+
+    /// <summary>
+    /// What tells two downloads of the same title apart: the collection's name, plus its quality when
+    /// the name does not already say it. Null when the name is the title itself.
+    /// </summary>
+    private static string? QueueVersion(Collection collection, string title)
+    {
+        var name = string.IsNullOrWhiteSpace(collection.Name) || collection.Name == title ? null : collection.Name;
+        var quality = string.IsNullOrWhiteSpace(collection.Quality) ||
+                      (name?.Contains(collection.Quality, StringComparison.OrdinalIgnoreCase) ?? false)
+            ? null
+            : collection.Quality;
+
+        return (name, quality) switch
+        {
+            (null, null) => null,
+            (null, _) => quality,
+            (_, null) => name,
+            _ => $"{name} · {quality}",
+        };
     }
 }
