@@ -59,39 +59,45 @@ public class CallbackQueryHandler
     /// <summary>The ids of the callbacks that can be handled.</summary>
     public IReadOnlyCollection<string> Ids => _factories.Keys;
 
-    public async Task HandleCallbackQueryAsync(CallbackQuery callbackQuery)
+    /// <summary>The longest text Telegram accepts when answering a callback query.</summary>
+    public const int NoticeLimit = 200;
+
+    /// <summary>
+    /// Runs the callback a button carries and returns the notice to answer it with: the callback's
+    /// own notice, a hint when the button is no longer known, the error when it fails, or null.
+    /// </summary>
+    public async Task<string?> HandleCallbackQueryAsync(CallbackQuery callbackQuery)
     {
         if (callbackQuery.Data is null)
         {
             Log.Info("CallbackQuery data is null");
-            return;
+            return null;
         }
 
         var data = callbackQuery.Data.Split(":");
-        if (data.Length == 0)
-        {
-            Log.Info($"Failed to parse callback query data: {callbackQuery.Data}");
-            return;
-        }
-
         var id = data[0];
         var args = data[1..];
 
         if (!_factories.TryGetValue(id, out var factory))
         {
             Log.Error($"Callback query with id {id} not found");
-            return;
+            return "This button no longer works.";
         }
 
-        var callback = factory(args);
-        
         try
         {
+            var callback = factory(args);
             await callback.ExecuteAsync(callbackQuery.Message);
+            return callback.Notice;
         }
         catch (Exception ex)
         {
-            Log.Error($"Error executing callback {id}: {ex}");
+            var error = ex is TargetInvocationException { InnerException: { } inner } ? inner : ex;
+            Log.Error($"Error executing callback {id}: {error}");
+            return Truncate($"❌ {error.Message}");
         }
     }
+
+    private static string Truncate(string text) =>
+        text.Length <= NoticeLimit ? text : text[..(NoticeLimit - 1)] + "…";
 }

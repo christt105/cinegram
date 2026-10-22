@@ -27,24 +27,8 @@ public class QueueCallback : ICallbackQuery
     {
         if (message == null) return;
 
-        // Perform the requested queue action
-        if (_action == "cancel_up" && int.TryParse(_taskIdStr, out var upId))
-        {
-            await _tasks.DeleteUploadAsync(upId);
-        }
-        else if (_action == "cancel_down" && int.TryParse(_taskIdStr, out var downId))
-        {
-            await _tasks.DeleteDownloadAsync(downId);
-        }
-        else if (_action == "retry_up" && int.TryParse(_taskIdStr, out var retryUpId))
-        {
-            await _tasks.RetryUploadAsync(retryUpId);
-        }
-        else if (_action == "retry_down" && int.TryParse(_taskIdStr, out var retryDownId))
-        {
-            await _tasks.RetryDownloadAsync(retryDownId);
-        }
-        
+        Notice = await PerformAsync();
+
         // Regenerate and edit the message
         try
         {
@@ -57,6 +41,24 @@ public class QueueCallback : ICallbackQuery
         {
             Log.Error("Failed to refresh queue message", ex);
         }
+    }
+
+    public string? Notice { get; private set; }
+
+    /// <summary>Runs the button's action and returns what to tell the user, or null for a refresh.</summary>
+    private async Task<string?> PerformAsync()
+    {
+        if (!int.TryParse(_taskIdStr, out var taskId)) return null;
+
+        var (done, notice) = _action switch
+        {
+            "cancel_up" => (await _tasks.DeleteUploadAsync(taskId), "Upload cancelled"),
+            "cancel_down" => (await _tasks.DeleteDownloadAsync(taskId), "Download cancelled"),
+            "retry_up" => (await _tasks.RetryUploadAsync(taskId), "Retrying upload"),
+            "retry_down" => (await _tasks.RetryDownloadAsync(taskId), "Retrying download"),
+            _ => (true, (string?)null),
+        };
+        return done ? notice : "That task is no longer in the queue.";
     }
 
     public static ICallbackQuery Create(string[] fields, WTelegram.Bot bot, TransferTasks transfers)

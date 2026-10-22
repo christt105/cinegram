@@ -92,6 +92,22 @@ public class BotDispatcher
         }
     }
 
+    /// <summary>
+    /// Stops the button's loading indicator. Telegram only accepts the answer for a short while after
+    /// the press, so a slow callback may come back too late; that is logged, not thrown.
+    /// </summary>
+    private async Task AnswerCallbackQuery(string callbackQueryId, string? notice)
+    {
+        try
+        {
+            await Bot.AnswerCallbackQuery(callbackQueryId, notice);
+        }
+        catch (Exception ex)
+        {
+            Log.Info($"Could not answer callback query {callbackQueryId}: {ex.Message}");
+        }
+    }
+
     private async Task HandleUpdate(Update update)
     {
         switch (update.Type)
@@ -111,7 +127,8 @@ public class BotDispatcher
                     return;
                 }
 
-                await _callbackQueryHandler.HandleCallbackQueryAsync(callback);
+                var notice = await _callbackQueryHandler.HandleCallbackQueryAsync(callback);
+                await AnswerCallbackQuery(callback.Id, notice);
                 break;
             case UpdateType.Unknown:
                 Console.WriteLine("Unknown update type: {0}", update.TLUpdate?.GetType().Name);
