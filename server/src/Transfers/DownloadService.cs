@@ -17,13 +17,16 @@ public class DownloadService
     private readonly DataPaths _paths;
     private readonly LibraryPaths _library;
     private readonly TelegramOptions _telegram;
+    private readonly TransferCancellation _cancellation;
 
     /// <summary>How long to wait before reading the queue again after the database failed.</summary>
     private static readonly TimeSpan RetryDelay = TimeSpan.FromSeconds(30);
 
     public DownloadService(WTelegram.Bot bot, Catalog catalog, TransferTasks tasks, TaskQueue queue,
-        DataPaths paths, LibraryPaths library, TelegramOptions telegram, UserClientService? userClient = null)
+        DataPaths paths, LibraryPaths library, TelegramOptions telegram, TransferCancellation cancellation,
+        UserClientService? userClient = null)
     {
+        _cancellation = cancellation;
         _paths = paths;
         _library = library;
         _telegram = telegram;
@@ -65,6 +68,14 @@ public class DownloadService
 
     private async Task ProcessDownloadTask(DownloadJob task)
     {
+        using var running = _cancellation.Start(TransferKind.Download, task.TaskId);
+        var ct = running.Token;
+        if (!await _tasks.DownloadExistsAsync(task.TaskId))
+        {
+            Log.Info($"[Downloader] Task {task.TaskId} was cancelled before it started.");
+            return;
+        }
+
         var tempDir = Path.Combine(_paths.TempDownloads, task.TaskId.ToString());
         try
         {
@@ -142,6 +153,7 @@ public class DownloadService
 
                         void OnProgress(long transmitted, long size)
                         {
+                            ct.ThrowIfCancellationRequested();
                             var delta = transmitted - lastBytes;
                             lastBytes = transmitted;
                             Interlocked.Add(ref totalDownloaded, delta);
@@ -166,11 +178,11 @@ public class DownloadService
                         {
                             // The account owns the file itself: with more than one connection the
                             // parts are written where they belong instead of in arrival order.
-                            await _userClient!.DownloadDocumentToFileAsync(doc, filePath, OnProgress);
+                            await _userClient!.DownloadDocumentToFileAsync(doc, filePath, OnProgress, ct);
                         }
                         downloadSuccess = true;
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (!ct.IsCancellationRequested)
                     {
                         Log.Error($"[Downloader] Attempt {attempt}/{maxRetries} failed to download {file.Filename}: {ex.Message}");
                         Interlocked.Add(ref totalDownloaded, -lastBytes);
@@ -188,7 +200,7 @@ public class DownloadService
 
                         var delayMs = (int)Math.Pow(2, attempt) * 1000;
                         Log.Info($"[Downloader] Waiting {delayMs}ms before retrying...");
-                        await Task.Delay(delayMs);
+                        await Task.Delay(delayMs, ct);
                     }
                 }
                 fileStopwatch.Stop();
@@ -207,7 +219,7 @@ public class DownloadService
                 Log.Info($"[Downloader] Archive found: {archivePath}. Extracting...");
                 var extractDir = Path.Combine(tempDir, "extracted");
                 Directory.CreateDirectory(extractDir);
-                await ExtractArchive(archivePath, extractDir);
+                await SevenZip.ExtractAsync(archivePath, extractDir, ct);
                 Log.Info("[Downloader] Extraction complete.");
             }
 
@@ -248,6 +260,8 @@ public class DownloadService
                 fullPath = Path.Combine(showsDir, dirName, seasonDir, fileName);
             }
 
+            // Past this point the file goes into the library, so a cancel no longer stops the task.
+            ct.ThrowIfCancellationRequested();
             var finalDir = Path.GetDirectoryName(fullPath)!;
             Directory.CreateDirectory(finalDir);
 
@@ -294,12 +308,16 @@ public class DownloadService
             await StoreTechnicalMetadata(task.CollectionId, fullPath);
 
             // 7. Update Status
-            await _tasks.UpdateDownloadAsync(task.TaskId, "completed", 100, localPath: fullPath);
+            await _tasks.CompleteDownloadAsync(task.TaskId, task.CollectionId, fullPath);
             taskStopwatch.Stop();
             var totalMb = totalSize / 1_000_000.0;
             var totalSec = taskStopwatch.Elapsed.TotalSeconds;
             var totalMbps = totalSec > 0 ? totalMb / totalSec : 0;
             Log.Info($"[Downloader] Task {task.TaskId} done — {totalMb:F1} MB in {totalSec:F1}s ({totalMbps:F1} MB/s avg)");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            Log.Info($"[Downloader] Task {task.TaskId} cancelled; nothing was moved to the library.");
         }
         catch (Exception ex)
         {
@@ -369,26 +387,5 @@ public class DownloadService
 
         var listed = string.Join(", ", names.Take(3));
         return names.Count > 3 ? $"{listed} (+{names.Count - 3} more)" : listed;
-    }
-
-    private static async Task ExtractArchive(string archivePath, string outputDir)
-    {
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = "7z",
-            Arguments = $"x \"{archivePath}\" -o\"{outputDir}\" -y",
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-        using var process = Process.Start(startInfo);
-        if (process == null) throw new Exception("Failed to start 7z process.");
-        await process.WaitForExitAsync();
-        if (process.ExitCode != 0)
-        {
-            var error = await process.StandardError.ReadToEndAsync();
-            throw new Exception($"7z extraction failed with exit code {process.ExitCode}: {error}");
-        }
     }
 }

@@ -156,7 +156,7 @@ const fetchQueues = async () => {
 };
 
 const cancelUpload = async (id: number) => {
-  if (!confirm("Cancel this upload task?")) return;
+  if (!confirm("Cancel this upload? Files it already finished stay in the library; the one in progress is removed.")) return;
   try {
     await fetch(`${apiUrl}/uploads/${id}`, { method: 'DELETE' });
     fetchQueues();
