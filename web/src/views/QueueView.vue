@@ -78,6 +78,7 @@
             <div class="task-info">
               <div class="task-titleblock">
                 <h4>{{ task.title || 'Collection ID: ' + task.collection_id }}</h4>
+                <span v-if="task.version" class="task-version">{{ task.version }}</span>
                 <span class="task-direction label-caps">Telegram &rarr; Jellyfin</span>
               </div>
               <div style="display:flex; gap:0.5rem; align-items:center;">
@@ -123,6 +124,7 @@ interface DownloadTask {
   id: number;
   collection_id: number;
   title?: string;
+  version?: string | null;
   status: string;
   progress: number;
   error_message?: string;
@@ -265,6 +267,12 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.task-version {
+  color: var(--on-surface-variant);
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 .task-direction {

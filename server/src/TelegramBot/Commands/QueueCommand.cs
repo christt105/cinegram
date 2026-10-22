@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -66,19 +67,24 @@ public static class QueueMessageBuilder
         {
             foreach (var task in downloads)
             {
-                sb.AppendLine($"• {task.Title} - {task.Progress}% [<b>{task.Status.ToUpper()}</b>]");
+                sb.AppendLine($"• {WebUtility.HtmlEncode(task.Title)} - {task.Progress}% [<b>{task.Status.ToUpper()}</b>]");
+                if (task.Version is not null)
+                {
+                    sb.AppendLine($"  <i>{WebUtility.HtmlEncode(task.Version)}</i>");
+                }
                 if (!string.IsNullOrEmpty(task.ErrorMessage))
                 {
                     sb.AppendLine($"  ❌ <i>Error: {task.ErrorMessage}</i>");
                 }
 
                 // Add buttons for this task
-                var cancelBtn = InlineKeyboardButton.WithCallbackData($"❌ Cancel {task.Title}", CallbackQueries.Callbacks.Queue.QueueCallback.Pack("cancel_down", task.Id.ToString()));
+                var label = task.Version ?? task.Title;
+                var cancelBtn = InlineKeyboardButton.WithCallbackData($"❌ Cancel {label}", CallbackQueries.Callbacks.Queue.QueueCallback.Pack("cancel_down", task.Id.ToString()));
                 if (task.Status == "failed")
                 {
                     buttons.Add(new[]
                     {
-                        InlineKeyboardButton.WithCallbackData($"🔄 Retry {task.Title}", CallbackQueries.Callbacks.Queue.QueueCallback.Pack("retry_down", task.Id.ToString())),
+                        InlineKeyboardButton.WithCallbackData($"🔄 Retry {label}", CallbackQueries.Callbacks.Queue.QueueCallback.Pack("retry_down", task.Id.ToString())),
                         cancelBtn
                     });
                 }
