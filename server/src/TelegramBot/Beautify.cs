@@ -1,3 +1,4 @@
+using System.Net;
 using System.Text.Json;
 using Cinegram.Data;
 
@@ -175,6 +176,35 @@ public static class Beautify
         sb.AppendLine($"<b>Files [{collection.Files.Count}]:</b>");
         foreach (var (f, i) in collection.Files.Select((f, i) => (f, i)))
             sb.AppendLine($"{i + 1}. {f.Filename}  <i>({FormatSize(f.Filesize)})</i>");
+
+        return sb.ToString().TrimEnd();
+    }
+
+    /// <summary>
+    /// The card of a single file: its own fields, then its collection with the quality line and the
+    /// technical summary (the raw ffprobe JSON does not fit in a Telegram message).
+    /// </summary>
+    public static string FormatFile(TelegramFile file, Collection? collection)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"{Icons.FileIcon} <b>File #{file.Id}</b>");
+        sb.AppendLine();
+        sb.AppendLine($"<b>Filename:</b> <code>{WebUtility.HtmlEncode(file.Filename)}</code>");
+        sb.AppendLine($"<b>Size:</b> {FormatSize(file.Filesize)}");
+        sb.AppendLine($"<b>Type:</b> {file.MimeType ?? "-"}");
+        sb.AppendLine($"<b>Added:</b> {file.CreatedAt}");
+
+        if (collection != null)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"<b>Collection:</b> {WebUtility.HtmlEncode(collection.Name)} (ID {file.CollectionId})");
+            var quality = FormatCollectionQuality(collection);
+            if (!string.IsNullOrWhiteSpace(quality))
+                sb.AppendLine(quality);
+            var technical = FormatTechnicalSummary(collection.TechnicalMetadata);
+            if (!string.IsNullOrWhiteSpace(technical))
+                sb.AppendLine($"<b>Technical:</b> {technical}");
+        }
 
         return sb.ToString().TrimEnd();
     }
