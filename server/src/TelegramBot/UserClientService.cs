@@ -187,7 +187,7 @@ public class UserClientService : IDisposable
             ? (transmitted, total) => onProgress(transmitted, total)
             : null;
 
-        await _client!.DownloadFileAsync(doc, output, null, cb);
+        await _client!.DownloadFileAsync(doc, output, progress: cb);
     }
 
     /// <summary>

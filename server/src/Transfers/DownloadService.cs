@@ -172,7 +172,7 @@ public class DownloadService
                         if (route.Identity == DownloadIdentity.Bot)
                         {
                             await using var fileStream = System.IO.File.Create(filePath);
-                            await _bot.Client.DownloadFileAsync(doc, fileStream, null, OnProgress);
+                            await _bot.Client.DownloadFileAsync(doc, fileStream, progress: OnProgress);
                         }
                         else
                         {
